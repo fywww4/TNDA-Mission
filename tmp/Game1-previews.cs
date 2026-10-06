@@ -1,0 +1,65 @@
+if (UnityEditor.EditorApplication.isPlaying) return new { skipped = true, reason = "An Editor play session is active; preserve it." };
+string scenePath = "Assets/Scenes/GAME1.unity";
+var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(scenePath);
+bool openedHere = !scene.isLoaded;
+if (openedHere) scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
+var g = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<TNDA.Prototype.BossClimbGame>(true)).Single();
+var canvas = g.GetComponentInChildren<UnityEngine.Canvas>();
+var camera = g.sceneCamera;
+var pixels = camera.GetComponent<UnityEngine.U2D.PixelPerfectCamera>();
+var originalCanvasMode = canvas.renderMode;
+var originalCanvasCamera = canvas.worldCamera;
+float originalPlaneDistance = canvas.planeDistance;
+bool originalPixelsEnabled = pixels.enabled;
+var originalTarget = camera.targetTexture;
+var originalActive = UnityEngine.RenderTexture.active;
+int originalCullingMask = camera.cullingMask;
+var objects = g.GetComponentsInChildren<UnityEngine.Transform>(true);
+var originalLayers = objects.Select(t => t.gameObject.layer).ToArray();
+var rt = new UnityEngine.RenderTexture(320, 320, 24);
+var texture = new UnityEngine.Texture2D(320, 320, UnityEngine.TextureFormat.RGB24, false);
+System.IO.Directory.CreateDirectory("Docs/Game1");
+System.Action<string> capture = file => {
+    UnityEngine.Canvas.ForceUpdateCanvases();
+    camera.targetTexture = rt;
+    camera.Render();
+    UnityEngine.RenderTexture.active = rt;
+    texture.ReadPixels(new UnityEngine.Rect(0, 0, 320, 320), 0, 0);
+    texture.Apply();
+    System.IO.File.WriteAllBytes(file, texture.EncodeToPNG());
+};
+try {
+    for (int i = 0; i < objects.Length; i++) objects[i].gameObject.layer = 31;
+    camera.cullingMask = 1 << 31;
+    pixels.enabled = false;
+    canvas.renderMode = UnityEngine.RenderMode.ScreenSpaceCamera;
+    canvas.worldCamera = camera;
+    canvas.planeDistance = 1;
+    g.PreparePreview();
+    capture("Docs/Game1/title.png");
+    g.StartRun(1);
+    var idle = new TNDA.Prototype.ArcadeInput();
+    for (int i = 0; i < 10; i++) g.Advance(.02f, new TNDA.Prototype.ArcadeInput { steer = 1 }, idle);
+    for (int i = 0; i < 65; i++) g.Advance(.02f, new TNDA.Prototype.ArcadeInput { throttle = 1 }, idle);
+    for (int i = 0; i < 50; i++) g.Advance(.02f, new TNDA.Prototype.ArcadeInput { steer = 1, action = true }, idle);
+    capture("Docs/Game1/gameplay.png");
+}
+finally {
+    for (int i = 0; i < objects.Length; i++) objects[i].gameObject.layer = originalLayers[i];
+    camera.cullingMask = originalCullingMask;
+    canvas.renderMode = originalCanvasMode;
+    canvas.worldCamera = originalCanvasCamera;
+    canvas.planeDistance = originalPlaneDistance;
+    pixels.enabled = originalPixelsEnabled;
+    camera.targetTexture = originalTarget;
+    UnityEngine.RenderTexture.active = originalActive;
+    rt.Release();
+    UnityEngine.Object.DestroyImmediate(rt);
+    UnityEngine.Object.DestroyImmediate(texture);
+    g.PreparePreview();
+    UnityEditor.EditorUtility.SetDirty(g);
+    UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+    UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
+    if (openedHere) UnityEditor.SceneManagement.EditorSceneManager.CloseScene(scene, true);
+}
+return new { saved = true, title = "Docs/Game1/title.png", gameplay = "Docs/Game1/gameplay.png", otherScenesPreserved = true };
