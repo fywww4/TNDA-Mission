@@ -59,7 +59,7 @@ namespace TNDA.Prototype.Editor
             Undo.RecordObject(game, "GAME3 crates and cherry");
             foreach (var pickup in game.pickups)
             {
-                pickup.item = 0; // 0 = random crate
+                pickup.item = ArenaItem.None; // random crate
                 foreach (Transform child in pickup.view) child.gameObject.SetActive(child.name == "Crate");
                 var art = pickup.view.Find("Crate")?.GetComponent<SpriteRenderer>();
                 if (art == null)

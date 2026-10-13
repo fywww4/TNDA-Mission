@@ -182,8 +182,8 @@ namespace TNDA.Prototype.Editor
             var items = game.transform.Find("Item spawns (2)");
             if (items == null) items = Child(game.transform, "Item spawns (2)");
             game.pickups = new[] {
-                Pickup(items, "Shield pickup", new Vector2(-.9f, -2.5f), 1, game.pickups.ElementAtOrDefault(0)),
-                Pickup(items, "Rocket pickup", new Vector2(.9f, .3f), 2, game.pickups.ElementAtOrDefault(1))
+                Pickup(items, "Shield pickup", new Vector2(-.9f, -2.5f), ArenaItem.Shield, game.pickups.ElementAtOrDefault(0)),
+                Pickup(items, "Rocket pickup", new Vector2(.9f, .3f), ArenaItem.Rocket, game.pickups.ElementAtOrDefault(1))
             };
             var pool = game.transform.Find("Rocket pool (2)");
             if (pool == null) pool = Child(game.transform, "Rocket pool (2)");
@@ -243,12 +243,13 @@ namespace TNDA.Prototype.Editor
             game.footer.fontSize = 7;
         }
 
-        private static ArenaPickup Pickup(Transform parent, string name, Vector2 point, int item, ArenaPickup existing)
+        private static ArenaPickup Pickup(Transform parent, string name, Vector2 point, ArenaItem placeholder, ArenaPickup existing)
         {
-            // Item art renames both spawns to "Item crate". The serialized reference stays stable.
-            var pickup = existing ?? new ArenaPickup { point = point, item = item };
+            // Spawns are random crates; the placeholder only picks the pre-crate art. Item art renames both
+            // spawns to "Item crate". The serialized reference stays stable.
+            var pickup = existing ?? new ArenaPickup { point = point };
             var view = pickup.view != null ? pickup.view : parent.Find(name);
-            Color color = item == 1 ? ArcadeGame.Cyan : ArcadeGame.Yellow;
+            Color color = placeholder == ArenaItem.Shield ? ArcadeGame.Cyan : ArcadeGame.Yellow;
             if (view == null)
             {
                 view = Child(parent, name);
@@ -260,7 +261,7 @@ namespace TNDA.Prototype.Editor
                 label.transform.SetParent(view, false);
                 label.font = font;
                 label.fontSize = 3;
-                label.text = item == 1 ? "S" : "R";
+                label.text = placeholder == ArenaItem.Shield ? "S" : "R";
                 label.color = color;
                 label.alignment = TextAlignmentOptions.Center;
                 label.rectTransform.sizeDelta = new Vector2(.4f, .4f);

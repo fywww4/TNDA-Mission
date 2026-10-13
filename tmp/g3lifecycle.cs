@@ -9,12 +9,12 @@ try
     var car = game.cars[0];
     car.spawnProtection = car.shieldSeconds = 0;
     car.score = 1000;
-    car.item = 2;
+    car.item = TNDA.Prototype.ArenaItem.Rocket;
     car.stun = .5f;
     car.cooldown = .7f;
     game.DamageVehicle(car, 1);
     checks["wreck keeps deducted score"] = !car.alive && car.score == 750;
-    checks["wreck clears transient state"] = car.item == 0 && car.stun == 0 && car.cooldown == 0;
+    checks["wreck clears transient state"] = car.item == TNDA.Prototype.ArenaItem.None && car.stun == 0 && car.cooldown == 0;
 
     var rules = new TNDA.Prototype.VehicleLifecycleRules {
         wreckPenalty = 250, respawnSeconds = 3, spinStartSpeed = 4,

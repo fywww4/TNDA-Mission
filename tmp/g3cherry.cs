@@ -28,11 +28,11 @@ try
         var parked = collector.position;
         for (int trial = 0; trial < 2000; trial++)
         {
-            collector.item = 0;
+            collector.item = TNDA.Prototype.ArenaItem.None;
             collector.position = crate.point;
             crate.available = true; crate.view.gameObject.SetActive(true);
             g.Advance(.001f, none, none);
-            if (collector.item == 3) { if (index == 0) lastCherry++; else leaderCherry++; }
+            if (collector.item == TNDA.Prototype.ArenaItem.Cherry) { if (index == 0) lastCherry++; else leaderCherry++; }
         }
         collector.position = parked;
     }
@@ -41,10 +41,10 @@ try
 
     start(1);
     var p1 = g.cars[0];
-    p1.item = 3;
+    p1.item = TNDA.Prototype.ArenaItem.Cherry;
     g.Advance(dt, use, none);
     var block = new UnityEngine.MaterialPropertyBlock(); p1.body.GetPropertyBlock(block);
-    checks["use cherry consumes item and shows yellow car"] = p1.HasCherry && p1.item == 0
+    checks["use cherry consumes item and shows yellow car"] = p1.HasCherry && p1.item == TNDA.Prototype.ArenaItem.None
         && g.cherryViews[0].gameObject.activeSelf && block.GetFloat("_Solid") == 1;
     p1.position = new UnityEngine.Vector2(-4.1f, -.5f); p1.heading = 0;
     for (int f = 0; f < 180; f++) g.Advance(dt, gas, none);

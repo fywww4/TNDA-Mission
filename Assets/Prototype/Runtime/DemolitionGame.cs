@@ -21,13 +21,13 @@ namespace TNDA.Prototype
     {
         public Transform view;
         public Vector2 point;
-        [Tooltip("1 = shield; 2 = rocket.")]
-        public int item = 1;
+        [Tooltip("None = random item crate (see ArenaItems.Roll); any other value always gives that item.")]
+        public ArenaItem item = ArenaItem.None;
         public float respawn;
         public bool available;
     }
 
-    public class DemolitionGame : ArcadeGame
+    public class DemolitionGame : ArcadeGame, IItemArena
     {
         public ArcadeVehicle[] cars;
         public BreakableProp[] props;
@@ -184,7 +184,8 @@ namespace TNDA.Prototype
                 }
                 ArcadeInput input = car.computer ? ComputerInput(car, dt) : car.index == 0 ? p1 : p2;
                 // The item button only fires a held item; a human item requires a fresh press.
-                if (car.item != 0 && car.cooldown <= 0 && (car.computer ? input.action : input.actionPressed)) UseAction(car);
+                if (car.item != ArenaItem.None && car.cooldown <= 0 && (car.computer ? input.action : input.actionPressed)
+                    && ArenaItems.Use(car, this)) Sound(2);
                 // Holding gas builds speed gradually; releasing it coasts down a little faster.
                 float ramp = input.throttle > .1f ? accelerationPerSecond : coastDownPerSecond;
                 float topSpeed = driveSpeed * (car.computer ? .87f : 1) * (HasCherry(car) ? cherrySpeedMultiplier : 1);
@@ -277,9 +278,9 @@ namespace TNDA.Prototype
             bool hasPropAhead = props.Any(p => !p.broken && Vector2.Distance(p.point, car.position) < 1.6f
                 && Vector2.Dot(car.Forward, (p.point - car.position).normalized) > .8f);
             bool rivalNear = cars.Any(c => CanHarm(car, c) && Vector2.Distance(c.position, car.position) < 3);
-            bool activate = car.item == 1 ? car.health < .75f || rivalAhead
-                : car.item == 2 ? rivalAhead || hasPropAhead
-                : car.item == 3 && rivalNear;
+            bool activate = car.item == ArenaItem.Shield ? car.health < .75f || rivalAhead
+                : car.item == ArenaItem.Rocket ? rivalAhead || hasPropAhead
+                : car.item == ArenaItem.Cherry && rivalNear;
             return new ArcadeInput {
                 steer = -Mathf.Clamp(error / 38, -1, 1),
                 throttle = Mathf.Abs(error) > 65 ? .35f : 1,
@@ -296,11 +297,11 @@ namespace TNDA.Prototype
             // A car well ahead of this AI is hunted on purpose, whatever the current strategy.
             bool huntLeader = rival != null && rival.score >= car.score + leaderHuntMargin;
             var prop = props.Where(p => !p.broken).OrderBy(p => Vector2.Distance(p.point, car.position)).FirstOrDefault();
-            var pickup = car.item == 0 ? pickups.Where(p => p.available)
+            var pickup = car.item == ArenaItem.None ? pickups.Where(p => p.available)
                 .OrderBy(p => Vector2.Distance(p.point, car.position)).FirstOrDefault() : null;
             // Rotate priorities so rivals collide as well as collecting and breaking objects.
             int strategy = (Mathf.FloorToInt(Elapsed / 4) + i) % 3;
-            if (rival != null && (huntLeader || strategy == 0 || car.item == 2 || prop == null && pickup == null))
+            if (rival != null && (huntLeader || strategy == 0 || car.item == ArenaItem.Rocket || prop == null && pickup == null))
             {
                 car.aiTarget = rival;
                 car.aiDestination = rival.position;
@@ -361,52 +362,33 @@ namespace TNDA.Prototype
 
         private void CollectPickup(ArcadeVehicle car)
         {
-            if (car.item != 0) return;
+            if (car.item != ArenaItem.None) return;
             foreach (var pickup in pickups)
             {
                 if (!pickup.available || Vector2.Distance(car.position, pickup.point) > .58f) continue;
-                car.item = pickup.item != 0 ? pickup.item : RollItem(car);
+                car.item = pickup.item != ArenaItem.None ? pickup.item
+                    : ArenaItems.Roll(ArenaItems.IsTrailing(car, cars), trailingCherryChance, () => UnityEngine.Random.value);
                 pickup.available = false;
                 pickup.respawn = pickupRespawnSeconds;
                 pickup.view.gameObject.SetActive(false);
                 Sound(2);
-                if (!car.computer) Announce(string.Format(CabinetText.GotItem, car.DriverName, ItemName(car.item)), car.body.color);
+                if (!car.computer) Announce(ArenaItems.Pickup(car), car.body.color);
                 break;
             }
         }
 
-        private void UseAction(ArcadeVehicle car)
+        float IItemArena.ShieldSeconds => shieldDuration;
+        float IItemArena.CherrySeconds => cherryDuration;
+        void IItemArena.ItemFeedback(string message, Color color, float seconds) => Announce(message, color, seconds);
+
+        bool IItemArena.LaunchRocket(ArcadeVehicle car)
         {
-            if (car.item == 1)
-            {
-                car.shieldSeconds = shieldDuration;
-                car.item = 0;
-                car.cooldown = .35f;
-                Sound(2);
-                Announce(string.Format(CabinetText.ShieldUp, car.DriverName, shieldDuration.ToString("0")), Cyan);
-            }
-            else if (car.item == 2)
-            {
-                var rocket = rockets.FirstOrDefault(r => !r.active);
-                if (rocket == null)
-                {
-                    if (!car.computer) Announce(CabinetText.RocketBusy, Yellow, 1);
-                    return;
-                }
-                rocket.Spawn(car.position + car.Forward * .62f, car.Forward * 6, car.index);
-                rocket.view.color = car.body.color;
-                rocket.view.transform.rotation = Quaternion.Euler(0, 0, car.heading - 90);
-                car.item = 0;
-                car.cooldown = .5f;
-                Sound(2);
-                Announce(string.Format(CabinetText.RocketFired, car.DriverName), Yellow, 1);
-            }
-            else if (car.item == 3)
-            {
-                car.GiveCherry(cherryDuration);
-                Sound(2);
-                Announce(string.Format(CabinetText.CherryEaten, car.DriverName, cherryDuration.ToString("0")), car.body.color, 2.5f);
-            }
+            var rocket = rockets.FirstOrDefault(r => !r.active);
+            if (rocket == null) return false;
+            rocket.Spawn(car.position + car.Forward * .62f, car.Forward * 6, car.index);
+            rocket.view.color = car.body.color;
+            rocket.view.transform.rotation = Quaternion.Euler(0, 0, car.heading - 90);
+            return true;
         }
 
         private void CherryWreck(ArcadeVehicle attacker, ArcadeVehicle victim)
@@ -418,14 +400,6 @@ namespace TNDA.Prototype
                 AwardWreck(attacker);
                 Announce(string.Format(CabinetText.CherryWreck, attacker.DriverName, victim.DriverName), attacker.body.color, 2);
             }
-        }
-
-        // Crates are random; only the car currently in last place can roll the cherry.
-        private int RollItem(ArcadeVehicle car)
-        {
-            bool trailing = cars.Where(c => !c.eliminated).All(c => c == car || c.score >= car.score);
-            if (trailing && UnityEngine.Random.value < trailingCherryChance) return 3;
-            return UnityEngine.Random.value < .5f ? 1 : 2;
         }
 
         private void ResolveContacts(float dt)
@@ -667,19 +641,15 @@ namespace TNDA.Prototype
             engine.Dispose();
         }
 
-        private static string ItemName(int item) => item == 1 ? CabinetText.Shield : item == 2 ? CabinetText.Rocket : item == 3 ? CabinetText.Cherry : CabinetText.NoItem;
-
         private string DriverStatus(ArcadeVehicle car)
         {
             if (car.eliminated) return string.Format(CabinetText.StatusEliminated, car.FinalPlace);
             if (!car.alive) return string.Format(CabinetText.StatusRespawn, Mathf.CeilToInt(car.respawn));
-            if (HasCherry(car)) return string.Format(CabinetText.StatusCherry, Mathf.CeilToInt(car.CherrySeconds));
-            if (car.shieldSeconds > 0) return string.Format(CabinetText.StatusShield, Mathf.CeilToInt(car.shieldSeconds));
-            return car.item != 0 ? ItemName(car.item) : string.Format(CabinetText.StatusHealth, Mathf.CeilToInt(car.health * 100));
+            return ArenaItems.Status(car) ?? string.Format(CabinetText.StatusHealth, Mathf.CeilToInt(car.health * 100));
         }
 
         private string ActionStatus(ArcadeVehicle car) => car.eliminated ? CabinetText.ActionEliminated : !car.alive ? CabinetText.ActionRespawning
-            : HasCherry(car) ? string.Format(CabinetText.ActionCherry, Mathf.CeilToInt(car.CherrySeconds)) : ItemName(car.item);
+            : ArenaItems.ActionStatus(car);
 
         protected override void RefreshHud()
         {
@@ -698,7 +668,7 @@ namespace TNDA.Prototype
                 var car = cars[i];
                 if (carLabels != null && i < carLabels.Length && carLabels[i] != null)
                 {
-                    carLabels[i].text = car.DriverName + (car.item == 1 ? CabinetText.ShieldTag : car.item == 2 ? CabinetText.RocketTag : car.item == 3 ? CabinetText.CherryTag : "");
+                    carLabels[i].text = car.DriverName + ArenaItems.Tag(car.item);
                     carLabels[i].color = car.body.color;
                     Vector2 tag = car.position + Vector2.up * .68f;
                     if (carLabels[i] is TextMeshProUGUI screenTag)

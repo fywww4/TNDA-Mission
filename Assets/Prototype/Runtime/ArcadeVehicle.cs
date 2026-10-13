@@ -19,7 +19,7 @@ namespace TNDA.Prototype
         public float heading, speed, health, score, stun, cooldown;
         public bool alive, computer, eliminated;
         public float shieldSeconds, spawnProtection;
-        public int item;
+        public ArenaItem item;
         public float respawn;
 
         public float CherrySeconds { get; private set; }
@@ -65,7 +65,8 @@ namespace TNDA.Prototype
         private void ClearTransientState()
         {
             speed = stun = cooldown = respawn = shieldSeconds = spawnProtection = CherrySeconds = spinSpeed = 0;
-            item = FinalPlace = 0;
+            item = ArenaItem.None;
+            FinalPlace = 0;
             SlideVelocity = spinDirection = Vector2.zero;
             aiThink = 0;
             aiDestination = Vector2.zero;
@@ -102,7 +103,7 @@ namespace TNDA.Prototype
         {
             if (!alive || eliminated) return;
             CherrySeconds = Mathf.Max(0, seconds);
-            item = 0;
+            item = ArenaItem.None;
             cooldown = .35f;
         }
 

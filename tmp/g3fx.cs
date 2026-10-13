@@ -4,7 +4,7 @@ var use = new TNDA.Prototype.ArcadeInput(); use.action = true; use.actionPressed
 g.enabled = false;
 g.StartRun(1); while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none);
 for (int f = 0; f < 60 * 4; f++) g.Advance(dt, none, none);
-var p1 = g.cars[0]; p1.item = 3; g.Advance(dt, use, none);
+var p1 = g.cars[0]; p1.item = TNDA.Prototype.ArenaItem.Cherry; g.Advance(dt, use, none);
 var block = new UnityEngine.MaterialPropertyBlock(); p1.body.GetPropertyBlock(block);
 sb.Append("P1 cherry=" + g.HasCherry(p1) + " solid=" + block.GetFloat("_Solid") + " colour=" + block.GetColor("_SolidColor") + "\n");
 var ai = g.cars[2]; ai.spawnProtection = 0; ai.shieldSeconds = 0; ai.position = new UnityEngine.Vector2(1.5f, -1.2f); ai.speed = 0;
