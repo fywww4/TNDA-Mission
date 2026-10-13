@@ -77,7 +77,7 @@ namespace TNDA.Prototype
 
         [Header("Start messages")]
         [Tooltip("Shown one after another in the centre right after GO.")]
-        public string[] startMessages = { "活下來！", "盡量取得最高分！" };
+        public string[] startMessages = (string[])CabinetText.StartMessages.Clone();
         public float startMessageSeconds = 1.5f;
         private float countdownBaseSize;
         private bool showingStartMessage;
@@ -360,7 +360,7 @@ namespace TNDA.Prototype
                     car.score += prop.points;
                     car.speed *= .75f;
                     Sound(2);
-                    Announce(car.DriverName + " 撞碎 +" + prop.points, car.body.color, 1.2f);
+                    Announce(string.Format(CabinetText.Smashed, car.DriverName, prop.points), car.body.color, 1.2f);
                     aiThink[car.index] = 0;
                 }
                 else
@@ -386,7 +386,7 @@ namespace TNDA.Prototype
                 pickup.respawn = pickupRespawnSeconds;
                 pickup.view.gameObject.SetActive(false);
                 Sound(2);
-                if (!car.computer) Announce(car.DriverName + " 拿到" + ItemName(car.item) + "，按道具鍵使用", car.body.color);
+                if (!car.computer) Announce(string.Format(CabinetText.GotItem, car.DriverName, ItemName(car.item)), car.body.color);
                 break;
             }
         }
@@ -399,14 +399,14 @@ namespace TNDA.Prototype
                 car.item = 0;
                 car.cooldown = .35f;
                 Sound(2);
-                Announce(car.DriverName + " 防護罩 " + shieldDuration.ToString("0") + " 秒", Cyan);
+                Announce(string.Format(CabinetText.ShieldUp, car.DriverName, shieldDuration.ToString("0")), Cyan);
             }
             else if (car.item == 2)
             {
                 var rocket = rockets.FirstOrDefault(r => !r.active);
                 if (rocket == null)
                 {
-                    if (!car.computer) Announce("火箭還在飛，道具先保留", Yellow, 1);
+                    if (!car.computer) Announce(CabinetText.RocketBusy, Yellow, 1);
                     return;
                 }
                 rocket.Spawn(car.position + car.Forward * .62f, car.Forward * 6, car.index);
@@ -415,7 +415,7 @@ namespace TNDA.Prototype
                 car.item = 0;
                 car.cooldown = .5f;
                 Sound(2);
-                Announce(car.DriverName + " 發射火箭！", Yellow, 1);
+                Announce(string.Format(CabinetText.RocketFired, car.DriverName), Yellow, 1);
             }
             else if (car.item == 3)
             {
@@ -423,7 +423,7 @@ namespace TNDA.Prototype
                 car.item = 0;
                 car.cooldown = .35f;
                 Sound(2);
-                Announce(car.DriverName + " 吃下櫻桃！" + cherryDuration.ToString("0") + " 秒內碰到就撞毀", car.body.color, 2.5f);
+                Announce(string.Format(CabinetText.CherryEaten, car.DriverName, cherryDuration.ToString("0")), car.body.color, 2.5f);
             }
         }
 
@@ -435,7 +435,7 @@ namespace TNDA.Prototype
             if (ApplyDamage(victim, 1) && !victim.alive)
             {
                 AwardWreck(attacker);
-                Announce(attacker.DriverName + " 一碰撞毀 " + victim.DriverName + "！", attacker.body.color, 2);
+                Announce(string.Format(CabinetText.CherryWreck, attacker.DriverName, victim.DriverName), attacker.body.color, 2);
             }
         }
 
@@ -513,7 +513,7 @@ namespace TNDA.Prototype
             knock[victim.index] += push * ramBump * (.6f + impact * .4f);
             knock[attacker.index] -= push * ramBump * .35f;
             victim.heading += UnityEngine.Random.Range(15f, 30f) * (UnityEngine.Random.value < .5f ? -1 : 1);
-            if (damaged && victim.alive) Announce(attacker.DriverName + " 撞擊 x" + multiplier.ToString("0.0"), attacker.body.color, 1);
+            if (damaged && victim.alive) Announce(string.Format(CabinetText.Rammed, attacker.DriverName, multiplier.ToString("0.0")), attacker.body.color, 1);
             PlayHit(Mathf.Clamp(.3f + impact * .1f, .3f, .75f));
         }
 
@@ -576,7 +576,7 @@ namespace TNDA.Prototype
             if (!car.alive || car.eliminated || damage <= 0) return false;
             if (car.shieldSeconds > 0 || car.spawnProtection > 0)
             {
-                if (car.shieldSeconds > 0) Announce(car.DriverName + " 防護罩擋下！", Cyan, .75f);
+                if (car.shieldSeconds > 0) Announce(string.Format(CabinetText.ShieldBlocked, car.DriverName), Cyan, .75f);
                 return false;
             }
             car.health = Mathf.Max(0, car.health - damage);
@@ -590,7 +590,7 @@ namespace TNDA.Prototype
                 car.item = 0;
                 StartSpinOut(car, false); // wrecked cars skid off screen too; the impact already played a hit
                 Wrecks++;
-                Announce(car.DriverName + " 被撞毀 -" + deducted + "，" + enemyRespawnSeconds.ToString("0") + " 秒後重生", Yellow, 2.5f);
+                Announce(string.Format(CabinetText.Wrecked, car.DriverName, deducted, enemyRespawnSeconds.ToString("0")), Yellow, 2.5f);
             }
             return true;
         }
@@ -598,7 +598,7 @@ namespace TNDA.Prototype
         private void AwardWreck(ArcadeVehicle attacker)
         {
             attacker.score += wreckBonus;
-            Announce(attacker.DriverName + " 撞毀獎勵 +" + wreckBonus, attacker.body.color, 2);
+            Announce(string.Format(CabinetText.WreckBonus, attacker.DriverName, wreckBonus), attacker.body.color, 2);
         }
 
         private void RespawnVehicle(ArcadeVehicle car)
@@ -629,7 +629,7 @@ namespace TNDA.Prototype
             StartSpinOut(loser);
             foreach (var rocket in rockets.Where(r => r.active && r.owner == loser.index)) rocket.Hide();
             eliminationStage++;
-            Announce("最後一名 " + loser.DriverName + " 淘汰！", Yellow, 4);
+            Announce(string.Format(CabinetText.Eliminated, loser.DriverName), Yellow, 4);
             Sound(3);
             for (int i = 0; i < aiThink.Length; i++) aiThink[i] = 0;
             if (Contenders == 1) EndRound();
@@ -646,9 +646,9 @@ namespace TNDA.Prototype
             int best = Mathf.Max(PlayerPrefs.GetInt("WreckBest", 0), Mathf.RoundToInt(cars.Where(c => !c.computer).Max(c => c.score)));
             PlayerPrefs.SetInt("WreckBest", best);
             string standings = string.Join("\n", cars.OrderBy(c => finalPlaces[c.index])
-                .Select(c => finalPlaces[c.index] + ". " + c.DriverName + "  " + Mathf.RoundToInt(c.score).ToString("00000")));
-            Finish(winner.DriverName + " 獲勝！", standings + "\n\n最高分 " + best + "　撞毀 " + Wrecks + " 次"
-                + "\n\n60／90／120 秒各淘汰最後一名");
+                .Select(c => string.Format(CabinetText.Standing, finalPlaces[c.index], c.DriverName, Mathf.RoundToInt(c.score).ToString("00000"))));
+            Finish(string.Format(CabinetText.Winner, winner.DriverName), standings
+                + "\n\n" + string.Format(CabinetText.ResultsSummary, best, Wrecks) + "\n\n" + CabinetText.EliminationRule);
         }
 
         // The loser skids straight away from the arena centre while spinning, then is hidden once off screen.
@@ -723,19 +723,19 @@ namespace TNDA.Prototype
             engine.Dispose();
         }
 
-        private static string ItemName(int item) => item == 1 ? "防護罩" : item == 2 ? "火箭" : item == 3 ? "櫻桃" : "無道具";
+        private static string ItemName(int item) => item == 1 ? CabinetText.Shield : item == 2 ? CabinetText.Rocket : item == 3 ? CabinetText.Cherry : CabinetText.NoItem;
 
         private string DriverStatus(ArcadeVehicle car)
         {
-            if (car.eliminated) return "淘汰 第" + finalPlaces[car.index] + "名";
-            if (!car.alive) return Mathf.CeilToInt(car.respawn) + "秒後重生";
-            if (HasCherry(car)) return "櫻桃 " + Mathf.CeilToInt(cherrySeconds[car.index]);
-            if (car.shieldSeconds > 0) return "防護罩 " + Mathf.CeilToInt(car.shieldSeconds);
-            return car.item != 0 ? ItemName(car.item) : "耐久 " + Mathf.CeilToInt(car.health * 100);
+            if (car.eliminated) return string.Format(CabinetText.StatusEliminated, finalPlaces[car.index]);
+            if (!car.alive) return string.Format(CabinetText.StatusRespawn, Mathf.CeilToInt(car.respawn));
+            if (HasCherry(car)) return string.Format(CabinetText.StatusCherry, Mathf.CeilToInt(cherrySeconds[car.index]));
+            if (car.shieldSeconds > 0) return string.Format(CabinetText.StatusShield, Mathf.CeilToInt(car.shieldSeconds));
+            return car.item != 0 ? ItemName(car.item) : string.Format(CabinetText.StatusHealth, Mathf.CeilToInt(car.health * 100));
         }
 
-        private string ActionStatus(ArcadeVehicle car) => car.eliminated ? "已淘汰" : !car.alive ? "重生中"
-            : HasCherry(car) ? "櫻桃 " + Mathf.CeilToInt(cherrySeconds[car.index]) + " 秒" : ItemName(car.item);
+        private string ActionStatus(ArcadeVehicle car) => car.eliminated ? CabinetText.ActionEliminated : !car.alive ? CabinetText.ActionRespawning
+            : HasCherry(car) ? string.Format(CabinetText.ActionCherry, Mathf.CeilToInt(cherrySeconds[car.index])) : ItemName(car.item);
 
         protected override void RefreshHud()
         {
@@ -754,7 +754,7 @@ namespace TNDA.Prototype
                 var car = cars[i];
                 if (carLabels != null && i < carLabels.Length && carLabels[i] != null)
                 {
-                    carLabels[i].text = car.DriverName + (car.item == 1 ? " [盾]" : car.item == 2 ? " [箭]" : car.item == 3 ? " [櫻]" : "");
+                    carLabels[i].text = car.DriverName + (car.item == 1 ? CabinetText.ShieldTag : car.item == 2 ? CabinetText.RocketTag : car.item == 3 ? CabinetText.CherryTag : "");
                     carLabels[i].color = car.body.color;
                     Vector2 tag = car.position + Vector2.up * .68f;
                     if (carLabels[i] is TextMeshProUGUI screenTag)
@@ -787,22 +787,23 @@ namespace TNDA.Prototype
                     car.body.SetPropertyBlock(solidBlock);
                 }
             }
-            header.text = "廢車場大亂鬥";
-            arenaBoard.text = Phase == ArcadePhase.Results ? "冠軍 " + cars[Champion].DriverName
-                : Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)).ToString("00") + "秒後淘汰／剩" + Contenders + "車";
+            header.text = CabinetText.Title;
+            arenaBoard.text = Phase == ArcadePhase.Results ? string.Format(CabinetText.Champion, cars[Champion].DriverName)
+                : string.Format(CabinetText.NextElimination, Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)), Contenders);
             var order = Phase == ArcadePhase.Results ? cars.OrderBy(c => finalPlaces[c.index])
                 : cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? finalPlaces[c.index] : -c.score);
             if (leaderboard != null)
                 leaderboard.text = string.Join("\n", order.Select((c, rank) =>
                     "<color=#" + ColorUtility.ToHtmlStringRGB(c.body.color) + ">" + (rank + 1) + " " + c.DriverName.PadRight(4)
                     + " " + Mathf.RoundToInt(c.score).ToString("00000") + "  " + DriverStatus(c) + "</color>"));
-            hud.text = "P1 " + ActionStatus(cars[0]) + (PlayerCount == 2 ? "\nP2 " + ActionStatus(cars[1]) : "")
-                + "\n時間 " + Mathf.CeilToInt(Remaining) + "　撞毀 " + Wrecks
-                + (Phase == ArcadePhase.Playing && cars.Where(c => !c.computer).All(c => c.eliminated) ? "\n觀戰中" : "");
+            hud.text = string.Format(CabinetText.PlayerStatus, cars[0].DriverName, ActionStatus(cars[0]))
+                + (PlayerCount == 2 ? "\n" + string.Format(CabinetText.PlayerStatus, cars[1].DriverName, ActionStatus(cars[1])) : "")
+                + "\n" + string.Format(CabinetText.TimeAndWrecks, Mathf.CeilToInt(Remaining), Wrecks)
+                + (Phase == ArcadePhase.Playing && cars.Where(c => !c.computer).All(c => c.eliminated) ? "\n" + CabinetText.Spectating : "");
             // One 11px line fits under the arena; in 2P it alternates between the two players every 3 seconds.
             bool showP2 = PlayerCount == 2 && Mathf.FloorToInt(Time.unscaledTime / 3) % 2 == 1;
-            footer.text = showP2 ? "P2  W油門  AD轉向  數字鍵Enter道具" : "P1  ↑油門  ←→轉向  左Ctrl道具  R重玩";
-            if (Phase == ArcadePhase.Attract) overlayHint.text = "按 1／2 選人數　C／空白鍵 投幣";
+            footer.text = showP2 ? CabinetText.P2Controls : CabinetText.P1Footer;
+            if (Phase == ArcadePhase.Attract) overlayHint.text = CabinetText.AttractHint;
             ShowStartMessages();
         }
 

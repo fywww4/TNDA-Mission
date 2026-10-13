@@ -23,7 +23,7 @@ namespace TNDA.Prototype.Editor
             if (newlyOpened) scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
             var game = scene.GetRootGameObjects().Select(g => g.GetComponentInChildren<DemolitionGame>(true)).First(g => g != null);
             var sprites = Apply(game);
-            game.instructions = Game3Text.Instructions;
+            game.instructions = CabinetText.Instructions;
             game.PreparePreview();
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);

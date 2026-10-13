@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (architecture-review-01)
 
-- [ ] 操作說明文字只定義一次，標題畫面與比賽中底部提示顯示一致
-- [ ] 重新產生字型後，所有畫面文字都有字形，Console 無缺字警告
-- [ ] 320×320 畫面中文字仍為 11px 整數倍、清晰無模糊
-- [ ] 重新編譯成功，Console 零錯誤、零警告
+- [x] 操作說明文字只定義一次，標題畫面與比賽中底部提示顯示一致
+- [x] 重新產生字型後，所有畫面文字都有字形，Console 無缺字警告
+- [x] 320×320 畫面中文字仍為 11px 整數倍、清晰無模糊
+- [x] 重新編譯成功，Console 零錯誤、零警告

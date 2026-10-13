@@ -95,9 +95,9 @@ namespace TNDA.Prototype
                 if (CountdownLeft <= 0)
                 {
                     Phase = ArcadePhase.Playing;
-                    SetCountdownLabel("出發！");
+                    SetCountdownLabel(CabinetText.Go);
                     goFlash = .7f;
-                    Announce("出發！", Yellow);
+                    Announce(CabinetText.Go, Yellow);
                 }
                 else SetCountdownLabel(Mathf.CeilToInt(CountdownLeft).ToString());
             }
@@ -107,8 +107,8 @@ namespace TNDA.Prototype
                 if (Phase == ArcadePhase.Results && presentationSeconds > 0)
                 {
                     resultAge += dt;
-                    overlayHint.text = Mathf.CeilToInt(Mathf.Max(0, presentationSeconds - resultAge))
-                        + " 秒後回到標題　R 重玩";
+                    overlayHint.text = string.Format(CabinetText.ReturnToTitle,
+                        Mathf.CeilToInt(Mathf.Max(0, presentationSeconds - resultAge)));
                     if (resultAge >= presentationSeconds) PreparePreview();
                 }
             }
@@ -135,7 +135,7 @@ namespace TNDA.Prototype
             }
             else
             {
-                Announce("出發！", Yellow);
+                Announce(CabinetText.Go, Yellow);
                 Sound(2);
             }
             RefreshHud();
@@ -153,7 +153,7 @@ namespace TNDA.Prototype
             goFlash = 0;
             if (countdownLabel != null) countdownLabel.text = "";
             Phase = ArcadePhase.Attract;
-            ShowOverlay(cabinetTitle, instructions, "按 1／2 選人數　C／空白鍵 投幣");
+            ShowOverlay(cabinetTitle, instructions, CabinetText.AttractHint);
         }
 
         protected void ShowOverlay(string title, string body, string hint)
@@ -170,7 +170,7 @@ namespace TNDA.Prototype
         {
             Phase = ArcadePhase.Results;
             resultAge = 0;
-            ShowOverlay(title, body, "R 重玩　C 投幣");
+            ShowOverlay(title, body, CabinetText.ResultsHint);
             Sound(3);
         }
 

@@ -57,7 +57,7 @@ namespace TNDA.Prototype.Editor
                 game.presentationSeconds = 20;
                 game.countdownSeconds = ArcadeSoundSetup.CountdownSeconds;
                 game.sceneCamera = camera;
-                game.cabinetTitle = Game3Text.Title;
+                game.cabinetTitle = CabinetText.Title;
                 game.speaker = root.AddComponent<AudioSource>();
                 game.speaker.playOnAwake = false;
                 game.speaker.spatialBlend = 0;
@@ -157,8 +157,8 @@ namespace TNDA.Prototype.Editor
 
         private static void ConfigureIntegration(DemolitionGame game)
         {
-            game.cabinetTitle = Game3Text.Title;
-            game.instructions = Game3Text.Instructions;
+            game.cabinetTitle = CabinetText.Title;
+            game.instructions = CabinetText.Instructions;
 
             // Two prop spawns leave room for two pickups and two rockets within the ten-actor cap.
             foreach (var old in game.props.Skip(2)) if (old.view != null) Undo.DestroyObjectImmediate(old.view.gameObject);
@@ -405,8 +405,8 @@ namespace TNDA.Prototype.Editor
             game.overlayBody.alignment = TextAlignmentOptions.Center;
             game.overlayHint = Text(panel, "Coin prompt", 10, 5, 256, 22, 8, ArcadeGame.White);
             game.overlayHint.alignment = TextAlignmentOptions.Center;
-            game.onePlayerButton = Button(panel, "1P Coin", 15, 32, 116, 23, Game3Text.OnePlayerButton, ArcadeGame.Cyan);
-            game.twoPlayerButton = Button(panel, "2P Coin", 145, 32, 116, 23, Game3Text.TwoPlayerButton, ArcadeGame.Yellow);
+            game.onePlayerButton = Button(panel, "1P Coin", 15, 32, 116, 23, CabinetText.OnePlayerButton, ArcadeGame.Cyan);
+            game.twoPlayerButton = Button(panel, "2P Coin", 145, 32, 116, 23, CabinetText.TwoPlayerButton, ArcadeGame.Yellow);
             var events = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
             events.transform.SetParent(parent, false);
             events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();

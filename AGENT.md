@@ -71,7 +71,7 @@
 
 - 待機時四台車全由 AI 駕駛，背景自動播放一局示範（`DemolitionGame.TickIdle`）：第 20 秒淘汰最後一名以展示打滑飛出，第 30 秒重新開始（`demoEliminationSeconds`／`demoLoopSeconds`）。示範不計入正式比賽、不觸發結算。
 - 待機期間靜音、不顯示提示文字（`ArcadeGame.Sound/PlayClip/Announce` 在 Attract 階段直接略過），隱藏排行榜、狀態、車名與原本的標題說明面板／1P2P 按鈕。
-- 畫面只顯示：標題「廢車場大亂鬥」、「每位玩家 1 枚硬幣」、閃爍的「按 1 單人　按 2 雙人」，以及底部 P1／P2 操作提示（規則說明已依使用者要求簡化，只留操作）。文字定義在 `Game3Text`（`P1Controls`、`P2Controls`、`CoinRule`、`CoinPrompt`），介面由 `Game3Text.CreateAttractScreen` 建立（場景物件 `Attract screen`，每次修補會重建）。
+- 畫面只顯示：標題「廢車場大亂鬥」、「每位玩家 1 枚硬幣」、閃爍的「按 1 單人　按 2 雙人」，以及底部 P1／P2 操作提示（規則說明已依使用者要求簡化，只留操作）。文字定義在執行期文字表 `CabinetText`（`P1Controls`、`P2Controls`、`CoinRule`、`CoinPrompt`），介面由 `Game3Text.CreateAttractScreen` 建立（場景物件 `Attract screen`，每次修補會重建）。
 - 開始方式不變：1／C／Space／Enter／左 Ctrl 單人，2／數字鍵 Enter 雙人；開始後恢復正常 HUD 與 3-2-1 倒數。
 
 ## 畫面、音效與素材
@@ -83,9 +83,9 @@
 - 車的像素圖與四色材料位於 `Assets/Prototype/Game3/Art/`。
 - GAME2 的車輛原始圖片已先複製至 `Assets/Prototype/Game3/Art/Source/`，才移除舊案資料夾。
 - 共用音效 `Assets/Prototype/Audio/` 保留。GAME3 使用倒數、引擎、碰撞，以及道具與結算合成音，共五類聲音（衝撞加速移除後，Speed 只作為循環引擎聲）。
-- 介面已改為繁體中文（2026-10-11）：場景內的標題、說明、按鈕文字集中在 `Assets/Prototype/Editor/Game3Text.cs`，用 `Game3Text.PatchScene()` 套用（含行距 -22 與車名標籤轉換）；執行期的提示、排行榜、結算文字在 `DemolitionGame.cs`／`ArcadeGame.cs`；電腦車名為「電腦1～3」，持有道具時車名後顯示 [盾]／[箭]。
+- 介面已改為繁體中文（2026-10-11）。**所有畫面文字只定義一次（2026-10-13，ticket 09）**：`Assets/Prototype/Runtime/CabinetText.cs` 收錄標題、投幣、P1／P2 操作、按鈕、提示、廣播與排行榜／結算文字；需代入數值的是 `string.Format` 模板（`{0}`）。Editor 場景修補（`Game3Text.PatchScene()`，含車名標籤轉換）與執行期 HUD 都讀它；比賽中底部提示 P1 為 `P1Footer`（`P1Controls`＋「R重玩」），P2 為 `P2Controls`，與標題畫面相同。新增畫面文字請加在 `CabinetText`，不要在程式內另寫中文字串；電腦車名為「電腦1～3」，持有道具時車名後顯示 [盾]／[箭]。
 - **輸出解析度規定為實際 320×320 像素（使用者 2026-10-12 確認）**。Editor Game 視窗使用內建的 320×320 固定解析度；曾暫時設為 960×960 屬錯誤，已移除該自訂尺寸。不可用放大視窗來改善字體。
-- **字型（2026-10-12）**：在 320×320 下唯一能清楚的做法是像素字型 1:1 繪製。使用俐方體 11 號 Cubic 11（`Assets/Prototype/Fonts/Cubic_11.ttf`，OFL），TMP 字型 `Cubic_11 Pixel 11px.asset`：RASTER_HINTED 點陣、取樣 11px、Point 濾鏡、Bitmap shader、512 圖集；預先產生程式字串中所有字元（`ArcadeFontSetup.UsedCharacters` 掃描 DemolitionGame／ArcadeGame／ArcadeVehicle／Game3Text 的字串），建置不清除。行高與基線取整數（行高 13、ascent 9），Canvas 開啟 pixelPerfect。之前糊掉的原因是 Cubic 被以 7～8.5px 的 SDF 繪製；Noto Sans TC（`Fonts/NotoSansTC/`）不再使用。
+- **字型（2026-10-12）**：在 320×320 下唯一能清楚的做法是像素字型 1:1 繪製。使用俐方體 11 號 Cubic 11（`Assets/Prototype/Fonts/Cubic_11.ttf`，OFL），TMP 字型 `Cubic_11 Pixel 11px.asset`：RASTER_HINTED 點陣、取樣 11px、Point 濾鏡、Bitmap shader、512 圖集；預先產生所有畫面字元（`ArcadeFontSetup.UsedCharacters`：ASCII、常用全形標點、`CabinetText.All`，再加上場景中的標題、說明、`startMessages` 與現有 TMP 文字），建置不清除。行高與基線取整數（行高 13、ascent 9），Canvas 開啟 pixelPerfect。之前糊掉的原因是 Cubic 被以 7～8.5px 的 SDF 繪製；Noto Sans TC（`Fonts/NotoSansTC/`）不再使用。
 - 文字大小只用 11 或其整數倍（標題 22、倒數 44）。版面由 `Game3Text.PixelLayout` 設定（整數像素座標）：頂部標題＋淘汰倒數、四車排行榜（左）、玩家狀態（右），提示列在場地上框內，底部操作提示一行（雙人時每 3 秒切換 P1／P2）。修改文字長度時注意 11px 中文每字 11px 寬，說明面板一行最多約 24 字。
 - `SampleScene` 與使用者另外放入 `Assets/Prototype/Art/` 的圖片保留；不在遊戲 Build Settings 中。
 
@@ -98,6 +98,7 @@
 | `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour。 |
 | `Assets/Prototype/Runtime/ArcadeGame.cs` | 標題、倒數、輸入、音效、結算與重玩；已移除舊場景切換。 |
 | `Assets/Prototype/Runtime/ArcadeEngineAudio.cs` | 真人車循環引擎聲。 |
+| `Assets/Prototype/Runtime/CabinetText.cs` | 所有畫面文字的唯一來源（含格式模板）；場景修補、執行期 HUD 與字型字元清單都讀它。 |
 | `Assets/Prototype/Editor/Game3SceneBuilder.cs` | Build 供空原型；IntegrateExisting 直接修補既有 GAME3，重複執行不會多建道具／介面。 |
 | `Assets/Prototype/Editor/ArcadeSoundSetup.cs` | 接線倒數、碰撞與引擎聲，不再參照已刪除遊戲類別。 |
 | `Assets/Prototype/Editor/ArcadeFontSetup.cs` | 建立 Cubic 11 的 11px 點陣 TMP 字型並套用全部 GAME3 文字（字級取整到 11 的倍數）；PatchScene 可單獨修補字型。 |
@@ -139,3 +140,5 @@
 - 真人鍵盤／手把手感、AI 強度與長時間平衡仍待玩家實際遊玩調整。
 - 2026-10-13 完成架構票單 08：`Game3SceneBuilder.IntegrateExisting()` 保留 Inspector 玩法調整值（含倒數、結算停留時間與生成點）。全新 `Build()` 以 `DemolitionGame` 欄位預設值建立玩法，僅於建立新元件時設定結算 20 秒、倒數 3 秒。道具接線沿用序列化參照，避免改名為木箱後重複建立。已有字元的字型不再重複新增，圖片內容相同時不再重寫已載入的 PNG。`tmp/g3patch.cs` 透過公開入口驗證調整值、新建預設值、兩次修補維持 2 道具／2 火箭／160 物件，並逐位元還原原場景；回歸執行未產生錯誤或警告。腳本重新編譯及網域重新載入完成，Console 零錯誤、零警告。
 - 票單 08 的 `code-review` 雙軸審查完成：Standards 0 項、Spec 0 項；以票單 01 結案提交 `ba54a92` 為固定點，實作提交 `6ea6804`。
+- 2026-10-13 完成架構票單 09：畫面文字集中於 `CabinetText`，字型字元清單改由文字表＋場景文字產生，不再掃描原始碼檔名。`Game3Text.PatchScene()` 已重跑並儲存；比賽中底部提示改用與標題畫面相同的全形空白（P1 約 230px，在 312px 框內）。`tmp/g3text.cs`（Play Mode）驗證底部提示與標題畫面一致、無缺字、所有文字為 11 的倍數；320×320 標題與比賽截圖清晰。`g3cherry`／`g3wreck`／`g3rocket` 回歸通過。重新編譯及網域重新載入完成，Console 零錯誤、零警告。
+- 票單 09 的 `code-review` 雙軸審查：Standards 無硬性違規（判斷項：道具代碼 1/2/3 的條件式重複、`startMessages` 仍為可在 Inspector 覆寫的場景值，屬票單 08 保留調整值的既定設計）；Spec 判定完成。

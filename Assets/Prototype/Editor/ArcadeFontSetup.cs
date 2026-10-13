@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using TMPro;
 using UnityEditor;
@@ -19,12 +18,8 @@ namespace TNDA.Prototype.Editor
         public const int PixelSize = 11;
         public const string FontPath = "Assets/Prototype/Fonts/Cubic_11 Pixel 11px.asset";
         private const string SourcePath = "Assets/Prototype/Fonts/Cubic_11.ttf";
-        // Scripts whose string literals are shown on screen; their characters are pre-rasterised.
-        private static readonly string[] TextSources = {
-            "Assets/Prototype/Runtime/DemolitionGame.cs", "Assets/Prototype/Runtime/ArcadeGame.cs",
-            "Assets/Prototype/Runtime/ArcadeVehicle.cs", "Assets/Prototype/Editor/Game3Text.cs" };
-
-        public static TMP_FontAsset GetOrCreate()
+        // Pass the game to also cover its Inspector-edited text (title, instructions, start messages, scene labels).
+        public static TMP_FontAsset GetOrCreate(ArcadeGame game = null)
         {
             var source = AssetDatabase.LoadAssetAtPath<Font>(SourcePath);
             if (source == null) throw new InvalidOperationException("Import " + SourcePath + " before creating the pixel font.");
@@ -50,7 +45,7 @@ namespace TNDA.Prototype.Editor
             metrics.baseline = 0;
             font.faceInfo = metrics;
             // Pre-rasterise every character the game prints so nothing is generated at runtime.
-            string characters = UsedCharacters();
+            string characters = UsedCharacters(game);
             if (!font.HasCharacters(characters) && !font.TryAddCharacters(characters, out string missing) && missing.Trim().Length > 0)
                 Debug.LogWarning("Cubic 11 lacks glyphs: " + missing);
             foreach (var atlas in font.atlasTextures)
@@ -70,7 +65,7 @@ namespace TNDA.Prototype.Editor
 
         public static void Apply(ArcadeGame game)
         {
-            var font = GetOrCreate();
+            var font = GetOrCreate(game);
             foreach (var text in game.GetComponentsInChildren<TMP_Text>(true))
             {
                 Undo.RecordObject(text, "Use Cubic 11 pixel font");
@@ -102,22 +97,21 @@ namespace TNDA.Prototype.Editor
             return new { scene = path, font = FontPath, glyphs = font.characterTable.Count, texts = game.GetComponentsInChildren<TMP_Text>(true).Length, saved = !scene.isDirty };
         }
 
-        private static string UsedCharacters()
+        // Printable ASCII (runtime numbers), common full-width punctuation, the cabinet text table,
+        // and the text the scene currently holds.
+        private static string UsedCharacters(ArcadeGame game)
         {
             var chars = new HashSet<char>(Enumerable.Range(32, 95).Select(i => (char)i));
-            foreach (char c in "←→↑↓／：，、。！？（）［］　") chars.Add(c);
-            foreach (var file in TextSources)
+            chars.UnionWith("←→↑↓／：，、。！？（）［］　");
+            foreach (var text in CabinetText.All) chars.UnionWith(text);
+            if (game != null)
             {
-                if (!File.Exists(file)) continue;
-                var code = File.ReadAllText(file);
-                // Characters inside string literals only.
-                bool inString = false;
-                for (int i = 0; i < code.Length; i++)
-                {
-                    if (code[i] == '"' && (i == 0 || code[i - 1] != '\\')) { inString = !inString; continue; }
-                    if (inString && code[i] > 127) chars.Add(code[i]);
-                }
+                chars.UnionWith(game.cabinetTitle ?? "");
+                chars.UnionWith(game.instructions ?? "");
+                if (game is DemolitionGame demolition) foreach (var text in demolition.startMessages) chars.UnionWith(text ?? "");
+                foreach (var label in game.GetComponentsInChildren<TMP_Text>(true)) chars.UnionWith(label.text ?? "");
             }
+            chars.RemoveWhere(c => c < 32);
             return new string(chars.ToArray());
         }
 

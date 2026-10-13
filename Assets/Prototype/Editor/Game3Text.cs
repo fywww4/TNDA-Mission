@@ -7,20 +7,9 @@ using UnityEngine.SceneManagement;
 
 namespace TNDA.Prototype.Editor
 {
-    // Chinese text stored in the GAME3 scene (title, instructions, coin buttons).
+    // Applies the CabinetText table to the GAME3 scene (title, instructions, coin buttons, attract screen).
     public static class Game3Text
     {
-        public const string Title = "廢車場大亂鬥";
-        // Simplified rules (user request): only the two players' controls.
-        public const string P1Controls = "P1　↑油門　←→轉向　左Ctrl道具";
-        public const string P2Controls = "P2　W油門　AD轉向　數字鍵Enter道具";
-        public const string Instructions = P1Controls + "\n" + P2Controls;
-        // Attract mode, like an arcade cabinet waiting for coins.
-        public const string CoinRule = "每位玩家 1 枚硬幣";
-        public const string CoinPrompt = "按 1 單人　按 2 雙人";
-        public const string OnePlayerButton = "1P／3 台電腦";
-        public const string TwoPlayerButton = "2P／2 台電腦";
-
         // Applies the text to the saved GAME3 scene without rebuilding it.
         public static object PatchScene(string scenePath = "Assets/Scenes/GAME3.unity")
         {
@@ -30,10 +19,10 @@ namespace TNDA.Prototype.Editor
             if (newlyOpened) scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
             var game = scene.GetRootGameObjects().Select(g => g.GetComponentInChildren<DemolitionGame>(true)).First(g => g != null);
             Undo.RecordObject(game, "Chinese GAME3 text");
-            game.cabinetTitle = Title;
-            game.instructions = Instructions;
-            SetCaption(game.onePlayerButton, OnePlayerButton);
-            SetCaption(game.twoPlayerButton, TwoPlayerButton);
+            game.cabinetTitle = CabinetText.Title;
+            game.instructions = CabinetText.Instructions;
+            SetCaption(game.onePlayerButton, CabinetText.OnePlayerButton);
+            SetCaption(game.twoPlayerButton, CabinetText.TwoPlayerButton);
             UseScreenTags(game);
             ArcadeFontSetup.Apply(game);
             PixelLayout(game);
@@ -135,13 +124,13 @@ namespace TNDA.Prototype.Editor
             root.sizeDelta = new UnityEngine.Vector2(320, 320);
             const int px = ArcadeFontSetup.PixelSize;
             Backing(root, "Top backing", 0, 244, 320, 76);
-            Label(root, "Title", Title, 0, 284, 320, 26, px * 2, ArcadeGame.Yellow);
-            Label(root, "Coin rule", CoinRule, 0, 258, 320, 13, px, ArcadeGame.White);
+            Label(root, "Title", CabinetText.Title, 0, 284, 320, 26, px * 2, ArcadeGame.Yellow);
+            Label(root, "Coin rule", CabinetText.CoinRule, 0, 258, 320, 13, px, ArcadeGame.White);
             Backing(root, "Prompt backing", 70, 193, 180, 19);
-            var prompt = Label(root, "Coin prompt", CoinPrompt, 0, 196, 320, 13, px, ArcadeGame.Yellow);
+            var prompt = Label(root, "Coin prompt", CabinetText.CoinPrompt, 0, 196, 320, 13, px, ArcadeGame.Yellow);
             Backing(root, "Controls backing", 0, 0, 320, 34);
-            Label(root, "P1 controls", P1Controls, 0, 18, 320, 13, px, ArcadeGame.Cyan);
-            Label(root, "P2 controls", P2Controls, 0, 3, 320, 13, px, ArcadeGame.Yellow);
+            Label(root, "P1 controls", CabinetText.P1Controls, 0, 18, 320, 13, px, ArcadeGame.Cyan);
+            Label(root, "P2 controls", CabinetText.P2Controls, 0, 3, 320, 13, px, ArcadeGame.Yellow);
             Undo.RecordObject(game, "GAME3 attract screen");
             game.attractScreen = root.gameObject;
             game.attractPrompt = prompt;

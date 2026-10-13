@@ -15,7 +15,7 @@ namespace TNDA.Prototype
         public int item;
         public float respawn;
 
-        public string DriverName => index == 0 ? "P1" : index == 1 && !computer ? "P2" : "電腦" + index;
+        public string DriverName => index == 0 ? "P1" : index == 1 && !computer ? "P2" : string.Format(CabinetText.ComputerName, index);
         public Vector2 Forward => new Vector2(Mathf.Cos(heading * Mathf.Deg2Rad), Mathf.Sin(heading * Mathf.Deg2Rad));
 
         public void ResetVehicle(Vector2 start, float angle, int playerCount)
