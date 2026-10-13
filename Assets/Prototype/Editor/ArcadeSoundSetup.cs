@@ -17,7 +17,7 @@ namespace TNDA.Prototype.Editor
 
         public static void Apply(ArcadeGame game)
         {
-            game.countdownSeconds = CountdownSeconds;
+            // Wire sounds and the label without replacing an Inspector-tuned countdown.
             game.countdownClip = Clip("Countdown");
             game.hitClip = Clip("Hit");
             if (game is DemolitionGame demolition) demolition.engineClip = Clip("Speed");

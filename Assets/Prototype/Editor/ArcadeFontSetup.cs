@@ -50,7 +50,8 @@ namespace TNDA.Prototype.Editor
             metrics.baseline = 0;
             font.faceInfo = metrics;
             // Pre-rasterise every character the game prints so nothing is generated at runtime.
-            if (!font.TryAddCharacters(UsedCharacters(), out string missing) && missing.Trim().Length > 0)
+            string characters = UsedCharacters();
+            if (!font.HasCharacters(characters) && !font.TryAddCharacters(characters, out string missing) && missing.Trim().Length > 0)
                 Debug.LogWarning("Cubic 11 lacks glyphs: " + missing);
             foreach (var atlas in font.atlasTextures)
             {

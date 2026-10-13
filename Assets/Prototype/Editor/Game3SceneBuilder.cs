@@ -52,6 +52,10 @@ namespace TNDA.Prototype.Editor
                 SceneManager.MoveGameObjectToScene(root, scene);
                 Undo.RegisterCreatedObjectUndo(root, "Build GAME3 prototype");
                 var game = root.AddComponent<DemolitionGame>();
+                // GAME3 cabinet defaults are set only when creating a new game component.
+                // DemolitionGame's field initializers supply the gameplay tuning defaults.
+                game.presentationSeconds = 20;
+                game.countdownSeconds = ArcadeSoundSetup.CountdownSeconds;
                 game.sceneCamera = camera;
                 game.cabinetTitle = Game3Text.Title;
                 game.speaker = root.AddComponent<AudioSource>();
@@ -92,8 +96,8 @@ namespace TNDA.Prototype.Editor
 
                 var props = Child(root.transform, "Breakables (4 fixed spawns)");
                 game.props = new BreakableProp[4];
-                game.props[0] = Prop(props, "CRATE +100", new Vector2(-2, -.6f), 100, 0);
-                game.props[1] = Prop(props, "OIL BARREL +75", new Vector2(2, -.6f), 75, 1);
+                game.props[0] = Prop(props, "CRATE +100", new Vector2(-2, -.8f), 100, 0);
+                game.props[1] = Prop(props, "OIL BARREL +75", new Vector2(2, -.8f), 75, 1);
                 game.props[2] = Prop(props, "FENCE +150", new Vector2(0, 1.65f), 150, 2);
                 game.props[3] = Prop(props, "ROADBLOCK +200", new Vector2(0, -2.6f), 200, 3);
                 BuildInterface(root.transform, game);
@@ -155,26 +159,12 @@ namespace TNDA.Prototype.Editor
         {
             game.cabinetTitle = Game3Text.Title;
             game.instructions = Game3Text.Instructions;
-            game.firstElimination = 60;
-            game.secondElimination = 90;
-            game.roundSeconds = 120;
-            game.presentationSeconds = 20;
-            game.driveSpeed = 2.8f;
-            game.enemyRespawnSeconds = 3;
-            game.wreckPenalty = 250;
-            game.wreckBonus = 300;
-            game.shieldDuration = 6;
-            game.pickupRespawnSeconds = 8;
-            game.arenaMax = new Vector2(4.35f, 1.65f);
 
             // Two prop spawns leave room for two pickups and two rockets within the ten-actor cap.
             foreach (var old in game.props.Skip(2)) if (old.view != null) Undo.DestroyObjectImmediate(old.view.gameObject);
             game.props = game.props.Take(2).ToArray();
-            for (int i = 0; i < game.props.Length; i++)
-            {
-                game.props[i].point = new Vector2(i == 0 ? -2 : 2, -.8f);
-                game.props[i].view.position = ArcadeGame.PixelPosition(game.props[i].point);
-            }
+            foreach (var prop in game.props)
+                prop.view.position = ArcadeGame.PixelPosition(prop.point);
             game.props[0].view.parent.name = "Breakables (2 fixed spawns)";
             game.shieldViews = new Transform[game.cars.Length];
             for (int i = 0; i < game.cars.Length; i++)
@@ -192,8 +182,8 @@ namespace TNDA.Prototype.Editor
             var items = game.transform.Find("Item spawns (2)");
             if (items == null) items = Child(game.transform, "Item spawns (2)");
             game.pickups = new[] {
-                Pickup(items, "Shield pickup", new Vector2(-.9f, -2.5f), 1),
-                Pickup(items, "Rocket pickup", new Vector2(.9f, .3f), 2)
+                Pickup(items, "Shield pickup", new Vector2(-.9f, -2.5f), 1, game.pickups.ElementAtOrDefault(0)),
+                Pickup(items, "Rocket pickup", new Vector2(.9f, .3f), 2, game.pickups.ElementAtOrDefault(1))
             };
             var pool = game.transform.Find("Rocket pool (2)");
             if (pool == null) pool = Child(game.transform, "Rocket pool (2)");
@@ -253,9 +243,11 @@ namespace TNDA.Prototype.Editor
             game.footer.fontSize = 7;
         }
 
-        private static ArenaPickup Pickup(Transform parent, string name, Vector2 point, int item)
+        private static ArenaPickup Pickup(Transform parent, string name, Vector2 point, int item, ArenaPickup existing)
         {
-            var view = parent.Find(name);
+            // Item art renames both spawns to "Item crate". The serialized reference stays stable.
+            var pickup = existing ?? new ArenaPickup { point = point, item = item };
+            var view = pickup.view != null ? pickup.view : parent.Find(name);
             Color color = item == 1 ? ArcadeGame.Cyan : ArcadeGame.Yellow;
             if (view == null)
             {
@@ -274,8 +266,9 @@ namespace TNDA.Prototype.Editor
                 label.rectTransform.sizeDelta = new Vector2(.4f, .4f);
                 label.sortingOrder = 5;
             }
-            view.position = ArcadeGame.PixelPosition(point);
-            return new ArenaPickup { view = view, point = point, item = item };
+            pickup.view = view;
+            view.position = ArcadeGame.PixelPosition(pickup.point);
+            return pickup;
         }
 
         private static void SetRect(RectTransform rect, float x, float y, float width, float height)

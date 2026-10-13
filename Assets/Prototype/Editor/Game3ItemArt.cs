@@ -196,7 +196,10 @@ namespace TNDA.Prototype.Editor
             var small = new Texture2D(width, height, TextureFormat.RGBA32, false);
             small.SetPixels32(result);
             small.Apply();
-            File.WriteAllBytes(output, small.EncodeToPNG());
+            var png = small.EncodeToPNG();
+            // Repeated scene patches produce identical art; avoid rewriting a loaded, memory-mapped asset.
+            if (!File.Exists(output) || !File.ReadAllBytes(output).SequenceEqual(png))
+                File.WriteAllBytes(output, png);
             UnityEngine.Object.DestroyImmediate(small);
             AssetDatabase.ImportAsset(output, ImportAssetOptions.ForceSynchronousImport);
             var importer = (TextureImporter)AssetImporter.GetAtPath(output);
