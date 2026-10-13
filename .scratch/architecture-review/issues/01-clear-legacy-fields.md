@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (architecture-review-01, 2ca1fe9 + ed5c1b9)
 
-- [ ] 上述遺留欄位、階段與參數已移除；場景中的尾焰物件若只為加速衝撞存在，一併移除或停用
-- [ ] 重新編譯成功，Console 零錯誤、零警告
-- [ ] Play Mode：標題示範、3-2-1 倒數、單人與雙人比賽、結算與返回標題都與修改前相同
-- [ ] tmp 中仍會使用的 GAME3 驗證腳本（g3*.cs）可正常執行；只屬於 GAME1 的腳本不必維護
+- [x] 上述遺留欄位、階段與參數已移除；場景中的尾焰物件若只為加速衝撞存在，一併移除或停用
+- [x] 重新編譯成功，Console 零錯誤、零警告
+- [x] Play Mode：標題示範、3-2-1 倒數、單人與雙人比賽、結算與返回標題都與修改前相同
+- [x] tmp 中仍會使用的 GAME3 驗證腳本（g3*.cs）可正常執行；只屬於 GAME1 的腳本不必維護
