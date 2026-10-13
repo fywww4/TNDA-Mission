@@ -1,241 +1,139 @@
-# TNDA Mission：專案背景與實作交接
+# TNDA Mission：GAME3 整合版交接
 
-更新日期：2026-10-04（Asia/Taipei）。本文件記錄使用者與隊長討論的三個遊戲方案、目前分工與實作進度，供 Claude 或其他代理接續參考。
+更新日期：2026-10-10（Asia/Taipei）。目前只製作 GAME3；使用者的新要求優先於先前三案規格。
 
-## 目前工作狀態
+## 最新需求與現況
 
-使用者已指定最新分工：**Codex 已完成 GAME1，現在接續製作 GAME3；Claude 負責 GAME2。** 各自只操作負責的場景與玩法；共用程式修改前應重新讀取內容，保留另一位代理已寫入的變更。
+使用者要求刪除 GAME1、GAME2，把 GAME2 的最後一名死亡／淘汰規則加入 GAME3；AI 不追撞玩家，會互撞、破壞得分，被撞毀扣分，加入防護罩與火箭。
 
-- **GAME1 已完成可玩原型**：原有 `Assets/Scenes/GAME1.unity` 已儲存，保留相機並新增 `GAME1 Prototype` 階層，所有 UI、角色、Boss、物件池參照均已繫結。
-- GAME1 已配置四層平台、三座梯子、兩發玩家子彈、四個 Boss 投擲物、320×320 Pixel Perfect Camera、uGUI／TMP 介面與四種程式產生的電子音效。活動遊戲實體的上限為八個。
-- 使用者已協助匯入 TMP Essentials；Boss 原圖保存在 `Assets/Prototype/Game1/Art/Boss.png`，透過 `BossPalette.mat` 去除白背景並套用四色配色。
-- GAME1 的 CLI 遊玩檢查已確認：鍵盤投幣開始、跳躍、三座梯子抵達各層、射擊擊殺、Boss 重生與難度增加、清空舊彈體、死亡凍結、十秒續關倒數、保留進度並原地滿血復活、逾時結算、返回標題。
-- 三層攀爬落點為 `(-3, -1.44)`、`(3, 1.01)`、`(-3, 3.06)`；該次遊玩檢查同時活動實體最高六個，上限由固定物件池限制為八個。這是流程檢查結果，尚未代表長時間遊玩平衡已定案。
-- GAME1 已執行 CLI 重新編譯並確認完成；遊玩檢查後 Console 的即時 `groundTruth` 為編譯未失敗、零錯誤、零警告。
-- 標題與遊玩預覽在 `Docs/Game1/title.png`、`Docs/Game1/gameplay.png`；CLI 操作紀錄用的 C# 片段位於 `tmp/Game1-playthrough.cs`、`tmp/Game1-previews.cs`，不會作為 Unity 遊戲腳本編譯。
-- GAME2 的後續實作與驗證由 Claude 負責，狀態請由 Claude 更新；Codex 沒有修改其場景與專用玩法檔案。共用程式仍保持分工開始時的內容。
-- **GAME2 已完成可玩原型（Claude，2026-10-04）**：`Assets/Scenes/GAME2.unity` 保留相機並新增 `GAME2 Prototype` 階層，已加入 Build Settings。詳見下方「GAME2：四車淘汰競速」的實作狀態。
-- **錄製音效與開局倒數（Claude 依使用者要求，套用 GAME1 與 GAME2）**：
-  - 音效檔在 `Assets/Prototype/Audio/`（`Countdown`、`Hit`、`Shooting`、`Speed`，皆為 mono、DecompressOnLoad）。
-  - 共用 `ArcadeGame.cs` 新增（全部為選用，預設不啟用，GAME3 行為不變）：`ArcadePhase.Countdown`（加在列舉最後）、`countdownSeconds`（0 = 不倒數）、`countdownLabel`、`countdownClip`、`hitClip`、`CountdownLeft`、`PlayClip()`、`PlayHit()`、每幀呼叫的 `AfterTick()`。倒數期間世界已重置但凍結，`Elapsed` 從 GO 才開始計時；續關 `ContinueRun` 不會倒數。
-  - `Countdown.mp3` 在 0／1／2／3 秒各有一聲嗶，對應畫面上的 3→2→1→GO!（`countdownSeconds = 3`）。
-  - GAME1（`BossClimbGame.cs`）：新增 `shootClip`；射擊播 Shooting，玩家受擊與 Boss 中彈播 Hit。
-  - GAME2：Bolt 命中與碰撞播 Hit；`engineClip`（Speed）取中段做循環引擎聲，依玩家車速調整音高與音量，只給真人車。
-  - 為符合 3～5 種音效：GAME1 用射擊／受擊／跳躍合成音／過關合成音／倒數；GAME2 用倒數／引擎／受擊／道具合成音／淘汰結算合成音。
-  - 場景接線：`Assets/Prototype/Editor/ArcadeSoundSetup.cs`；已透過 `ArcadeSoundSetup.PatchScene()` 套用到兩個場景並存檔（未重建場景）。`Game1SceneBuilder`／`Game2SceneBuilder` 各加一行 `ArcadeSoundSetup.Apply(game)`，日後重建也會帶上。
-  - 驗證：兩個場景都在 Play Mode 測過倒數→GO→開始、倒數中不能射擊、射擊／受擊播放正確音效、GAME2 引擎循環與規則模擬結果不變。Console 無錯誤。截圖在 `Assets/Screenshots/Game1-countdown.png`、`Game2-countdown.png`。
-  - **GAME3 也已套用（Claude 依使用者要求）**：`DemolitionGame.cs` 新增 `engineClip`（Speed）。真人車有循環引擎聲，衝撞加速時播一次 Speed；車對車撞擊依力道播 Hit，撞牆播較小聲的 Hit；破壞物與結算仍用合成音；同樣有 3-2-1-GO 倒數。GAME3 場景已用 `ArcadeSoundSetup.PatchScene()` 修補並存檔（未重建）。`Game3SceneBuilder` 加了一行 `ArcadeSoundSetup.Apply(game)`。
-  - 循環引擎聲的程式抽成共用的 `Assets/Prototype/Runtime/ArcadeEngineAudio.cs`，GAME2 與 GAME3 共用。
-  - 觀察（未修改，留給 GAME3 負責者判斷）：玩家完全不操作時，車會以 45% 速度自行前進並反覆撞下方牆，每次扣 0.035 耐久，約 4 秒就全毀結束。關閉倒數時結果相同，所以不是倒數造成的。
-- **GAME3 已完成可玩原型（Codex，2026-10-04）**：`Assets/Scenes/GAME3.unity` 已配置、儲存並加入 Build Settings。四車與四個可破壞物，支援單人／雙人，預設九十秒。詳細數值與檢查結果見下方 GAME3 段落。
-- 開始分工前，三個場景都只有 `Main Camera`。這段初始狀態已被後續實作更新，接手時應重新查詢 Editor 與場景，而非沿用初始快照。
+- 已透過 Unity CLI／AssetDatabase 移除兩個舊場景、兩案專用玩法與建置程式、Game1／Game2 素材資料夾。
+- Build Settings 現在只啟用 `Assets/Scenes/GAME3.unity`，為第一個且唯一的遊戲場景。
+- GAME3 的既有相機、車圖、車輛、介面保留並直接修補；未整個重建場景。
+- 舊分工（Codex GAME1／GAME3、Claude GAME2）已結束，後續工作集中在 GAME3。
+- 原三案交接記錄封存於 `Docs/Archive/AGENT-three-games-2026-10-04.md`，供查閱歷史；目前製作規格以本文件為準。
 
-## 使用者操作偏好
+## 整合版規則
 
-- 優先透過 Unity CLI 操作 Unity Editor。
-- 使用者不熟悉 CMD 與 PowerShell；需要執行指令時，由代理直接執行，不要求使用者自行輸入。
-- 完成 Unity 腳本、場景、資產或設定的修改後，觸發重新編譯，等待編譯與網域重新載入結束，檢查 Unity Console，修正本次修改造成的錯誤後再編譯、檢查。
-- 專案內的根目錄 `AGENTS.md` 保留這些操作規範。
-- Unity Editor 可連線時，使用 CLI 與 Unity Editor API 建立或修改場景、Prefab、材料與資產；不要手動編輯 `.unity`、`.prefab`、`.asset` 的 YAML。
+### 積分淘汰
 
-## Unity CLI 與環境
+- 一人搭配三台 AI，或兩人搭配兩台 AI，共四車。
+- 競賽時間 120 秒；開局先 3－2－1－GO，GO 才開始計時。
+- 開局標語（2026-10-13 使用者要求）：「出發！」後於畫面中央依序顯示「活下來！」與「盡量取得最高分！」各 1.5 秒（倒數字的一半大小 22px；`startMessages`／`startMessageSeconds`）。使用者原文為「取的」，已改為「取得」。
+- 60 秒淘汰目前最低分的車；90 秒再淘汰最低分；120 秒從最後兩車淘汰低分者，決定冠軍。
+- 計分使用破壞、衝撞與火箭命中分數，沒有沿賽道行駛距離分數。
+- 同分時耐久較低者淘汰；耐久也相同時，車輛索引較高者淘汰。
+- 計時淘汰是永久退場；存活車保留原分數。排行榜保留被淘汰者的順位與分數。
+- 被計時淘汰的車不會直接消失：從當時位置朝遠離場地中心的方向「超級打滑」飛出，每秒轉 4 圈、初速 4、每秒加速 14，飛出 320×320 畫面後才隱藏（約 0.7 秒）；飛出過程不參與碰撞與火箭判定。數值為 `spinOutTurnsPerSecond`／`spinOutStartSpeed`／`spinOutAcceleration`（2026-10-12 使用者要求）。2026-10-13 起一般撞毀（耐久歸零，玩家與 AI 皆同）也用同樣的打滑飛出，飛出後隱藏，仍於撞毀 3 秒後在角落重生（重生時中止殘留的飛出）。示範模式重生的車維持 AI 駕駛。
+- 真人都被淘汰時，進入觀看狀態，AI 比賽繼續，R 可重開。
+- 最後冠軍與四車名次展示 20 秒，再返回標題；也可立即投幣或 R 重玩。
 
-- 專案根目錄：`C:\Users\a0900\Desktop\TNDA Mission`。
-- 專案目前版本：Unity `6000.6.4f1`，以 `ProjectSettings/ProjectVersion.txt` 為準；早期對話中的 `6000.0.75f1` 已不是目前版本。
-- Unity CLI 執行檔：`C:\Users\a0900\AppData\Local\Unity\bin\unity.exe`。
-- 本次確認的 CLI 版本：`1.0.0-beta.12`。
-- `unity` 不在目前代理 Shell 的 PATH，但以上完整路徑可直接執行，毋須重裝。
-- 專案已有 `com.unity.pipeline` `0.8.0-exp.1`。
-- 本次開始時 CLI 回報唯一 Editor 為 `ready`，對應本專案。這是先前讀取結果，接手時應重新讀取狀態。
-- 渲染管線已透過 Editor API 確認為 Built-in；已安裝 Built-in 的 `UnityEngine.U2D.PixelPerfectCamera`。
-- 已有 Input System、uGUI／TextMeshPro 套件；TMP Essentials 已匯入，GAME1 使用 LiberationSans SDF 字型。
+### 耐久、破壞與得分
 
-PowerShell 呼叫範例（供代理直接執行）：
+- 車輛耐久 100%；不輸入油門時減速至停止，沒有自動前進。
+- 撞牆只減速／短暫硬直，不扣耐久。
+- 箱子 100 分、油桶 75 分；車速至少 2.1 才可直接撞碎，火箭也能破壞。破壞物 6 秒後且附近沒有車時重生。
+- 車對車衝撞依速度計分；側撞 2 倍、追撞 1.5 倍。
+- 碰碰車手感（2026-10-13 使用者要求，避免被撞後黏住卡死）：每次新接觸兩車互推一個會滑行並逐漸減速的位移（`contactBump` 1.4）；被衝撞的車再加上依撞擊速度增加的滑行（`ramBump` 2.4），車頭隨機偏 15～30°，硬直縮短為 0.12 秒；撞人的車會小幅反彈。滑行以 `bumpFriction` 4.5 衰減，撞牆時反向減弱。實測：側面被撞的靜止 P1 約 1 秒內滑開 1.17 單位、兩車分開。
+- 撞毀一台車獎勵攻擊者 300 分；被撞毀者扣 250 分，最低扣至 0 分。
+- 一般撞毀不是永久淘汰：玩家與 AI 均在 3 秒後滿耐久重生，保留扣分後的分數，清除道具，給 2 秒保護。
+- 開局也有 2 秒保護。
+- 上述重生、扣分、傷害與道具數值屬於原型預設，可在 DemolitionGame Inspector 調整。
+
+### AI
+
+- **難度調整（2026-10-12 使用者要求）**：開局 GO 後前 10 秒（`aiGraceSeconds`）為緩衝期：AI 只把其他 AI 當衝撞目標、會轉向避開玩家，且 AI 的衝撞、火箭、櫻桃都不會傷害玩家。
+- 10 秒後玩家與 AI 一視同仁：AI 依「分數越高越優先、距離越近越優先」選目標（`leaderBias` 1.5，含少量隨機避免全部追同一台）；分數領先該 AI `leaderHuntMargin` 300 分以上的車（含玩家）會被主動追撞，不受原本輪替策略限制。追玩家時不再避讓；火箭、櫻桃可擊中玩家。
+- 其餘時間仍輪替追逐破壞物、道具與對手；AI 對 AI 的衝撞、破壞得分、死亡扣分與重生使用同一套規則。持櫻桃的 AI 追殺 `PickRival` 選出的目標。
+- 驗證：P1 領先 1500 分且不操作時，0～10 秒沒有 AI 以 P1 為目標、耐久 100%；10～25 秒 AI 轉而追撞 P1 並撞毀一次。電腦1 領先時 AI 集中攻擊電腦1，0 分的 P1 未被鎖定、耐久 100%。
+- 玩家仍可主動撞擊 AI、射擊 AI 或另一位玩家。
+
+### 道具與操作
+
+- 固定兩個道具生成點，外觀為木箱（2026-10-11 使用者要求，增加隨機性）：撿到時隨機給道具，撿取後 8 秒且附近沒車時重生。一般情況防護罩／火箭各 50%；撿取者若為目前最後一名（同分也算），50% 得到櫻桃，其餘防護罩／火箭各半（`trailingCherryChance`）。木箱圖由 `Game3ItemArt` 依使用者木箱圖片的設計（木框＋直條木板）重畫成 16×16 像素，原圖保留在 `Art/Source/ItemCrateSource.png`；原照片縮到 16px 無法辨識。刻意不畫斜撐，避免與可破壞的 X 箱子混淆。
+- 每車最多持有一個道具；道具鍵只用來使用道具，沒有道具時按下不會有動作。已依使用者要求（2026-10-11）移除加速衝撞，AI 也不再衝撞加速。
+- 防護罩持續 6 秒，抵擋耐久傷害，車身顯示青色圓框。
+- 火箭沿車頭方向直飛，命中車扣 38% 耐久並給攻擊者 120 分；撞毀仍加 300 分。可撞碎破壞物並取得其分數。
+- **櫻桃（小精靈吃豆玩法）**：只有最後一名能從木箱開到。按道具鍵吃下後 8 秒（`cherryDuration`）：最高速 ×1.35（`cherrySpeedMultiplier`），車旁顯示櫻桃圖示，最後 2 秒閃爍。櫻桃車碰到任何車即撞毀對方（攻擊者得撞毀獎勵 300 分）；但若對方實際衝撞櫻桃車（接近速度 ≥1 且大於櫻桃車），或被火箭命中，櫻桃車立即撞毀。防護罩與重生保護仍可擋下。
+- 櫻桃 AI：持有櫻桃的 AI 追殺最近的 AI；其他 AI 在 2.2 單位內會逃離櫻桃車。維持既有規則：AI（含櫻桃 AI）不會撞毀或傷害真人。
+- 櫻桃圖：使用者提供的圖片，去白背景後縮為 13×14 四色像素圖 `Art/Cherry.png`，來源 `Art/Source/CherrySource.png`。場景修補：`Game3ItemArt.PatchScene()`；`Game3SceneBuilder.IntegrateExisting` 也會呼叫 `Game3ItemArt.Apply`。
+- 櫻桃期間整台車變黃色（2026-10-13 使用者要求）：`CarPalette.shader` 新增 `_Solid`／`_SolidColor`，以 MaterialPropertyBlock 個別設定，車身與白色部分都變黃、只保留黑色外框車窗；最後 2 秒與櫻桃圖示一起閃爍。不改 `body.color`，所以排行榜與車名顏色不變。玩家與 AI 吃櫻桃都適用。
+- 火箭命中任何車輛（玩家或 AI，含被防護罩擋下）都在命中點顯示爆炸特效（2026-10-13 使用者要求）：使用者提供的爆炸圖去白背景後縮為 34×32 四色像素圖 `Art/Explosion.png`（橘紅尖刺與金色雲→黃、深橘陰影→黑、淺黃核心→白；來源 `Art/Source/ExplosionSource.png`）。0.45 秒內由 0.5 倍彈到 1.15 倍再回 1 倍，最後閃爍消失（不使用透明度以維持四色）。每枚火箭一個顯示物件（`Effects/Rocket explosion 0～1`），由 `Game3ItemArt.Apply` 建立。
+- 已在 Play Mode 驗證：最後一名約 50% 開到櫻桃、領先者 0%；櫻桃速度提升；櫻桃車碰 AI 使其撞毀並 +300；P2 衝撞櫻桃 P1 使 P1 撞毀；火箭一發擊毀櫻桃車（一般車只扣 38%）；櫻桃 AI 不傷真人；30 秒 AI 對戰無例外。
+- 火箭最多同時兩發；池已滿時保留道具，稍後再按。
+- 1／2、C、Space、Enter 或手把 Start：開局；左 Ctrl 可開單人，數字鍵盤 Enter 可開雙人。
+- P1：左／右方向鍵轉向，上方向鍵為油門，左 Ctrl 使用道具。
+- P2：A／D 轉向，W 為油門，數字鍵盤 Enter 使用道具；主鍵盤 Enter 不控制 P2。
+- 按住油門會逐漸加速（`accelerationPerSecond` 1.4，約 2 秒到最高速 2.8）；放開後以 `coastDownPerSecond` 2.2 減速到停止；無倒車。兩個數值可在 Inspector 調整。此操作已由使用者確認（2026-10-11）。
+- 手把：左類比／方向鍵左右轉向，往上為油門，South 按鈕使用道具。
+- R 重開；Esc 回標題。原 F1／F2／F3 切換已移除。
+
+### 標題畫面（街機待機示範，2026-10-12 使用者要求）
+
+- 待機時四台車全由 AI 駕駛，背景自動播放一局示範（`DemolitionGame.TickIdle`）：第 20 秒淘汰最後一名以展示打滑飛出，第 30 秒重新開始（`demoEliminationSeconds`／`demoLoopSeconds`）。示範不計入正式比賽、不觸發結算。
+- 待機期間靜音、不顯示提示文字（`ArcadeGame.Sound/PlayClip/Announce` 在 Attract 階段直接略過），隱藏排行榜、狀態、車名與原本的標題說明面板／1P2P 按鈕。
+- 畫面只顯示：標題「廢車場大亂鬥」、「每位玩家 1 枚硬幣」、閃爍的「按 1 單人　按 2 雙人」，以及底部 P1／P2 操作提示（規則說明已依使用者要求簡化，只留操作）。文字定義在 `Game3Text`（`P1Controls`、`P2Controls`、`CoinRule`、`CoinPrompt`），介面由 `Game3Text.CreateAttractScreen` 建立（場景物件 `Attract screen`，每次修補會重建）。
+- 開始方式不變：1／C／Space／Enter／左 Ctrl 單人，2／數字鍵 Enter 雙人；開始後恢復正常 HUD 與 3-2-1 倒數。
+
+## 畫面、音效與素材
+
+- 保持單畫面 320×320、PPU 32、Built-in Pixel Perfect Camera；Point Filter，無 Mipmap、無壓縮。
+- 黑、白、青、黃四種顏色。靜態場景、道具、保護圓框、火箭使用 Unity 內建 Square／Circle；車圖使用使用者提供的圖片。
+- 活動實體上限 10：四車、兩個破壞物、兩個道具、兩枚火箭。車頂名稱、耐久條、保護圓框、尾焰是車的視覺元件。
+- 排行榜列出四車分數與 HP／持有道具／重生倒數／淘汰順位，右側顯示玩家按鈕狀態與時間，頂端顯示下次淘汰倒數。
+- 車的像素圖與四色材料位於 `Assets/Prototype/Game3/Art/`。
+- GAME2 的車輛原始圖片已先複製至 `Assets/Prototype/Game3/Art/Source/`，才移除舊案資料夾。
+- 共用音效 `Assets/Prototype/Audio/` 保留。GAME3 使用倒數、引擎、碰撞，以及道具與結算合成音，共五類聲音（衝撞加速移除後，Speed 只作為循環引擎聲）。
+- 介面已改為繁體中文（2026-10-11）：場景內的標題、說明、按鈕文字集中在 `Assets/Prototype/Editor/Game3Text.cs`，用 `Game3Text.PatchScene()` 套用（含行距 -22 與車名標籤轉換）；執行期的提示、排行榜、結算文字在 `DemolitionGame.cs`／`ArcadeGame.cs`；電腦車名為「電腦1～3」，持有道具時車名後顯示 [盾]／[箭]。
+- **輸出解析度規定為實際 320×320 像素（使用者 2026-10-12 確認）**。Editor Game 視窗使用內建的 320×320 固定解析度；曾暫時設為 960×960 屬錯誤，已移除該自訂尺寸。不可用放大視窗來改善字體。
+- **字型（2026-10-12）**：在 320×320 下唯一能清楚的做法是像素字型 1:1 繪製。使用俐方體 11 號 Cubic 11（`Assets/Prototype/Fonts/Cubic_11.ttf`，OFL），TMP 字型 `Cubic_11 Pixel 11px.asset`：RASTER_HINTED 點陣、取樣 11px、Point 濾鏡、Bitmap shader、512 圖集；預先產生程式字串中所有字元（`ArcadeFontSetup.UsedCharacters` 掃描 DemolitionGame／ArcadeGame／ArcadeVehicle／Game3Text 的字串），建置不清除。行高與基線取整數（行高 13、ascent 9），Canvas 開啟 pixelPerfect。之前糊掉的原因是 Cubic 被以 7～8.5px 的 SDF 繪製；Noto Sans TC（`Fonts/NotoSansTC/`）不再使用。
+- 文字大小只用 11 或其整數倍（標題 22、倒數 44）。版面由 `Game3Text.PixelLayout` 設定（整數像素座標）：頂部標題＋淘汰倒數、四車排行榜（左）、玩家狀態（右），提示列在場地上框內，底部操作提示一行（雙人時每 3 秒切換 P1／P2）。修改文字長度時注意 11px 中文每字 11px 寬，說明面板一行最多約 24 字。
+- `SampleScene` 與使用者另外放入 `Assets/Prototype/Art/` 的圖片保留；不在遊戲 Build Settings 中。
+
+## 程式位置
+
+| 檔案 | 用途 |
+| --- | --- |
+| `Assets/Prototype/Runtime/DemolitionGame.cs` | 整合版玩法；含 BreakableProp／ArenaPickup、AI、積分、淘汰、道具與重生。 |
+| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛、道具、淘汰旗標與護盾時間。Drive 增加選用 idleThrottle，GAME3 傳 0。 |
+| `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour。 |
+| `Assets/Prototype/Runtime/ArcadeGame.cs` | 標題、倒數、輸入、音效、結算與重玩；已移除舊場景切換。 |
+| `Assets/Prototype/Runtime/ArcadeEngineAudio.cs` | 真人車循環引擎聲。 |
+| `Assets/Prototype/Editor/Game3SceneBuilder.cs` | Build 供空原型；IntegrateExisting 直接修補既有 GAME3，重複執行不會多建道具／介面。 |
+| `Assets/Prototype/Editor/ArcadeSoundSetup.cs` | 接線倒數、碰撞與引擎聲，不再參照已刪除遊戲類別。 |
+| `Assets/Prototype/Editor/ArcadeFontSetup.cs` | 建立 Cubic 11 的 11px 點陣 TMP 字型並套用全部 GAME3 文字（字級取整到 11 的倍數）；PatchScene 可單獨修補字型。 |
+| `Assets/Prototype/Game3/Art/CarPalette.shader` | 保留黑色車窗／輪胎，依車輛角色顯示青、黃、白。 |
+
+## Unity Editor 操作規範
+
+- 優先 Unity CLI；代理直接執行 CMD／PowerShell 指令，不要求使用者輸入。
+- 修改腳本、場景、資產或設定後，明確重新編譯，等待編譯及網域重新載入完成，再檢查 Console。修正此次修改造成的錯誤後重查。
+- Editor 可連線時，以 CLI／Editor API 修改場景、Prefab、材料、資產；勿手動編輯 `.unity`、`.prefab`、`.asset` YAML。
+- 共用程式與使用者檔案操作前先讀取，不覆蓋新改動。
+
+環境：Unity 6000.6.4f1，Pipeline 0.8.0-exp.1，Unity CLI 1.0.0-beta.13（2026-10-12 以官方安裝腳本更新；`self-update` 在此環境回報成功但未實際替換）。專案與 CLI：
 
 ```powershell
-& 'C:\Users\a0900\AppData\Local\Unity\bin\unity.exe' status --format json
-
-& 'C:\Users\a0900\AppData\Local\Unity\bin\unity.exe' list --project-path 'C:\Users\a0900\Desktop\TNDA Mission' --format json
-
+# 以下由代理直接執行
 & 'C:\Users\a0900\AppData\Local\Unity\bin\unity.exe' command editor_status --caller plugin --skill unity-cli --project-path 'C:\Users\a0900\Desktop\TNDA Mission' --format json
-
 & 'C:\Users\a0900\AppData\Local\Unity\bin\unity.exe' command recompile --caller plugin --skill unity-cli --project-path 'C:\Users\a0900\Desktop\TNDA Mission' --format json
-
 & 'C:\Users\a0900\AppData\Local\Unity\bin\unity.exe' command recompile_status --caller plugin --skill unity-cli --project-path 'C:\Users\a0900\Desktop\TNDA Mission' --format json
-
 & 'C:\Users\a0900\AppData\Local\Unity\bin\unity.exe' command console_status --caller plugin --skill unity-cli --project-path 'C:\Users\a0900\Desktop\TNDA Mission' --format json
-
-& 'C:\Users\a0900\AppData\Local\Unity\bin\unity.exe' command console --level error --tail 50 --caller plugin --skill unity-cli --project-path 'C:\Users\a0900\Desktop\TNDA Mission' --format json
 ```
 
-- 每次 `unity command` 呼叫帶上 `--caller plugin --skill <實際使用的技能>`；操作由 Unity CLI 技能產生時使用 `unity-cli`。
-- `recompile` 是非同步操作；查詢 `recompile_status`，直到 `completed` 或 `up_to_date`，再確認 Editor 沒有編譯或網域重新載入中的狀態。
-- `console_status` 的 `groundTruth.compilationFailed` 與 `groundTruth.consoleErrors` 是檢查的重要依據；只看最近輸出沒有訊息不足以證明沒有錯誤。
-- 命令名稱與參數以 `unity list` 的即時查詢結果為準。可用命令已確認包含 `eval`、`eval_file`、`open_scene`、`get_scene_hierarchy`、`save_scene`、`editor_play`、`editor_stop`、`screenshot`。
-- 目前的命令目錄快取在 `tmp/unity-catalog.json`；`tmp/unity-commands.json` 是標籤摘要。快取不能取代重新確認連線。
-- `eval_file` 可執行代理寫在磁碟上的 C# 片段，以 Unity Editor API 修改場景；程式碼片段可放在 `tmp/`，避免被當作專案腳本編譯。
-- 同一個 Editor 同時由兩位代理操作，執行前先確認目前場景／Play Mode。完成後保留另一位代理的場景狀態；可在 Edit Mode 附加載入自己負責的場景，操作完只關閉自己開啟的場景。
-- CLI `screenshot` 在這個套件版本以 `Camera.Render()` 擷取，不包含 Screen Space Overlay 的 uGUI。實際 Game View 含 UI 的截圖可在 Play Mode 透過 `ScreenCapture.CaptureScreenshot()` 於下一幀取得；`tmp/Game1-previews.cs` 可在 Edit Mode 暫時切換 Canvas 模式並隔離擷取圖層，最後還原、儲存 GAME1，保留其他場景。
-- 專案預設 `Application.runInBackground` 為 false，Editor 未聚焦時可能停止遊戲幀。CLI 遊玩檢查時可暫時設定 true；這不是已儲存的專案設定變更。
-- CLI `simulate_key` 會立刻呼叫 `InputSystem.Update()`，目前版本可能使 `wasPressedThisFrame` 無法在下一個遊戲 Update 被讀取。已透過暫時的虛擬 Keyboard 與 `InputSystem.QueueStateEvent` 排入下一幀，確認 GAME1 的鍵盤投幣可開始遊戲；不要把 CLI 注入時序問題當成實際鍵盤輸入壞掉。
-- 先前 TMP 匯入等待期間曾出現兩筆 Pipeline 主執行緒逾時錯誤；TMP 匯入後連線已恢復。CLI 的歷史擷取緩衝區仍可能包含這些舊紀錄，判讀時應同時檢查時間、`groundTruth.sampledUtc`／`ageMs` 與最新 Console 計數。
+- 每個 command 帶 --caller plugin --skill unity-cli 及專案完整路徑。可用命令以 unity list 為準。
+- recompile 非同步；等到 completed／up_to_date 且 failed=false，Editor 不再 compiling／domainReloadInProgress。
+- Console 歷史緩衝可能保留舊錯誤；判斷最新 `groundTruth.sampledUtc`、`ageMs`、`compilationFailed`、`consoleErrors`。
+- eval_file 的 C# 是函式本體片段，不支援 using namespace 宣告。可用完整型別名稱；片段放 tmp 避免作為遊戲腳本編譯。
+- CLI screenshot 以 Camera.Render 擷取，不含 Overlay UI；實際 Game View 可用 Play Mode ScreenCapture.CaptureScreenshot，或暫時將 Canvas 改 ScreenSpaceCamera 後擷取並還原。
+- Editor 未聚焦時幀可能停止，可在預覽期間暫時設 Application.runInBackground=true，停止時還原。
+- **勿在測試中修改 `Time.timeScale` 後忘記還原**：2026-10-12 慢動作截圖測試讓 `ProjectSettings/TimeManager.asset` 的 `m_TimeScale` 停在 0.15，遊戲變成 15% 速度。已改回 1，且 `ArcadeGame.Awake` 開局強制設 `Time.timeScale = 1`。慢動作擷取改用暫停逐格（`enabled=false` 後手動 `Advance`）較安全。
 
-## 文件與素材來源
+## 檢查與待調整
 
-主要規格：使用者提供的 `C:\Users\a0900\Downloads\W4.pdf`，共五頁，已完成文字擷取與全部頁面視覺閱讀。
-
-原先課程簡報連結：<https://claude.ai/artifact/M4ttJnWihF2dehomdng4SE>，此前已透過瀏覽器讀取。
-
-附圖順序與 PDF 提案順序不同，場景對應如下：
-
-| 場景 | PDF 提案 | 玩法 | 流程圖原檔 |
-| --- | --- | --- | --- |
-| `GAME1` | A | 平台跳躍、攀爬與單鍵射擊 Boss | `C:\Users\a0900\Downloads\mermaid-diagram-2026-10-04-161102.png` |
-| `GAME2` | B | 俯視四車淘汰競速 | `C:\Users\a0900\Downloads\mermaid-diagram-2026-10-04-155551.png` |
-| `GAME3` | C | 報廢場破壞王 | `C:\Users\a0900\Downloads\mermaid-diagram-2026-10-04-163638.png` |
-
-Boss 圖：`C:\Users\a0900\AppData\Local\Temp\codex-clipboard-90560725-ab9a-4219-9156-282b392d207e.png`。512×512、RGB、白色背景。使用者要求所有 Boss 重複使用這一隻。來源位於暫存目錄，恢復實作時先確認檔案仍存在，再複製到專案保留。
-
-車輛圖：
-
-- 藍色：`C:\Users\a0900\Downloads\77c2b9d3-de78-4e76-8acf-b16ffa180fa8.png`（1024×1536）。
-- 黃色：`C:\Users\a0900\Downloads\078344fd-ba5c-48be-b853-dc9a95305721.png`（1284×1225）。
-- 白色：`C:\Users\a0900\Downloads\3af16932-ddc6-470a-91e2-f090bcdd1ae2.png`（1284×1225）。
-
-三張車輛圖均為 RGBA，角落已透明；不要僅因預覽呈現黑色就認定背景完全不透明。
-
-## 共通製作規格與原型範圍
-
-- 在使用者準備的 `GAME1`、`GAME2`、`GAME3` 製作，不另建替代場景。
-- 以最低製作成本呈現完整、可玩的原型；平台、梯子、賽道、路障、彈體等採 Unity 內建 2D Square／Circle 等 Sprite。
-- Boss 與車輛使用提供的圖片；重用素材，毋須新製美術。
-- 單畫面，不捲動；邏輯解析度 320×320。
-- 最多四種顏色、三至五種電子聲音、同時活動物件最多八至十個。靜態背景裝飾與活動遊戲實體應分別計數。
-- 方向搖桿加一顆操作按鈕；各案包含遊玩、勝利或失敗、重玩的完整流程。
-- 設計目標：陌生玩家 30 秒內理解；Game Over 後有再玩一次的動機。
-- 目前程式規劃共用黑、白、青、黃配色，以及四種程式產生的電子音效；視覺與音效尚未驗證。
-- Built-in 管線的 Pixel Perfect Camera 使用 `UnityEngine.U2D.PixelPerfectCamera`，勿套用 URP 同名元件的 API。預定 PPU 32、參考解析度 320×320、Point Filter、關閉 Mipmap／壓縮／抗鋸齒。
-
-## GAME1：平台攀爬與 Boss 射擊
-
-文件規格：
-
-- 單人。初始化生命、擊殺計數與第一隻 Boss。
-- WASD：A／D 左右移動；W 跳躍或向上爬梯；S 向下爬梯。單一按鈕發射子彈。
-- 玩家在平台與梯子間走位，閃避 Boss 的攻擊／投擲物，抓空檔射擊。
-- 玩家受擊扣血，血量歸零後凍結遊戲並顯示十秒投幣倒數。
-- 十秒內再投幣：原地滿血復活，給短暫無敵，保留當前 Boss 已扣血量與擊殺進度。
-- 沒有投幣：結算最終擊殺數，返回待機標題。
-- Boss 死亡：擊殺數加一、清空投擲物；下一隻 Boss 在頂層重生。
-- 下一波提高攻擊頻率、移動速度或投擲物軌跡難度，持續循環。
-
-已完成：`BossClimbGame.cs` 與 `Assets/Prototype/Editor/Game1SceneBuilder.cs`。四層平台、三座梯子、兩發子彈池、四個障礙物池、三格玩家生命、十秒續關與兩秒復活無敵。這些數值是原型預設，非文件硬性規定。每擊殺一隻，下一隻生命增加兩格，Boss 移動與投擲速度提高、攻擊間隔縮短；使用同一張 Boss 圖。
-
-建置程式已執行。**不要再次直接呼叫 `Build()`**：它會偵測既有 `GAME1 Prototype` 並拒絕重建，避免覆蓋已完成場景。後續調整請透過 CLI 使用 Editor API 修改現有物件並儲存。
-
-## GAME2：四車淘汰競速
-
-文件規格：
-
-- 一人或兩人；總共四台車。單人搭配三台 AI，雙人搭配兩台 AI。
-- 單画面俯視賽道，方向搖桿控制車輛，單一按鈕使用道具。
-- 分數等於沿賽道中線推進的有效前進距離；原地打轉與倒車不能刷分。
-- 撞牆、碰撞、道具攻擊不直接扣分，以減速或旋轉硬直影響前進距離。
-- 第 60 秒淘汰最低分的一台；第 90 秒再淘汰最低分的一台；第 120 秒在最後兩台中決定冠軍。
-- 前次淘汰後，存活車輛保留累積分數。
-- 第 120～140 秒停止賽道判定，展示冠軍與結算；展示結束後退回待機流程。
-- 兩個固定道具箱生成點；同屏生效道具／彈體最多兩個。
-
-目前草稿：`EliminationRaceGame.cs`，橢圓賽道座標、AI 跟隨、路線距離高水位計分、兩個道具箱、Nitro／Bolt、兩個彈體池與三段淘汰。Nitro／Bolt 是文件未指定道具內容時採用的原型選擇。
-
-實作狀態（Claude）：
-
-- 場景建置：`Assets/Prototype/Editor/Game2SceneBuilder.cs`，以 CLI `eval` 呼叫 `TNDA.Prototype.Editor.Game2SceneBuilder.Build(true)` 重建（`true` 會取代既有的 `GAME2 Prototype`）。只開啟／儲存 GAME2，不影響其他場景。
-- 車輛圖：原圖保存在 `Assets/Prototype/Game2/Art/Source/`；建置時去背、裁切並縮成 28px 高、四色（黑／白／青／黃）的 `CarBlue.png`、`CarYellow.png`、`CarWhite.png`，32 PPU、Point、無壓縮。車 0 藍、車 1 黃、車 2／3 白；車名標籤以 P1 青、P2 黃、CPU 白區分。
-- 配置：雙層橢圓牆、中線虛線、起跑線；四台車（含世界空間 TMP 名牌）、兩個固定道具箱（上方黃色 = Nitro、左側青色 = Bolt）、兩發 Bolt 物件池、場中淘汰倒數看板、uGUI 標題／結算面板（1P／2P 按鈕）。活動實體上限 8（4 車 + 2 箱 + 2 彈）。`presentationSeconds = 20`。
-- 對草稿的修正：車輛間僅在實際迎面碰撞時減速硬直（原本持續重疊會每幀硬直，造成全場卡死）；擦牆只減速、正面撞牆才硬直；AI 會避開正前方車輛；被 Bolt 命中旋轉兩圈後恢復原方向；`trackHalfWidth = 0.62`。
-- 已驗證（`tmp/game2/simtest.cs` 無頭模擬 + Play Mode 截圖）：60.0／90.0／120.0 秒淘汰、120 秒結算顯示冠軍、展示 20 秒後回標題；分數不會下降（碰撞／命中不扣分）；原地繞圈 10 秒僅得約 50 分；倒車後須追回最高點才再加分；雙人為 P1、P2 + 兩台 AI；同時 Bolt 不超過兩個。Console 無錯誤。截圖：`Assets/Screenshots/Game2-title.png`、`Game2-race.png`、`Game2-results.png`（後者為跳至 119.5 秒時的淘汰畫面）。
-- 未完成／待調整：實際鍵盤與手把手感尚未由真人遊玩確認；車速、AI 強度、道具效果為原型預設值；Editor 未聚焦時 Play Mode 不會更新（專案的 Run In Background 為關），測試時以執行期 `Application.runInBackground = true` 處理，未改專案設定。
-
-## GAME3：報廢場破壞王
-
-文件規格：
-
-- 一人或兩人；封閉的俯視場地，方向搖桿控制車輛，單一按鈕加速衝撞。
-- 破壞路障、围欄、箱子等得到基礎分；撞敵車依速度與角度給倍率，側撞／追撞可加分；撞毀敵車得到大額加分。
-- 場景中的敵車會威脅玩家；受撞扣除車輛耐久度。
-- 單人耐久歸零立即 Game Over。
-- 雙人一台全毀後該玩家退場，另一台繼續；兩台皆毀才提前結束。
-- 倒數結束且至少一台玩家車存活，按累積分數結算生存結果與排行。
-
-### 已完成的 GAME3 原型
-
-- `DemolitionGame.cs` 與 `Assets/Prototype/Editor/Game3SceneBuilder.cs` 已完成；場景保留使用者的相機，新增 `GAME3 Prototype`，所有車輛、破壞物、TMP、uGUI 與 Input System UI 參照均已繫結。
-- 單人是一位玩家加三台敵車；雙人是兩位玩家加兩台敵車。四車與四破壞物限制同時活動的遊戲實體為八個。耐久條、名稱與衝撞尾焰屬於車輛的視覺元件。
-- 固定單畫面 320×320、PPU 32、Point Filter，使用 Unity 內建 Square／Circle 製作邊界、箱子、油桶、圍欄與路障。車圖是使用者原圖在 GAME2 已轉換的像素版本，複製到 `Assets/Prototype/Game3/Art/` 獨立保存；沒有修改 GAME2 素材與共用程式。
-- GAME3 自有 `CarPalette.shader`／`CarPalette.mat` 保留黑色車窗與輪胎，依玩家／敵車換成青、黃、白，搭配黑背景組成四色配色。
-- 箱子 100 分、油桶 75 分、圍欄 150 分、路障 200 分；行車速度達 2.3 才能破壞，低速撞上會反彈／硬直。破壞物八秒後且附近沒有車輛時重新生成。
-- 衝撞獲得速度積分；側撞倍率 2、追撞倍率 1.5、其他方向倍率 1。撞毀車輛額外加 500 分；玩家撞毀敵車更新畫面的 WRECKS 計數。敵車六秒後重新生成，重生耐久為 75%。
-- 單鍵加速衝撞持續 0.8 秒，玩家冷卻 2.5 秒。介面顯示個別玩家耐久、分數、剩餘時間、擊毀數與衝撞冷卻；車頂也有耐久條。
-- 單人死亡立即結算；雙人一台全毀時保留另一人的遊戲，兩台全毀才提前結束。時間到且玩家仍存活時顯示 SURVIVED，依玩家分數排序，列出合計與最佳分數。結算凍結行車判定，六秒後返回標題，也可投幣或 R 立即重玩。
-- 文件沒有指定局長，原型預設九十秒，可從 `roundSeconds` 調整。敵車、破壞物、衝撞冷卻與結算展示的秒數均為原型選擇，尚未完成長時間遊玩平衡調整。
-
-已完成的檢查：
-
-- Play Mode 啟動，鍵盤 `2` 投幣後畫面顯示兩位玩家；已檢查實際 Game View。
-- 單人三敵車、雙人兩敵車、衝撞啟動、箱子破壞與 100 分獎勵、敵車擊毀加分與重新生成。
-- 同速度下的一般／側撞／追撞分別為 91／182／136 分；提高速度後的一般撞擊為 150 分。
-- 單人死亡結束、雙人一人退場後繼續、雙人全毀結束、倒數結束生存結算、結算停止行車、回到標題。倒數流程檢查使用暫時縮短的局長，檢查後還原九十秒與原有最佳分數紀錄。
-- 已透過 CLI 重新編譯並檢查 Console；最後即時檢查為編譯未失敗、零錯誤、零警告。過程中曾有 CLI「Editor is already in edit mode」操作警告，屬於另一邊剛好結束 Play Mode 後的重複停止命令，歷史擷取緩衝區仍可能保留該紀錄。
-- 實際手把操作與長時間遊玩平衡尚未檢查。
-
-圖片：`Docs/Game3/title.png`、`Docs/Game3/gameplay.png`、`Docs/Game3/gameover.png`。檢查與編輯期擷取片段在 `tmp/Game3-inspection.cs`。建置程式已執行，會拒絕重複建立 `GAME3 Prototype`；後續請使用 CLI 修改現有場景物件。
-
-## 已寫入程式的組織
-
-| 路徑 | 用途與待完成項目 |
-| --- | --- |
-| `Assets/Prototype/Runtime/ArcadeGame.cs` | 共用待機／遊玩／續關／結算流程、Input System 鍵盤與手把、音效、UI 更新、場景切換。GAME1 與 GAME3 的 UI 與相機欄位已繫結。 |
-| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 共用車輛位置、轉向、速度、耐久、道具與分數資料。Sprite 與名稱標籤仍需配置。 |
-| `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 可序列化的彈體池資料，並非 MonoBehaviour；需要配置對應 SpriteRenderer。 |
-| `Assets/Prototype/Runtime/BossClimbGame.cs` | GAME1 已完成的原型玩法。 |
-| `Assets/Prototype/Editor/Game1SceneBuilder.cs` | 已執行的 GAME1 場景建置程式；保留其他場景，使用 Unity 內建 Square／Circle 與 Boss 原圖配置物件。 |
-| `Assets/Prototype/Runtime/EliminationRaceGame.cs` | GAME2 玩法草稿。 |
-| `Assets/Prototype/Runtime/DemolitionGame.cs` | GAME3 已完成的原型玩法；`BreakableProp` 是此檔內的可序列化資料類別。 |
-| `Assets/Prototype/Editor/Game3SceneBuilder.cs` | 已執行的 GAME3 場景建置程式，配置封閉場地、四車、四破壞物、車頂耐久條與介面。 |
-| `Assets/Prototype/Game3/Art/CarPalette.shader` | GAME3 車輛的四色顯示；保留黑色車窗與輪胎，配合個別車輛顏色。 |
-| `Assets/Prototype/Art/ArcadePalette.shader` | 圖片四色轉換與可選白背景去除。已在 GAME1 Boss 材料與畫面上驗證。 |
-
-目前程式預定的操作：
-
-- 1／2：開始單人／雙人；GAME1 固定單人。
-- C、Space 或 Enter：投幣開始；GAME1 死亡倒數期間可續關。
-- P1：WASD 加 Space；P2：方向鍵加右 Ctrl。
-- GAME1 的 Space 為射擊；GAME2 為使用道具；GAME3 為加速衝撞。
-- R：重新開始；Esc：待機標題；F1／F2／F3：切換三個遊戲場景。
-- 車輛草稿目前以 W／S 前進與煞車／倒車、A／D 轉向；這是搖桿輸入的原型映射。
-- 手把使用左類比／方向鍵與 South 按鈕，Start 作為投幣；GAME1 向上推左類比或方向鍵可跳躍／爬梯。鍵盤投幣路徑已確認，尚未使用實體手把檢查。
-
-## 實作流程（只在各自負責的範圍內執行）
-
-1. 重新讀取 CLI、Editor 與 Console 狀態，編譯現有草稿並處理錯誤。
-2. 將提供的圖片保留到專案，設定 Sprite 匯入與點取樣；建立材料並確認背景、大小及四色效果。
-3. 透過 Unity CLI 執行 Editor API 建置場景，保留使用者場景與相機，配置靜態幾何、角色、車輛、物件池、TMP 字型與 uGUI 介面。
-4. 繫結所有序列化參照，配置必要的 EventSystem／Input System UI 模組，儲存自己負責的場景並加入 Build Settings。
-5. 設定固定單畫面 320×320 顯示，檢查自己負責的遊戲可見範圍、字體與活動實體數量。
-6. 明確重新編譯並檢查 Console，再進行各場景的輸入、流程及畫面驗證。
-
-重要驗證案例：
-
-- GAME1：跳躍／爬梯可達各層；射擊確實命中；死亡凍結；續關保留 Boss 血量及擊殺數；十秒逾時返回待機；新 Boss 清除舊投擲物。
-- GAME2：單人／雙人均有四車；沿中線前進累積分數；倒車／繞圈不能刷分；碰撞不直接扣分；60／90／120 秒正確淘汰；120 秒後凍結競賽並展示 20 秒；彈體不超過兩個。
-- GAME3：低速撞擊與高速側撞有不同收益；破壞物／撞毀敵車能得分；單人死亡立即結束；雙人一人死亡後另一人可繼續；時間到正確判定生存與得分。
-- 共通：重新開始清除上一局狀態；場景切換可用；沒有漏繫結參照、編譯錯誤或執行期例外；檢查實際 Game View 截圖。
-
-## 參考工具文件與暫存檔
-
-- Unity CLI 技能：`C:\Users\a0900\.codex\plugins\cache\openai-curated-remote\unity\0.1.6-beta\skills\unity-cli\SKILL.md`。
-- Pixel Perfect 技能：同套插件的 `skills\2d-pixel-perfect\SKILL.md`。
-- UI 技能：同套插件的 `skills\ui\SKILL.md` 與 `skills\ui-ugui\SKILL.md`。uGUI 使用 TMP，避免跳出需使用者手動處理的 TMP Essentials 匯入視窗。
-- PDF 閱讀用渲染圖：`tmp/pdfs/w4-page-1.png` 至 `w4-page-5.png`，屬於工作暫存。
-- 以上快取與檔案路徑可能隨插件版本變動；找不到時依現有安裝內容重新定位。
+- 腳本整合後已重新編譯成功，Console 即時為零錯誤、零警告。
+- 2026-10-10 已加入 Cubic 11 字型與新版雙人一鍵油門操作；再次重新編譯成功。已檢查 Play Mode 標題畫面與說明文字範圍，Console 零錯誤、零警告；完成後停止 Play Mode。
+- 已透過 Editor API 確認場景儲存、四車、兩破壞物、兩道具、兩枚火箭池，上限 10。
+- 已檢查標題與實際 Play Mode 畫面，修正新增排行榜與原標題面板重疊。
+- 雙人 Play Mode 預覽約 28 秒時：AI 分數為 1247／475，發生互撞、耐久下降與護盾格擋；兩位未操作真人仍保持 100% 耐久，沒有執行期 Console 錯誤。此為預覽觀察，不代表所有流程與平衡已全面測試。
+- 最新字型標題畫面：`Docs/Game3/integrated-title.png`；`Docs/Game3/integrated-gameplay.png` 是整合規則完成時、字型變更前的遊玩紀錄。`tmp/integrated-title-preview.cs` 僅擷取畫面並檢查參照，沒有新增測試組件。
+- 真人鍵盤／手把手感、AI 強度與長時間平衡仍待玩家實際遊玩調整。

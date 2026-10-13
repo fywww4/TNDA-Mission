@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 
 namespace TNDA.Prototype.Editor
 {
-    // Wires the recorded sounds and the 3-2-1-GO countdown into GAME1 / GAME2. Safe to run repeatedly.
+    // Wires recorded sounds and the 3-2-1-GO countdown into the integrated cabinet.
     public static class ArcadeSoundSetup
     {
         private const string AudioPath = "Assets/Prototype/Audio/";
@@ -20,8 +20,6 @@ namespace TNDA.Prototype.Editor
             game.countdownSeconds = CountdownSeconds;
             game.countdownClip = Clip("Countdown");
             game.hitClip = Clip("Hit");
-            if (game is BossClimbGame boss) boss.shootClip = Clip("Shooting");
-            if (game is EliminationRaceGame race) race.engineClip = Clip("Speed");
             if (game is DemolitionGame demolition) demolition.engineClip = Clip("Speed");
             if (game.countdownLabel == null) game.countdownLabel = CreateCountdownLabel(game);
             EditorUtility.SetDirty(game);
@@ -43,8 +41,7 @@ namespace TNDA.Prototype.Editor
             {
                 scene = scenePath, game = game.GetType().Name, game.countdownSeconds,
                 countdown = game.countdownClip != null, hit = game.hitClip != null,
-                shoot = (game as BossClimbGame)?.shootClip != null,
-                engine = (game as EliminationRaceGame)?.engineClip != null || (game as DemolitionGame)?.engineClip != null,
+                engine = (game as DemolitionGame)?.engineClip != null,
                 label = game.countdownLabel != null, saved = !scene.isDirty
             };
             if (newlyOpened) EditorSceneManager.CloseScene(scene, true);

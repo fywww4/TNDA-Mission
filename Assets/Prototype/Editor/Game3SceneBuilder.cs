@@ -25,7 +25,7 @@ namespace TNDA.Prototype.Editor
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             square = AssetDatabase.LoadAssetAtPath<Sprite>("Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Square.png");
             circle = AssetDatabase.LoadAssetAtPath<Sprite>("Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Circle.png");
-            font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            font = ArcadeFontSetup.GetOrCreate();
             if (square == null || circle == null || font == null)
                 throw new InvalidOperationException("Missing built-in sprites or TMP Essentials.");
             Sprite[] sprites = { ImportCar("CarBlue"), ImportCar("CarYellow"), ImportCar("CarWhite") };
@@ -53,10 +53,7 @@ namespace TNDA.Prototype.Editor
                 Undo.RegisterCreatedObjectUndo(root, "Build GAME3 prototype");
                 var game = root.AddComponent<DemolitionGame>();
                 game.sceneCamera = camera;
-                game.cabinetTitle = "SCRAPYARD\nSMASH";
-                game.instructions = "SMASH PROPS. RAM CARS.\nSURVIVE 90s. SCORE BIG.\n\nW/S GAS & BRAKE  /  A/D STEER\nSPACE RAM  /  HIT SIDES & REAR\n\n2P: ARROWS + RIGHT CTRL";
-                game.roundSeconds = 90;
-                game.presentationSeconds = 6;
+                game.cabinetTitle = Game3Text.Title;
                 game.speaker = root.AddComponent<AudioSource>();
                 game.speaker.playOnAwake = false;
                 game.speaker.spatialBlend = 0;
@@ -103,7 +100,9 @@ namespace TNDA.Prototype.Editor
                 game.props[2] = Prop(props, "FENCE +150", new Vector2(0, 1.65f), 150, 2);
                 game.props[3] = Prop(props, "ROADBLOCK +200", new Vector2(0, -2.6f), 200, 3);
                 BuildInterface(root.transform, game);
+                ConfigureIntegration(game);
                 ArcadeSoundSetup.Apply(game);
+                ArcadeFontSetup.Apply(game);
                 game.PreparePreview();
                 EditorUtility.SetDirty(game);
                 EditorSceneManager.MarkSceneDirty(scene);
@@ -114,13 +113,178 @@ namespace TNDA.Prototype.Editor
                 else buildScenes[index].enabled = true;
                 EditorBuildSettings.scenes = buildScenes.ToArray();
                 AssetDatabase.SaveAssets();
-                return new { scene = ScenePath, saved = !scene.isDirty, cars = 4, breakables = 4,
-                    activityCap = 8, resolution = "320x320", spriteRenderers = root.GetComponentsInChildren<SpriteRenderer>(true).Length };
+                return new { scene = ScenePath, saved = !scene.isDirty, cars = 4, breakables = game.props.Length,
+                    pickups = game.pickups.Length, rockets = game.rockets.Length,
+                    activityCap = 10, resolution = "320x320", spriteRenderers = root.GetComponentsInChildren<SpriteRenderer>(true).Length };
             }
             finally
             {
                 if (openedHere && scene.isLoaded) EditorSceneManager.CloseScene(scene, true);
             }
+        }
+
+        // Incrementally upgrades the user's existing GAME3; keeps its camera and vehicle visuals.
+        public static object IntegrateExisting()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                throw new InvalidOperationException("Stop Play Mode before integrating GAME3.");
+            square = AssetDatabase.LoadAssetAtPath<Sprite>("Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Square.png");
+            circle = AssetDatabase.LoadAssetAtPath<Sprite>("Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Circle.png");
+            font = ArcadeFontSetup.GetOrCreate();
+            if (square == null || circle == null || font == null) throw new InvalidOperationException("Missing sprites or TMP font.");
+            var scene = SceneManager.GetSceneByPath(ScenePath);
+            if (!scene.isLoaded) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            var game = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<DemolitionGame>(true)).Single();
+            Undo.RecordObject(game, "Integrate scrapyard elimination rules");
+            ConfigureIntegration(game);
+            ArcadeSoundSetup.Apply(game);
+            ArcadeFontSetup.Apply(game);
+            Game3Text.UseScreenTags(game);
+            Game3Text.PixelLayout(game);
+            Game3Text.CreateAttractScreen(game);
+            Game3ItemArt.Apply(game);
+            game.PreparePreview();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+            AssetDatabase.SaveAssets();
+            return new { scene = ScenePath, saved = !scene.isDirty, cars = game.cars.Length, props = game.props.Length,
+                pickups = game.pickups.Length, rockets = game.rockets.Length, game.roundSeconds,
+                activityCap = game.cars.Length + game.props.Length + game.pickups.Length + game.rockets.Length };
+        }
+
+        private static void ConfigureIntegration(DemolitionGame game)
+        {
+            game.cabinetTitle = Game3Text.Title;
+            game.instructions = Game3Text.Instructions;
+            game.firstElimination = 60;
+            game.secondElimination = 90;
+            game.roundSeconds = 120;
+            game.presentationSeconds = 20;
+            game.driveSpeed = 2.8f;
+            game.enemyRespawnSeconds = 3;
+            game.wreckPenalty = 250;
+            game.wreckBonus = 300;
+            game.shieldDuration = 6;
+            game.pickupRespawnSeconds = 8;
+            game.arenaMax = new Vector2(4.35f, 1.65f);
+
+            // Two prop spawns leave room for two pickups and two rockets within the ten-actor cap.
+            foreach (var old in game.props.Skip(2)) if (old.view != null) Undo.DestroyObjectImmediate(old.view.gameObject);
+            game.props = game.props.Take(2).ToArray();
+            for (int i = 0; i < game.props.Length; i++)
+            {
+                game.props[i].point = new Vector2(i == 0 ? -2 : 2, -.8f);
+                game.props[i].view.position = ArcadeGame.PixelPosition(game.props[i].point);
+            }
+            game.props[0].view.parent.name = "Breakables (2 fixed spawns)";
+            game.shieldViews = new Transform[game.cars.Length];
+            for (int i = 0; i < game.cars.Length; i++)
+            {
+                var shield = game.cars[i].transform.Find("Shield bubble");
+                if (shield == null)
+                {
+                    shield = Child(game.cars[i].transform, "Shield bubble");
+                    SpriteObject(shield, "Cyan rim", circle, Vector2.zero, new Vector2(1.0625f, 1.0625f), ArcadeGame.Cyan, 6);
+                    SpriteObject(shield, "Black center", circle, Vector2.zero, new Vector2(.9375f, .9375f), Color.black, 7);
+                }
+                game.shieldViews[i] = shield;
+            }
+
+            var items = game.transform.Find("Item spawns (2)");
+            if (items == null) items = Child(game.transform, "Item spawns (2)");
+            game.pickups = new[] {
+                Pickup(items, "Shield pickup", new Vector2(-.9f, -2.5f), 1),
+                Pickup(items, "Rocket pickup", new Vector2(.9f, .3f), 2)
+            };
+            var pool = game.transform.Find("Rocket pool (2)");
+            if (pool == null) pool = Child(game.transform, "Rocket pool (2)");
+            game.rockets = new ArcadeProjectile[2];
+            for (int i = 0; i < 2; i++)
+            {
+                var view = pool.Find("Rocket " + i)?.GetComponent<SpriteRenderer>();
+                if (view == null)
+                {
+                    view = SpriteObject(pool, "Rocket " + i, square, Vector2.zero, new Vector2(.125f, .375f), ArcadeGame.Yellow, 16);
+                    // Child dimensions are in the scaled rocket's local coordinates.
+                    SpriteObject(view.transform, "Nose", circle, new Vector2(0, .5f), new Vector2(1, .3333f), ArcadeGame.White, 17);
+                    SpriteObject(view.transform, "Fins", square, new Vector2(0, -.35f), new Vector2(1.75f, .1667f), ArcadeGame.White, 17);
+                }
+                game.rockets[i] = new ArcadeProjectile { view = view };
+            }
+
+            var arena = game.transform.Find("Scrapyard (static)");
+            foreach (var renderer in arena.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                if (renderer.name == "Top fence") renderer.transform.localPosition = new Vector3(0, 2.35f, 0);
+                else if (renderer.name == "Top corner warning") renderer.transform.localPosition = new Vector3(renderer.transform.localPosition.x, 2.05f, 0);
+                else if (renderer.name == "Side fence")
+                {
+                    renderer.transform.localPosition = new Vector3(renderer.transform.localPosition.x, -1.025f, 0);
+                    renderer.transform.localScale = new Vector3(.0625f / square.bounds.size.x, 6.75f / square.bounds.size.y, 1);
+                }
+                else if (renderer.name == "Fence post" && renderer.transform.localPosition.y > 2.35f) renderer.gameObject.SetActive(false);
+            }
+
+            var cabinet = game.header.transform.parent;
+            SetRect(cabinet.Find("Header backing").GetComponent<RectTransform>(), 0, 249, 320, 71);
+            SetRect(cabinet.Find("Header rule").GetComponent<RectTransform>(), 12, 248, 296, 1);
+            SetRect(game.header.rectTransform, 16, 303, 288, 14);
+            game.header.fontSize = 11;
+            SetRect(game.arenaBoard.rectTransform, 170, 303, 134, 14);
+            game.arenaBoard.fontSize = 7.5f;
+            SetRect(game.hud.rectTransform, 196, 257, 108, 42);
+            game.hud.fontSize = 8;
+            game.hud.alignment = TextAlignmentOptions.TopRight;
+            var board = cabinet.Find("Four-car leaderboard")?.GetComponent<TMP_Text>();
+            if (board == null) board = Text(cabinet, "Four-car leaderboard", 16, 252, 184, 45, 8.5f, ArcadeGame.White);
+            board.textWrappingMode = TextWrappingModes.NoWrap;
+            board.alignment = TextAlignmentOptions.TopLeft;
+            game.leaderboard = board;
+            SetRect(game.notice.rectTransform, 12, 240, 296, 8);
+            game.notice.fontSize = 7;
+            SetRect(game.overlay.GetComponent<RectTransform>(), 22, 44, 276, 200);
+            SetRect(game.overlay.transform.Find("Black inset").GetComponent<RectTransform>(), 2, 2, 272, 196);
+            game.overlayBody.fontSize = 8.5f;
+            SetRect(game.overlayBody.rectTransform, 14, 54, 248, 84);
+            game.overlayBody.textWrappingMode = TextWrappingModes.NoWrap;
+            SetRect(game.overlayTitle.rectTransform, 12, 137, 252, 58);
+            game.overlayTitle.fontSize = 24;
+            SetRect(game.onePlayerButton.GetComponent<RectTransform>(), 15, 27, 116, 23);
+            SetRect(game.twoPlayerButton.GetComponent<RectTransform>(), 145, 27, 116, 23);
+            game.footer.fontSize = 7;
+        }
+
+        private static ArenaPickup Pickup(Transform parent, string name, Vector2 point, int item)
+        {
+            var view = parent.Find(name);
+            Color color = item == 1 ? ArcadeGame.Cyan : ArcadeGame.Yellow;
+            if (view == null)
+            {
+                view = Child(parent, name);
+                var frame = SpriteObject(view, "Diamond", square, Vector2.zero, new Vector2(.4375f, .4375f), color, 3);
+                frame.transform.localRotation = Quaternion.Euler(0, 0, 45);
+                var inset = SpriteObject(view, "Inset", square, Vector2.zero, new Vector2(.34375f, .34375f), Color.black, 4);
+                inset.transform.localRotation = Quaternion.Euler(0, 0, 45);
+                var label = new GameObject("Item icon", typeof(RectTransform)).AddComponent<TextMeshPro>();
+                label.transform.SetParent(view, false);
+                label.font = font;
+                label.fontSize = 3;
+                label.text = item == 1 ? "S" : "R";
+                label.color = color;
+                label.alignment = TextAlignmentOptions.Center;
+                label.rectTransform.sizeDelta = new Vector2(.4f, .4f);
+                label.sortingOrder = 5;
+            }
+            view.position = ArcadeGame.PixelPosition(point);
+            return new ArenaPickup { view = view, point = point, item = item };
+        }
+
+        private static void SetRect(RectTransform rect, float x, float y, float width, float height)
+        {
+            rect.anchoredPosition = new Vector2(x, y);
+            rect.sizeDelta = new Vector2(width, height);
         }
 
         private static Sprite ImportCar(string name)
@@ -239,7 +403,7 @@ namespace TNDA.Prototype.Editor
             game.arenaBoard.alignment = TextAlignmentOptions.Right;
             game.notice = Text(safe, "Impact feedback", 16, 280, 288, 10, 8, ArcadeGame.Yellow);
             game.notice.alignment = TextAlignmentOptions.Center;
-            game.footer = Text(safe, "Controls", 12, 2, 296, 18, 7.5f, ArcadeGame.White);
+            game.footer = Text(safe, "Controls", 12, 1, 296, 19, ArcadeFontSetup.PixelSize, ArcadeGame.White);
             game.footer.alignment = TextAlignmentOptions.Center;
             var panel = Image(safe, "Coin and result panel", 22, 52, 276, 222, ArcadeGame.Cyan).rectTransform;
             Image(panel, "Black inset", 2, 2, 272, 218, Color.black);
@@ -251,8 +415,8 @@ namespace TNDA.Prototype.Editor
             game.overlayBody.alignment = TextAlignmentOptions.Center;
             game.overlayHint = Text(panel, "Coin prompt", 10, 5, 256, 22, 8, ArcadeGame.White);
             game.overlayHint.alignment = TextAlignmentOptions.Center;
-            game.onePlayerButton = Button(panel, "1P Coin", 15, 32, 116, 23, "1P / 3 RIVALS", ArcadeGame.Cyan);
-            game.twoPlayerButton = Button(panel, "2P Coin", 145, 32, 116, 23, "2P / 2 RIVALS", ArcadeGame.Yellow);
+            game.onePlayerButton = Button(panel, "1P Coin", 15, 32, 116, 23, Game3Text.OnePlayerButton, ArcadeGame.Cyan);
+            game.twoPlayerButton = Button(panel, "2P Coin", 145, 32, 116, 23, Game3Text.TwoPlayerButton, ArcadeGame.Yellow);
             var events = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
             events.transform.SetParent(parent, false);
             events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();

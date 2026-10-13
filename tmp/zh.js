@@ -1,0 +1,32 @@
+const fs=require("fs");const p="Assets/Prototype/Runtime/DemolitionGame.cs";let t=fs.readFileSync(p,"utf8");
+const R=[
+['Announce(car.DriverName + " BREAK +" + prop.points','Announce(car.DriverName + " 撞碎 +" + prop.points'],
+['Announce(car.DriverName + " GOT " + ItemName(car.item) + " / PRESS BUTTON"','Announce(car.DriverName + " 拿到" + ItemName(car.item) + "，按道具鍵使用"'],
+['Announce(car.DriverName + " SHIELD " + shieldDuration.ToString("0") + "s"','Announce(car.DriverName + " 防護罩 " + shieldDuration.ToString("0") + " 秒"'],
+['Announce("ROCKET POOL BUSY / KEEP YOUR ITEM"','Announce("火箭還在飛，道具先保留"'],
+['Announce(car.DriverName + " ROCKET!"','Announce(car.DriverName + " 發射火箭！"'],
+['Announce(attacker.DriverName + " RAM x" + multiplier.ToString("0.0")','Announce(attacker.DriverName + " 撞擊 x" + multiplier.ToString("0.0")'],
+['Announce(car.DriverName + " SHIELD BLOCK!"','Announce(car.DriverName + " 防護罩擋下！"'],
+['Announce(car.DriverName + " WRECK -" + deducted + " / RESPAWN " + enemyRespawnSeconds.ToString("0") + "s"','Announce(car.DriverName + " 被撞毀 -" + deducted + "，" + enemyRespawnSeconds.ToString("0") + " 秒後重生"'],
+['Announce(attacker.DriverName + " WRECK BONUS +" + wreckBonus','Announce(attacker.DriverName + " 撞毀獎勵 +" + wreckBonus'],
+['Announce("LAST PLACE: " + loser.DriverName + " ELIMINATED!"','Announce("最後一名 " + loser.DriverName + " 淘汰！"'],
+['Finish(winner.DriverName + " WINS!", standings + "\n\nBEST " + best + "  /  WRECKS " + Wrecks\n                + "\n\nLAST PLACE OUT AT 60 / 90 / 120s");',
+ 'Finish(winner.DriverName + " 獲勝！", standings + "\n\n最高分 " + best + "　撞毀 " + Wrecks + " 次"\n                + "\n\n60／90／120 秒各淘汰最後一名");'],
+['private static string ItemName(int item) => item == 1 ? "SHIELD" : item == 2 ? "ROCKET" : "RAM";','private static string ItemName(int item) => item == 1 ? "防護罩" : item == 2 ? "火箭" : "無道具";'],
+['return "OUT #" + finalPlaces[car.index];','return "淘汰 第" + finalPlaces[car.index] + "名";'],
+['return "BACK " + Mathf.CeilToInt(car.respawn) + "s";','return Mathf.CeilToInt(car.respawn) + "秒後重生";'],
+['return "SHIELD " + Mathf.CeilToInt(car.shieldSeconds);','return "防護罩 " + Mathf.CeilToInt(car.shieldSeconds);'],
+['return car.item != 0 ? ItemName(car.item) : "HP " + Mathf.CeilToInt(car.health * 100);','return car.item != 0 ? ItemName(car.item) : "耐久 " + Mathf.CeilToInt(car.health * 100);'],
+['private string ActionStatus(ArcadeVehicle car) => car.eliminated ? "OUT" : !car.alive ? "RESPAWN"\n            : car.item != 0 ? ItemName(car.item) : car.cooldown <= 0 ? "READY" : car.cooldown.ToString("0.0") + "s";',
+ 'private string ActionStatus(ArcadeVehicle car) => car.eliminated ? "已淘汰" : !car.alive ? "重生中" : ItemName(car.item);'],
+['header.text = "SCRAPYARD SMASH";','header.text = "廢車場大亂鬥";'],
+['arenaBoard.text = Phase == ArcadePhase.Results ? "CHAMPION " + cars[Champion].DriverName\n                : "OUT IN " + Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)).ToString("00") + "s / " + Contenders + " CARS";',
+ 'arenaBoard.text = Phase == ArcadePhase.Results ? "冠軍 " + cars[Champion].DriverName\n                : Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)).ToString("00") + "秒後淘汰／剩" + Contenders + "車";'],
+['hud.text = "P1 " + ActionStatus(cars[0]) + (PlayerCount == 2 ? "\nP2 " + ActionStatus(cars[1]) : "")\n                + "\nTIME " + Mathf.CeilToInt(Remaining) + " / K " + Wrecks\n                + (Phase == ArcadePhase.Playing && cars.Where(c => !c.computer).All(c => c.eliminated) ? "\nSPECTATE" : "");',
+ 'hud.text = "P1 " + ActionStatus(cars[0]) + (PlayerCount == 2 ? "\nP2 " + ActionStatus(cars[1]) : "")\n                + "\n時間 " + Mathf.CeilToInt(Remaining) + "　撞毀 " + Wrecks\n                + (Phase == ArcadePhase.Playing && cars.Where(c => !c.computer).All(c => c.eliminated) ? "\n觀戰中" : "");'],
+['footer.text = "P1 LEFT/RIGHT+LCTRL  P2 A/D+NUM ENTER\nHOLD: GAS  PRESS: ITEM/RAM  R RESTART";',
+ 'footer.text = "P1 ←→轉向 ↑油門 左Ctrl道具　P2 AD轉向 W油門 數字Enter道具\n按住油門越開越快，放開減速　R 重玩";'],
+['if (Phase == ArcadePhase.Attract) overlayHint.text = "1 / 2 PLAYERS  //  C / SPACE INSERT COIN";','if (Phase == ArcadePhase.Attract) overlayHint.text = "按 1／2 選人數　C／空白鍵 投幣";'],
+];
+for (const [a,b] of R){ if(!t.includes(a)){console.log("MISSING:",a.slice(0,70));continue;} t=t.replace(a,b);}
+fs.writeFileSync(p,t); console.log("done");

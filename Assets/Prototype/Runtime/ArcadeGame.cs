@@ -2,7 +2,6 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace TNDA.Prototype
 {
@@ -48,6 +47,8 @@ namespace TNDA.Prototype
 
         protected virtual void Awake()
         {
+            // The game never uses slow motion; guard against a time scale left over from editor tooling.
+            Time.timeScale = 1;
             MakeSounds();
             onePlayerButton.onClick.AddListener(() => MenuAction(1));
             twoPlayerButton.onClick.AddListener(() => MenuAction(2));
@@ -65,17 +66,14 @@ namespace TNDA.Prototype
 
         private void Update()
         {
-            if (Pressed(Key.F1)) { LoadCabinet("GAME1"); return; }
-            if (Pressed(Key.F2)) { LoadCabinet("GAME2"); return; }
-            if (Pressed(Key.F3)) { LoadCabinet("GAME3"); return; }
             if (Pressed(Key.R)) StartRun(PlayerCount);
             if (Pressed(Key.Escape)) ShowAttract();
-            bool coin = Pressed(Key.C) || Pressed(Key.Space) || Pressed(Key.Enter)
+            bool coin = Pressed(Key.C) || Pressed(Key.Space) || Pressed(Key.Enter) || Pressed(Key.LeftCtrl)
                 || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
             if (Phase == ArcadePhase.Continue && coin) ContinueRun();
             else if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
             {
-                if (Pressed(Key.Digit2) && SupportsTwoPlayers) StartRun(2);
+                if ((Pressed(Key.Digit2) || Pressed(Key.NumpadEnter)) && SupportsTwoPlayers) StartRun(2);
                 else if (coin || Pressed(Key.Digit1)) StartRun(1);
             }
             Advance(Mathf.Min(Time.deltaTime, .05f), ReadInput(0), ReadInput(1));
@@ -98,9 +96,9 @@ namespace TNDA.Prototype
                 if (CountdownLeft <= 0)
                 {
                     Phase = ArcadePhase.Playing;
-                    SetCountdownLabel("GO!");
+                    SetCountdownLabel("出發！");
                     goFlash = .7f;
-                    Announce("GO!", Yellow);
+                    Announce("出發！", Yellow);
                 }
                 else SetCountdownLabel(Mathf.CeilToInt(CountdownLeft).ToString());
             }
@@ -110,8 +108,8 @@ namespace TNDA.Prototype
                 if (Phase == ArcadePhase.Results && presentationSeconds > 0)
                 {
                     resultAge += dt;
-                    overlayHint.text = "RETURN TO TITLE IN " + Mathf.CeilToInt(Mathf.Max(0, presentationSeconds - resultAge))
-                        + "s   //   R RESTART";
+                    overlayHint.text = Mathf.CeilToInt(Mathf.Max(0, presentationSeconds - resultAge))
+                        + " 秒後回到標題　R 重玩";
                     if (resultAge >= presentationSeconds) PreparePreview();
                 }
             }
@@ -138,7 +136,7 @@ namespace TNDA.Prototype
             }
             else
             {
-                Announce("GO!", Yellow);
+                Announce("出發！", Yellow);
                 Sound(2);
             }
             RefreshHud();
@@ -162,7 +160,7 @@ namespace TNDA.Prototype
             goFlash = 0;
             if (countdownLabel != null) countdownLabel.text = "";
             Phase = ArcadePhase.Attract;
-            ShowOverlay(cabinetTitle, instructions, "C / SPACE INSERT COIN  //  F1 F2 F3 SWITCH GAME");
+            ShowOverlay(cabinetTitle, instructions, "按 1／2 選人數　C／空白鍵 投幣");
         }
 
         protected void ShowOverlay(string title, string body, string hint)
@@ -179,12 +177,13 @@ namespace TNDA.Prototype
         {
             Phase = ArcadePhase.Results;
             resultAge = 0;
-            ShowOverlay(title, body, "R RESTART  //  C INSERT COIN");
+            ShowOverlay(title, body, "R 重玩　C 投幣");
             Sound(3);
         }
 
         protected void Announce(string text, Color color, float duration = 2)
         {
+            if (Phase == ArcadePhase.Attract) return; // the attract demo plays without pop-up text
             notice.text = text;
             notice.color = color;
             noticeAge = duration;
@@ -198,52 +197,48 @@ namespace TNDA.Prototype
         protected virtual void AfterTick(float dt) { }
         public virtual void ContinueRun() { StartRun(PlayerCount); }
 
-        private static void LoadCabinet(string scene)
-        {
-            Time.timeScale = 1;
-            SceneManager.LoadScene(scene);
-        }
-
         private static bool Pressed(Key key) => Keyboard.current != null && Keyboard.current[key].wasPressedThisFrame;
 
         private static ArcadeInput ReadInput(int index)
         {
+            // P1: arrows (Up = gas) + Left Ctrl item. P2: A/D/W + Numpad Enter item.
             var k = Keyboard.current;
-            Key left = index == 0 ? Key.A : Key.LeftArrow;
-            Key right = index == 0 ? Key.D : Key.RightArrow;
-            Key up = index == 0 ? Key.W : Key.UpArrow;
-            Key down = index == 0 ? Key.S : Key.DownArrow;
-            Key button = index == 0 ? Key.Space : Key.RightCtrl;
+            Key left = index == 0 ? Key.LeftArrow : Key.A;
+            Key right = index == 0 ? Key.RightArrow : Key.D;
+            Key gas = index == 0 ? Key.UpArrow : Key.W;
+            Key button = index == 0 ? Key.LeftCtrl : Key.NumpadEnter;
             var input = new ArcadeInput();
             if (k != null)
             {
                 input.steer = (k[right].isPressed ? 1 : 0) - (k[left].isPressed ? 1 : 0);
-                input.throttle = (k[up].isPressed ? 1 : 0) - (k[down].isPressed ? 1 : 0);
-                input.jumpPressed = k[up].wasPressedThisFrame;
+                input.throttle = k[gas].isPressed ? 1 : 0;
                 input.action = k[button].isPressed;
                 input.actionPressed = k[button].wasPressedThisFrame;
             }
             if (Gamepad.all.Count > index)
             {
+                // Stick or d-pad up is the gas; the South button uses the item.
                 var pad = Gamepad.all[index];
                 Vector2 stick = pad.leftStick.ReadValue();
                 if (pad.dpad.ReadValue().sqrMagnitude > .01f) stick = pad.dpad.ReadValue();
-                if (stick.sqrMagnitude > .03f) { input.steer = stick.x; input.throttle = stick.y; }
+                if (stick.sqrMagnitude > .03f) input.steer = stick.x;
+                if (stick.y > .4f) input.throttle = 1;
                 input.action |= pad.buttonSouth.isPressed;
                 input.actionPressed |= pad.buttonSouth.wasPressedThisFrame;
-                input.jumpPressed |= pad.dpad.up.wasPressedThisFrame;
             }
             return input;
         }
 
         protected void Sound(int kind)
         {
-            if (sounds != null && speaker != null) speaker.PlayOneShot(sounds[kind], .12f);
+            // The attract demo runs silently, like an arcade cabinet waiting for a coin.
+            if (Phase != ArcadePhase.Attract && sounds != null && speaker != null) speaker.PlayOneShot(sounds[kind], .12f);
         }
 
         // Plays a recorded clip when one is assigned, otherwise the matching generated sound.
         protected void PlayClip(AudioClip clip, int fallback, float volume = .6f)
         {
+            if (Phase == ArcadePhase.Attract) return;
             if (clip != null && speaker != null) speaker.PlayOneShot(clip, volume);
             else Sound(fallback);
         }
