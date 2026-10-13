@@ -1,6 +1,6 @@
 var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
 var sb = new System.Text.StringBuilder(); float dt = 1f/60; var none = new TNDA.Prototype.ArcadeInput();
-var targetField = typeof(TNDA.Prototype.DemolitionGame).GetField("aiTarget", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
 g.enabled = false;
 try {
 for (int scenario = 0; scenario < 2; scenario++) {
@@ -11,7 +11,7 @@ for (int scenario = 0; scenario < 2; scenario++) {
   for (int f = 0; f < 60 * 25; f++) {
     if (scenario == 0) p1.score = System.Math.Max(p1.score, 1500); else g.cars[1].score = System.Math.Max(g.cars[1].score, 1500);
     g.Advance(dt, none, none);
-    var t = (int[])targetField.GetValue(g);
+    var t = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(g.cars, c => c.aiTarget == null ? -1 : c.aiTarget.index));
     for (int i = 1; i < 4; i++) if (t[i] >= 0) { if (g.Elapsed < 10) earlyT[t[i]]++; else lateT[t[i]]++; }
     if (g.Elapsed < 10) earlyMinHp = System.Math.Min(earlyMinHp, p1.alive ? p1.health : 0);
     else { lateMinHp = System.Math.Min(lateMinHp, p1.alive ? p1.health : 0); if (wasAlive && !p1.alive) lateWrecks++; }

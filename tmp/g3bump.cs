@@ -1,25 +1,27 @@
 var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
-var sb = new System.Text.StringBuilder(); float dt = 1f/60; var none = new TNDA.Prototype.ArcadeInput();
-g.enabled = false;
-try {
-  g.StartRun(1);
-  while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none);
-  string last = null;
-  for (int f = 0; f < 60 * 5; f++) {
-    g.Advance(dt, none, none);
-    var txt = g.countdownLabel.text + "(" + g.countdownLabel.fontSize + ")";
-    if (txt != last) { sb.Append("  t=" + g.Elapsed.ToString("0.00") + " label: " + txt + "\n"); last = txt; }
-  }
-  // Bumper test after the grace period: AI rams a parked P1 from the side.
-  typeof(TNDA.Prototype.ArcadeGame).GetProperty("Elapsed").SetValue(g, 15f);
-  var p1 = g.cars[0]; var ai = g.cars[2];
-  foreach (var c in g.cars) { c.spawnProtection = 0; c.shieldSeconds = 0; if (c != p1 && c != ai) c.position = new UnityEngine.Vector2(3.5f, 1.2f); }
-  p1.position = new UnityEngine.Vector2(0, -1.5f); p1.heading = 90; p1.speed = 0; p1.health = 1;
-  ai.position = new UnityEngine.Vector2(-.7f, -1.5f); ai.heading = 0; ai.speed = 2.4f;
-  var start = p1.position;
-  for (int f = 1; f <= 60; f++) {
-    ai.position = f < 3 ? ai.position : ai.position; g.Advance(dt, none, none);
-    if (f == 1 || f % 15 == 0) sb.Append("  bump +" + (f/60f).ToString("0.00") + "s P1 moved " + (p1.position - start).magnitude.ToString("0.00") + " gap=" + UnityEngine.Vector2.Distance(p1.position, ai.position).ToString("0.00") + " P1 heading=" + p1.heading.ToString("0") + " hp=" + (p1.health*100).ToString("0") + "\n");
-  }
-} catch (System.Exception e) { sb.Append("EXCEPTION " + e); }
-g.enabled = true; g.PreparePreview(); return sb.ToString();
+var checks = new System.Collections.Generic.Dictionary<string, bool>();
+float dt = 1f / 60;
+var none = new TNDA.Prototype.ArcadeInput();
+bool wasEnabled = g.enabled;
+try
+{
+    g.enabled = false;
+    g.StartRun(2);
+    while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none);
+    foreach (var car in g.cars) { car.computer = false; car.spawnProtection = car.shieldSeconds = 0; }
+    foreach (var prop in g.props) { prop.broken = true; prop.respawn = 100; prop.view.gameObject.SetActive(false); }
+    var p1 = g.cars[0]; var rammer = g.cars[1];
+    p1.position = new UnityEngine.Vector2(0, -1.5f); p1.heading = 90; p1.speed = 0;
+    rammer.position = new UnityEngine.Vector2(-.6f, -1.5f); rammer.heading = 0; rammer.speed = 2.4f;
+    var start = p1.position;
+    g.Advance(dt, none, new TNDA.Prototype.ArcadeInput { throttle = 1 });
+    checks["side ram starts slide"] = p1.SlideVelocity.x > 5 && p1.stun == .12f && p1.health < 1;
+    checks["rammer rebounds"] = rammer.SlideVelocity.x < 0;
+    checks["nose knocked aside"] = UnityEngine.Mathf.Abs(p1.heading - 90) >= 15 && UnityEngine.Mathf.Abs(p1.heading - 90) <= 30;
+    for (int f = 0; f < 59; f++) g.Advance(dt, none, none);
+    checks["cars separate within one second"] = (p1.position - start).magnitude > 1
+        && UnityEngine.Vector2.Distance(p1.position, rammer.position) > 1;
+    checks["slide decays"] = p1.SlideVelocity.magnitude < .1f;
+}
+finally { g.PreparePreview(); g.enabled = wasEnabled; }
+return checks;

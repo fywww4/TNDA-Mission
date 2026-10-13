@@ -1,55 +1,94 @@
 var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
-var sb = new System.Text.StringBuilder(); float dt = 1f/60;
-var none = new TNDA.Prototype.ArcadeInput(); var gas = new TNDA.Prototype.ArcadeInput(); gas.throttle = 1;
-var use = new TNDA.Prototype.ArcadeInput(); use.action = true; use.actionPressed = true;
-var roll = typeof(TNDA.Prototype.DemolitionGame).GetMethod("RollItem", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-System.Action skip = () => { while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none); };
-System.Action<int> unprotect = n => { foreach (var c in g.cars) c.spawnProtection = 0; };
-g.enabled = false;
-try {
-// 1. Roll odds
-g.StartRun(1); skip();
-g.cars[0].score = 0; g.cars[1].score = 100; g.cars[2].score = 200; g.cars[3].score = 300;
-int[] last = new int[4], lead = new int[4];
-for (int k = 0; k < 2000; k++) { last[(int)roll.Invoke(g, new object[]{ g.cars[0] })]++; lead[(int)roll.Invoke(g, new object[]{ g.cars[3] })]++; }
-sb.Append("Roll last place: shield " + last[1] + " rocket " + last[2] + " cherry " + last[3] + " | leader: shield " + lead[1] + " rocket " + lead[2] + " cherry " + lead[3] + "\n");
-// 2. Use cherry + top speed
-var p1 = g.cars[0]; p1.item = 3; g.Advance(dt, use, none);
-sb.Append("Use cherry: HasCherry=" + g.HasCherry(p1) + " item=" + p1.item + " status=" + g.hud.text.Split('\n')[0] + " icon=" + g.cherryViews[0].gameObject.activeSelf + "\n");
-p1.position = new UnityEngine.Vector2(-3.5f, -3.5f); p1.heading = 0;
-for (int f = 0; f < 150; f++) { g.Advance(dt, gas, none); foreach (var c in g.cars) if (c != p1) { c.position = new UnityEngine.Vector2(3, 1); } }
-sb.Append("Cherry top speed=" + p1.speed.ToString("0.00") + " (normal max " + g.driveSpeed + ")\n");
-// 3. Cherry touches AI -> AI wrecked
-g.StartRun(1); skip(); unprotect(0);
-p1 = g.cars[0]; var ai = g.cars[2]; p1.item = 3; g.Advance(dt, use, none);
-p1.position = new UnityEngine.Vector2(0, -1); p1.heading = 0; p1.speed = .5f; ai.position = new UnityEngine.Vector2(.55f, -1); ai.speed = 0; ai.heading = 90;
-float s0 = p1.score; for (int f = 0; f < 5; f++) g.Advance(dt, none, none);
-sb.Append("Cherry P1 touches AI (slow): ai alive=" + ai.alive + " p1 alive=" + p1.alive + " p1 score +" + (p1.score - s0) + "\n");
-// 4. 2P: P2 rams cherry P1 -> P1 wrecked
-g.StartRun(2); skip(); unprotect(0);
-p1 = g.cars[0]; var p2 = g.cars[1]; p1.item = 3; g.Advance(dt, use, none);
-p1.position = new UnityEngine.Vector2(0, -1); p1.heading = 90; p1.speed = 0;
-p2.position = new UnityEngine.Vector2(-.6f, -1); p2.heading = 0; p2.speed = 2.6f;
-g.Advance(dt, none, gas);
-sb.Append("P2 rams cherry P1: p1 alive=" + p1.alive + " p2 alive=" + p2.alive + " notice=" + g.notice.text + "\n");
-// 5. Rocket kills cherry car (AI with cherry hit by P1 rocket)
-g.StartRun(1); skip(); unprotect(0);
-ai = g.cars[3]; ai.item = 0; typeof(TNDA.Prototype.DemolitionGame).GetField("cherrySeconds", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(g, new float[]{0,0,0,8});
-ai.health = 1; ai.position = new UnityEngine.Vector2(1, -1); ai.speed = 0;
-g.rockets[0].Spawn(new UnityEngine.Vector2(.3f, -1), new UnityEngine.Vector2(6, 0), 0);
-g.Advance(dt, none, none); g.Advance(dt, none, none);
-sb.Append("Rocket hits cherry AI: ai alive=" + ai.alive + "\n");
-// 6. AI cherry never harms human
-g.StartRun(1); skip(); unprotect(0);
-p1 = g.cars[0]; ai = g.cars[2];
-typeof(TNDA.Prototype.DemolitionGame).GetField("cherrySeconds", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(g, new float[]{0,0,8,0});
-ai.position = new UnityEngine.Vector2(0, -1); ai.heading = 0; ai.speed = 3; p1.position = new UnityEngine.Vector2(.55f, -1); p1.speed = 0;
-g.Advance(dt, none, none);
-sb.Append("AI cherry touches P1: p1 alive=" + p1.alive + " ai alive=" + ai.alive + "\n");
-// 7. 30s soak with AI only for exceptions
-g.StartRun(1); skip();
-for (int f = 0; f < 60*30; f++) g.Advance(dt, none, none);
-sb.Append("30s soak ok, phase=" + g.Phase + " scores=" + string.Join(",", System.Linq.Enumerable.Select(g.cars, c => c.DriverName + ":" + c.score)));
-} catch (System.Exception e) { sb.Append("EXCEPTION " + e); }
-g.enabled = true; g.PreparePreview();
-return sb.ToString();
+var checks = new System.Collections.Generic.Dictionary<string, bool>();
+float dt = 1f / 60;
+var none = new TNDA.Prototype.ArcadeInput();
+var use = new TNDA.Prototype.ArcadeInput { action = true, actionPressed = true };
+var gas = new TNDA.Prototype.ArcadeInput { throttle = 1 };
+bool wasEnabled = g.enabled;
+var randomState = UnityEngine.Random.state;
+System.Action<int> start = players => {
+    g.StartRun(players);
+    while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none);
+    foreach (var car in g.cars) { car.computer = false; car.spawnProtection = car.shieldSeconds = 0; }
+    foreach (var prop in g.props) { prop.broken = true; prop.respawn = 1000; prop.view.gameObject.SetActive(false); }
+    foreach (var pickup in g.pickups) { pickup.available = false; pickup.respawn = 1000; pickup.view.gameObject.SetActive(false); }
+};
+try
+{
+    g.enabled = false;
+    UnityEngine.Random.InitState(20261013);
+    // Roll through actual crate collection, with no reflection into the item-selection implementation.
+    start(1);
+    for (int i = 0; i < g.cars.Length; i++) g.cars[i].score = i * 100;
+    var crate = g.pickups[0];
+    int lastCherry = 0, leaderCherry = 0;
+    foreach (int index in new[] { 0, 3 })
+    {
+        var collector = g.cars[index];
+        var parked = collector.position;
+        for (int trial = 0; trial < 2000; trial++)
+        {
+            collector.item = 0;
+            collector.position = crate.point;
+            crate.available = true; crate.view.gameObject.SetActive(true);
+            g.Advance(.001f, none, none);
+            if (collector.item == 3) { if (index == 0) lastCherry++; else leaderCherry++; }
+        }
+        collector.position = parked;
+    }
+    checks["last-place cherry odds"] = lastCherry > 850 && lastCherry < 1150;
+    checks["leader cannot roll cherry"] = leaderCherry == 0;
+
+    start(1);
+    var p1 = g.cars[0];
+    p1.item = 3;
+    g.Advance(dt, use, none);
+    var block = new UnityEngine.MaterialPropertyBlock(); p1.body.GetPropertyBlock(block);
+    checks["use cherry consumes item and shows yellow car"] = p1.HasCherry && p1.item == 0
+        && g.cherryViews[0].gameObject.activeSelf && block.GetFloat("_Solid") == 1;
+    p1.position = new UnityEngine.Vector2(-4.1f, -.5f); p1.heading = 0;
+    for (int f = 0; f < 180; f++) g.Advance(dt, gas, none);
+    checks["cherry increases top speed"] = UnityEngine.Mathf.Abs(p1.speed - 3.78f) < .01f;
+
+    start(1);
+    p1 = g.cars[0]; var ai = g.cars[2];
+    p1.GiveCherry(8);
+    p1.position = new UnityEngine.Vector2(0, -1); p1.heading = 0; p1.speed = .5f;
+    ai.position = new UnityEngine.Vector2(.55f, -1); ai.heading = 90; ai.speed = 0;
+    g.Advance(dt, none, none);
+    checks["cherry touch wrecks opponent"] = !ai.alive && p1.alive && p1.score == 300 && ai.IsSpinningOut;
+
+    start(2);
+    p1 = g.cars[0]; var p2 = g.cars[1];
+    p1.GiveCherry(8);
+    p1.position = new UnityEngine.Vector2(0, -1); p1.heading = 90;
+    p2.position = new UnityEngine.Vector2(-.6f, -1); p2.heading = 0; p2.speed = 2.6f;
+    g.Advance(dt, none, gas);
+    checks["ramming cherry car wrecks it"] = !p1.alive && p2.alive && !p1.HasCherry;
+
+    start(1);
+    p1 = g.cars[0]; ai = g.cars[2]; ai.computer = true;
+    ai.GiveCherry(8);
+    ai.position = new UnityEngine.Vector2(0, -1); ai.heading = 0; ai.speed = 3;
+    p1.position = new UnityEngine.Vector2(.55f, -1);
+    g.Advance(dt, none, none);
+    checks["AI cherry respects opening grace"] = p1.alive && p1.health == 1;
+
+    start(1);
+    p1 = g.cars[0]; p1.GiveCherry(8);
+    for (int f = 0; f < 360; f++) g.Advance(dt, none, none);
+    bool shown = g.cherryViews[0].gameObject.activeSelf;
+    g.Advance(.13f, none, none);
+    checks["cherry warning blinks"] = p1.HasCherry && shown != g.cherryViews[0].gameObject.activeSelf;
+    for (int f = 0; f < 120; f++) g.Advance(dt, none, none);
+    p1.body.GetPropertyBlock(block);
+    checks["cherry expiry restores car"] = !p1.HasCherry && p1.CherrySeconds == 0
+        && !g.cherryViews[0].gameObject.activeSelf && block.GetFloat("_Solid") == 0;
+
+    g.StartRun(1);
+    while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none);
+    for (int f = 0; f < 1800; f++) g.Advance(dt, none, none);
+    checks["thirty-second AI soak"] = g.Phase == TNDA.Prototype.ArcadePhase.Playing && g.Contenders == 4;
+}
+finally { UnityEngine.Random.state = randomState; g.PreparePreview(); g.enabled = wasEnabled; }
+return checks;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using TMPro;
@@ -65,15 +66,13 @@ namespace TNDA.Prototype
         [Header("Rocket explosion")]
         public SpriteRenderer[] explosions;
         public float explosionSeconds = .45f;
-        private readonly float[] explosionAge = { -1, -1, -1, -1 };
+        private float[] explosionAge = Array.Empty<float>();
         private MaterialPropertyBlock solidBlock;
-        private readonly float[] cherrySeconds = new float[4];
 
         [Header("Elimination spin-out")]
         [Tooltip("Eliminated cars spin and skid off the screen instead of vanishing.")]
         public float spinOutTurnsPerSecond = 4;
         public float spinOutStartSpeed = 4, spinOutAcceleration = 14;
-        private readonly float[] spinOutSpeed = new float[4];
 
         [Header("Start messages")]
         [Tooltip("Shown one after another in the centre right after GO.")]
@@ -89,20 +88,20 @@ namespace TNDA.Prototype
         public float ramBump = 2.4f;
         [Tooltip("How fast the sliding push fades (per second).")]
         public float bumpFriction = 4.5f;
-        private readonly Vector2[] knock = new Vector2[4];
-        private readonly Vector2[] spinOutDirection = new Vector2[4];
-        public bool HasCherry(ArcadeVehicle car) => car.alive && cherrySeconds[car.index] > 0;
+        public bool HasCherry(ArcadeVehicle car) => car.HasCherry;
         public Vector2 arenaMin = new Vector2(-4.35f, -3.85f);
         public Vector2 arenaMax = new Vector2(4.35f, 1.65f);
         public AudioClip engineClip;
 
         private readonly ArcadeEngineAudio engine = new ArcadeEngineAudio();
-        private readonly float[,] contactCooldowns = new float[4, 4];
-        private readonly float[] aiThink = new float[4];
-        private readonly Vector2[] aiDestination = new Vector2[4];
-        private readonly int[] aiTarget = new int[4];
-        private readonly int[] finalPlaces = new int[4];
+        private readonly Dictionary<(ArcadeVehicle, ArcadeVehicle), float> contactCooldowns = new Dictionary<(ArcadeVehicle, ArcadeVehicle), float>();
         private int eliminationStage;
+
+        private VehicleLifecycleRules LifecycleRules => new VehicleLifecycleRules {
+            wreckPenalty = wreckPenalty, respawnSeconds = enemyRespawnSeconds,
+            spinStartSpeed = spinOutStartSpeed, spinAcceleration = spinOutAcceleration,
+            spinTurnsPerSecond = spinOutTurnsPerSecond, arenaCentre = (arenaMin + arenaMax) / 2
+        };
 
         public float Remaining => Mathf.Max(0, roundSeconds - Elapsed);
         public float NextElimination => eliminationStage == 0 ? firstElimination : eliminationStage == 1 ? secondElimination : roundSeconds;
@@ -147,11 +146,8 @@ namespace TNDA.Prototype
             for (int i = 0; i < cars.Length; i++)
             {
                 cars[i].ResetVehicle(starts[i], i < 2 ? 90 : -90, startingDemo ? 0 : PlayerCount);
-                cars[i].spawnProtection = 2;
-                aiThink[i] = .2f + i * .15f;
-                aiTarget[i] = -1;
-                aiDestination[i] = new Vector2(i % 2 == 0 ? -1.8f : 1.8f, -.6f);
-                finalPlaces[i] = 0;
+                cars[i].aiThink = .2f + i * .15f;
+                cars[i].aiDestination = new Vector2(i % 2 == 0 ? -1.8f : 1.8f, -.6f);
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].GetComponentInChildren<SpriteRenderer>().color = cars[i].body.color;
             }
@@ -168,10 +164,8 @@ namespace TNDA.Prototype
                 pickup.view.gameObject.SetActive(true);
             }
             foreach (var rocket in rockets) rocket.Hide();
-            Array.Clear(contactCooldowns, 0, contactCooldowns.Length);
-            Array.Clear(cherrySeconds, 0, cherrySeconds.Length);
-            Array.Clear(spinOutSpeed, 0, spinOutSpeed.Length);
-            Array.Clear(knock, 0, knock.Length);
+            contactCooldowns.Clear();
+            explosionAge = new float[explosions == null ? 0 : explosions.Length];
             for (int i = 0; i < explosionAge.Length; i++) explosionAge[i] = -1;
             if (explosions != null) foreach (var blast in explosions) if (blast != null) blast.gameObject.SetActive(false);
         }
@@ -181,16 +175,13 @@ namespace TNDA.Prototype
             RefreshSpawns(dt);
             foreach (var car in cars)
             {
+                car.AdvanceTimers(dt);
                 if (car.eliminated) continue;
                 if (!car.alive)
                 {
-                    car.respawn -= dt;
-                    if (car.respawn <= 0) RespawnVehicle(car);
+                    if (car.ReadyToRespawn) RespawnVehicle(car);
                     continue;
                 }
-                car.shieldSeconds = Mathf.Max(0, car.shieldSeconds - dt);
-                cherrySeconds[car.index] = Mathf.Max(0, cherrySeconds[car.index] - dt);
-                car.spawnProtection = Mathf.Max(0, car.spawnProtection - dt);
                 ArcadeInput input = car.computer ? ComputerInput(car, dt) : car.index == 0 ? p1 : p2;
                 // The item button only fires a held item; a human item requires a fresh press.
                 if (car.item != 0 && car.cooldown <= 0 && (car.computer ? input.action : input.actionPressed)) UseAction(car);
@@ -199,8 +190,7 @@ namespace TNDA.Prototype
                 float topSpeed = driveSpeed * (car.computer ? .87f : 1) * (HasCherry(car) ? cherrySpeedMultiplier : 1);
                 car.Drive(dt, input, topSpeed, ramp);
                 // Bumper-car slide from recent hits, fading out.
-                car.position += knock[car.index] * dt;
-                knock[car.index] *= Mathf.Exp(-bumpFriction * dt);
+                car.AdvanceSlide(dt, bumpFriction);
                 ConstrainToArena(car);
                 HitProps(car);
                 CollectPickup(car);
@@ -254,17 +244,16 @@ namespace TNDA.Prototype
         // AI competes for props/items and rams rivals, preferring the leaders. Players are spared early on.
         private ArcadeInput ComputerInput(ArcadeVehicle car, float dt)
         {
-            int i = car.index;
-            aiThink[i] -= dt;
-            if (aiThink[i] <= 0 || Vector2.Distance(car.position, aiDestination[i]) < .4f
-                || (aiTarget[i] >= 0 && !cars[aiTarget[i]].alive)) ChooseDestination(car);
-            if (HasCherry(car) && (aiTarget[i] < 0 || !CanAiHurt(cars[aiTarget[i]])))
+            car.aiThink -= dt;
+            if (car.aiThink <= 0 || Vector2.Distance(car.position, car.aiDestination) < .4f
+                || (car.aiTarget != null && !car.aiTarget.alive)) ChooseDestination(car);
+            if (HasCherry(car) && (car.aiTarget == null || !CanAiHurt(car.aiTarget)))
             {
                 var prey = PickRival(car);
-                if (prey != null && CanAiHurt(prey)) aiTarget[i] = prey.index;
+                if (prey != null && CanAiHurt(prey)) car.aiTarget = prey;
             }
-            if (aiTarget[i] >= 0) aiDestination[i] = cars[aiTarget[i]].position;
-            Vector2 delta = aiDestination[i] - car.position;
+            if (car.aiTarget != null) car.aiDestination = car.aiTarget.position;
+            Vector2 delta = car.aiDestination - car.position;
             float desired = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
             var hunter = HasCherry(car) ? null : cars.FirstOrDefault(c => c != car && HasCherry(c)
                 && Vector2.Distance(c.position, car.position) < 2.2f);
@@ -275,7 +264,7 @@ namespace TNDA.Prototype
                 desired = Mathf.Atan2(flee.y, flee.x) * Mathf.Rad2Deg;
             }
             // Players are steered around unless they are this AI's target after the grace period.
-            foreach (var human in cars.Where(c => !c.computer && c.alive && !(c.index == aiTarget[i] && CanAiHurt(c))))
+            foreach (var human in cars.Where(c => !c.computer && c.alive && !(c == car.aiTarget && CanAiHurt(c))))
             {
                 Vector2 toHuman = human.position - car.position;
                 if (toHuman.magnitude < 1.6f && Vector2.Dot(car.Forward, toHuman.normalized) > -.1f)
@@ -288,7 +277,7 @@ namespace TNDA.Prototype
             }
             float error = Mathf.DeltaAngle(car.heading, desired);
             bool humansClear = !AiGrace || cars.All(c => c.computer || !c.alive || Vector2.Distance(c.position, car.position) > 1.8f);
-            bool rivalAhead = aiTarget[i] >= 0 && delta.magnitude < 2.7f && Mathf.Abs(error) < 22;
+            bool rivalAhead = car.aiTarget != null && delta.magnitude < 2.7f && Mathf.Abs(error) < 22;
             bool hasPropAhead = props.Any(p => !p.broken && Vector2.Distance(p.point, car.position) < 1.6f
                 && Vector2.Dot(car.Forward, (p.point - car.position).normalized) > .8f);
             bool rivalNear = cars.Any(c => CanAiHurt(c) && c.alive && c != car && Vector2.Distance(c.position, car.position) < 3);
@@ -305,8 +294,8 @@ namespace TNDA.Prototype
         private void ChooseDestination(ArcadeVehicle car)
         {
             int i = car.index;
-            aiThink[i] = 2.2f + i * .35f;
-            aiTarget[i] = -1;
+            car.aiThink = 2.2f + i * .35f;
+            car.aiTarget = null;
             var rival = PickRival(car);
             // A car well ahead of this AI is hunted on purpose, whatever the current strategy.
             bool huntLeader = rival != null && CanAiHurt(rival) && rival.score >= car.score + leaderHuntMargin;
@@ -317,12 +306,12 @@ namespace TNDA.Prototype
             int strategy = (Mathf.FloorToInt(Elapsed / 4) + i) % 3;
             if (rival != null && (huntLeader || strategy == 0 || car.item == 2 || prop == null && pickup == null))
             {
-                aiTarget[i] = rival.index;
-                aiDestination[i] = rival.position;
+                car.aiTarget = rival;
+                car.aiDestination = rival.position;
             }
-            else if (pickup != null && (strategy == 1 || prop == null)) aiDestination[i] = pickup.point;
-            else if (prop != null) aiDestination[i] = prop.point;
-            else aiDestination[i] = new Vector2(Mathf.Sin(Elapsed + i) * 2.8f, Mathf.Cos(Elapsed + i) * 1.6f - .6f);
+            else if (pickup != null && (strategy == 1 || prop == null)) car.aiDestination = pickup.point;
+            else if (prop != null) car.aiDestination = prop.point;
+            else car.aiDestination = new Vector2(Mathf.Sin(Elapsed + i) * 2.8f, Mathf.Cos(Elapsed + i) * 1.6f - .6f);
         }
 
         private void ConstrainToArena(ArcadeVehicle car)
@@ -333,14 +322,13 @@ namespace TNDA.Prototype
             bool hitY = !Mathf.Approximately(car.position.y, bounded.y);
             car.position = bounded;
             // A bumper slide into a wall rebounds softly instead of pinning the car.
-            if (hitX) knock[car.index].x *= -.3f;
-            if (hitY) knock[car.index].y *= -.3f;
+            car.ReboundSlide(hitX, hitY);
             // Walls slow players without draining durability. AI turns back into the arena.
             if (car.computer)
             {
                 if (hitX) car.heading = 180 - car.heading;
                 if (hitY) car.heading = -car.heading;
-                aiThink[car.index] = 0;
+                car.aiThink = 0;
             }
             if (Mathf.Abs(car.speed) > 1) PlayHit(.2f);
             car.speed = 0;
@@ -361,7 +349,7 @@ namespace TNDA.Prototype
                     car.speed *= .75f;
                     Sound(2);
                     Announce(string.Format(CabinetText.Smashed, car.DriverName, prop.points), car.body.color, 1.2f);
-                    aiThink[car.index] = 0;
+                    car.aiThink = 0;
                 }
                 else
                 {
@@ -370,7 +358,7 @@ namespace TNDA.Prototype
                     car.position = prop.point + away * .65f;
                     car.speed *= -.3f;
                     car.stun = .15f;
-                    if (car.computer) aiThink[car.index] = 0;
+                    if (car.computer) car.aiThink = 0;
                 }
             }
         }
@@ -419,9 +407,7 @@ namespace TNDA.Prototype
             }
             else if (car.item == 3)
             {
-                cherrySeconds[car.index] = cherryDuration;
-                car.item = 0;
-                car.cooldown = .35f;
+                car.GiveCherry(cherryDuration);
                 Sound(2);
                 Announce(string.Format(CabinetText.CherryEaten, car.DriverName, cherryDuration.ToString("0")), car.body.color, 2.5f);
             }
@@ -451,24 +437,26 @@ namespace TNDA.Prototype
         {
             for (int i = 0; i < cars.Length; i++) for (int j = i + 1; j < cars.Length; j++)
             {
-                contactCooldowns[i, j] = Mathf.Max(0, contactCooldowns[i, j] - dt);
                 var a = cars[i];
                 var b = cars[j];
+                var pair = (a, b);
+                contactCooldowns.TryGetValue(pair, out float cooldown);
+                contactCooldowns[pair] = Mathf.Max(0, cooldown - dt);
                 if (!a.alive || !b.alive || Vector2.Distance(a.position, b.position) >= .62f) continue;
                 Vector2 separation = (a.position - b.position).normalized;
                 if (separation.sqrMagnitude < .001f) separation = Vector2.right;
                 float overlap = .63f - Vector2.Distance(a.position, b.position);
                 a.position += separation * overlap * .5f;
                 b.position -= separation * overlap * .5f;
-                if (contactCooldowns[i, j] <= 0)
+                if (contactCooldowns[pair] <= 0)
                 {
                     // Every new touch bounces both cars apart a little; a real ram adds more in ResolveImpact.
-                    knock[i] += separation * contactBump;
-                    knock[j] -= separation * contactBump;
-                    if (a.computer) aiThink[i] = 0;
-                    if (b.computer) aiThink[j] = 0;
+                    a.ApplySlide(separation * contactBump);
+                    b.ApplySlide(-separation * contactBump);
+                    if (a.computer) a.aiThink = 0;
+                    if (b.computer) b.aiThink = 0;
                     ResolveImpact(a, b);
-                    contactCooldowns[i, j] = .8f;
+                    contactCooldowns[pair] = .8f;
                 }
                 a.Sync();
                 b.Sync();
@@ -507,11 +495,11 @@ namespace TNDA.Prototype
             }
             ApplyDamage(attacker, damage * .15f);
             attacker.speed *= .6f;
-            if (damaged) { victim.speed *= .4f; victim.stun = .12f; }
+            if (damaged && victim.alive) { victim.speed *= .4f; victim.stun = .12f; }
             // Bumper cars: the rammed car slides away and its nose is knocked aside; the rammer rebounds.
             Vector2 push = (victim.position - attacker.position).normalized;
-            knock[victim.index] += push * ramBump * (.6f + impact * .4f);
-            knock[attacker.index] -= push * ramBump * .35f;
+            victim.ApplySlide(push * ramBump * (.6f + impact * .4f));
+            attacker.ApplySlide(-push * ramBump * .35f);
             victim.heading += UnityEngine.Random.Range(15f, 30f) * (UnityEngine.Random.value < .5f ? -1 : 1);
             if (damaged && victim.alive) Announce(string.Format(CabinetText.Rammed, attacker.DriverName, multiplier.ToString("0.0")), attacker.body.color, 1);
             PlayHit(Mathf.Clamp(.3f + impact * .1f, .3f, .75f));
@@ -537,8 +525,11 @@ namespace TNDA.Prototype
                     {
                         owner.score += 120;
                         if (!victim.alive) AwardWreck(owner);
-                        victim.stun = .5f;
-                        victim.speed *= .2f;
+                        if (victim.alive)
+                        {
+                            victim.stun = .5f;
+                            victim.speed *= .2f;
+                        }
                     }
                     Explode(victim.position);
                     rocket.Hide();
@@ -573,22 +564,16 @@ namespace TNDA.Prototype
 
         private bool ApplyDamage(ArcadeVehicle car, float damage)
         {
-            if (!car.alive || car.eliminated || damage <= 0) return false;
-            if (car.shieldSeconds > 0 || car.spawnProtection > 0)
+            float previousScore = car.score;
+            if (!car.TakeDamage(damage, LifecycleRules))
             {
-                if (car.shieldSeconds > 0) Announce(string.Format(CabinetText.ShieldBlocked, car.DriverName), Cyan, .75f);
+                if (car.alive && damage > 0 && car.shieldSeconds > 0)
+                    Announce(string.Format(CabinetText.ShieldBlocked, car.DriverName), Cyan, .75f);
                 return false;
             }
-            car.health = Mathf.Max(0, car.health - damage);
-            if (car.health <= 0)
+            if (!car.alive)
             {
-                int deducted = Mathf.Min(wreckPenalty, Mathf.FloorToInt(car.score));
-                car.score = Mathf.Max(0, car.score - wreckPenalty);
-                car.alive = false;
-                car.respawn = enemyRespawnSeconds;
-                car.speed = car.shieldSeconds = cherrySeconds[car.index] = 0;
-                car.item = 0;
-                StartSpinOut(car, false); // wrecked cars skid off screen too; the impact already played a hit
+                int deducted = Mathf.FloorToInt(previousScore - car.score);
                 Wrecks++;
                 Announce(string.Format(CabinetText.Wrecked, car.DriverName, deducted, enemyRespawnSeconds.ToString("0")), Yellow, 2.5f);
             }
@@ -606,13 +591,7 @@ namespace TNDA.Prototype
             Vector2[] corners = { new Vector2(-3.5f, 1.1f), new Vector2(3.5f, 1.1f), new Vector2(3.5f, -3.2f), new Vector2(-3.5f, -3.2f) };
             Vector2 spawn = corners.OrderByDescending(p => cars.Where(c => c.alive)
                 .Select(c => Vector2.Distance(p, c.position)).DefaultIfEmpty(10).Min()).First();
-            float score = car.score;
-            spinOutSpeed[car.index] = 0;
-            knock[car.index] = Vector2.zero;
-            car.ResetVehicle(spawn, spawn.x > 0 ? 180 : 0, demo ? 0 : PlayerCount);
-            car.score = score;
-            car.spawnProtection = 2;
-            aiThink[car.index] = 0;
+            car.Respawn(spawn, spawn.x > 0 ? 180 : 0);
         }
 
         private void EliminateLowest()
@@ -621,17 +600,13 @@ namespace TNDA.Prototype
             if (count <= 1) { EndRound(); return; }
             // Ties: lower durability loses first, then the higher car index. Never random.
             var loser = cars.Where(c => !c.eliminated).OrderBy(c => c.score).ThenBy(c => c.health).ThenByDescending(c => c.index).First();
-            finalPlaces[loser.index] = count;
-            loser.eliminated = true;
-            loser.alive = false;
-            loser.speed = loser.shieldSeconds = loser.spawnProtection = cherrySeconds[loser.index] = 0;
-            loser.item = 0;
-            StartSpinOut(loser);
+            loser.Eliminate(count, LifecycleRules);
+            PlayHit(1);
             foreach (var rocket in rockets.Where(r => r.active && r.owner == loser.index)) rocket.Hide();
             eliminationStage++;
             Announce(string.Format(CabinetText.Eliminated, loser.DriverName), Yellow, 4);
             Sound(3);
-            for (int i = 0; i < aiThink.Length; i++) aiThink[i] = 0;
+            foreach (var car in cars) car.aiThink = 0;
             if (Contenders == 1) EndRound();
         }
 
@@ -639,48 +614,23 @@ namespace TNDA.Prototype
         {
             var winner = cars.First(c => !c.eliminated);
             Champion = winner.index;
-            finalPlaces[Champion] = 1;
             Survived = !winner.computer;
             if (!winner.alive) RespawnVehicle(winner);
+            winner.FinalPlace = 1;
             foreach (var rocket in rockets) rocket.Hide();
             int best = Mathf.Max(PlayerPrefs.GetInt("WreckBest", 0), Mathf.RoundToInt(cars.Where(c => !c.computer).Max(c => c.score)));
             PlayerPrefs.SetInt("WreckBest", best);
-            string standings = string.Join("\n", cars.OrderBy(c => finalPlaces[c.index])
-                .Select(c => string.Format(CabinetText.Standing, finalPlaces[c.index], c.DriverName, Mathf.RoundToInt(c.score).ToString("00000"))));
+            string standings = string.Join("\n", cars.OrderBy(c => c.FinalPlace)
+                .Select(c => string.Format(CabinetText.Standing, c.FinalPlace, c.DriverName, Mathf.RoundToInt(c.score).ToString("00000"))));
             Finish(string.Format(CabinetText.Winner, winner.DriverName), standings
                 + "\n\n" + string.Format(CabinetText.ResultsSummary, best, Wrecks) + "\n\n" + CabinetText.EliminationRule);
-        }
-
-        // The loser skids straight away from the arena centre while spinning, then is hidden once off screen.
-        private void StartSpinOut(ArcadeVehicle car, bool playSound = true)
-        {
-            Vector2 away = car.position - (arenaMin + arenaMax) / 2;
-            if (away.sqrMagnitude < .01f) away = car.Forward;
-            spinOutDirection[car.index] = away.normalized;
-            spinOutSpeed[car.index] = spinOutStartSpeed;
-            car.gameObject.SetActive(true); // a car wrecked at that moment reappears to fly out
-            car.Sync();
-            if (playSound) PlayHit(1);
         }
 
         private void UpdateSpinOuts(float dt)
         {
             Vector2 view = sceneCamera.transform.position;
             float half = sceneCamera.orthographicSize + 1;
-            foreach (var car in cars)
-            {
-                int i = car.index;
-                if (spinOutSpeed[i] <= 0) continue;
-                spinOutSpeed[i] += spinOutAcceleration * dt;
-                car.position += spinOutDirection[i] * spinOutSpeed[i] * dt;
-                car.heading += spinOutTurnsPerSecond * 360 * dt;
-                car.Sync();
-                if (Mathf.Abs(car.position.x - view.x) > half || Mathf.Abs(car.position.y - view.y) > half)
-                {
-                    spinOutSpeed[i] = 0;
-                    car.gameObject.SetActive(false);
-                }
-            }
+            foreach (var car in cars) car.AdvanceSpinOut(dt, LifecycleRules, view, half);
         }
 
         // Rocket hit: the supplied explosion picture pops up over the car and fades out.
@@ -727,15 +677,15 @@ namespace TNDA.Prototype
 
         private string DriverStatus(ArcadeVehicle car)
         {
-            if (car.eliminated) return string.Format(CabinetText.StatusEliminated, finalPlaces[car.index]);
+            if (car.eliminated) return string.Format(CabinetText.StatusEliminated, car.FinalPlace);
             if (!car.alive) return string.Format(CabinetText.StatusRespawn, Mathf.CeilToInt(car.respawn));
-            if (HasCherry(car)) return string.Format(CabinetText.StatusCherry, Mathf.CeilToInt(cherrySeconds[car.index]));
+            if (HasCherry(car)) return string.Format(CabinetText.StatusCherry, Mathf.CeilToInt(car.CherrySeconds));
             if (car.shieldSeconds > 0) return string.Format(CabinetText.StatusShield, Mathf.CeilToInt(car.shieldSeconds));
             return car.item != 0 ? ItemName(car.item) : string.Format(CabinetText.StatusHealth, Mathf.CeilToInt(car.health * 100));
         }
 
         private string ActionStatus(ArcadeVehicle car) => car.eliminated ? CabinetText.ActionEliminated : !car.alive ? CabinetText.ActionRespawning
-            : HasCherry(car) ? string.Format(CabinetText.ActionCherry, Mathf.CeilToInt(cherrySeconds[car.index])) : ItemName(car.item);
+            : HasCherry(car) ? string.Format(CabinetText.ActionCherry, Mathf.CeilToInt(car.CherrySeconds)) : ItemName(car.item);
 
         protected override void RefreshHud()
         {
@@ -776,7 +726,7 @@ namespace TNDA.Prototype
                 if (cherryViews != null && i < cherryViews.Length && cherryViews[i] != null)
                 {
                     // Blinks during the last two seconds as a warning that the power is ending.
-                    float left = cherrySeconds[i];
+                    float left = car.CherrySeconds;
                     bool cherryOn = HasCherry(car) && (left > 2 || Mathf.FloorToInt(Elapsed * 8) % 2 == 0);
                     cherryViews[i].gameObject.SetActive(cherryOn);
                     // The whole car turns yellow while the cherry power lasts (blinking with the icon at the end).
@@ -790,8 +740,8 @@ namespace TNDA.Prototype
             header.text = CabinetText.Title;
             arenaBoard.text = Phase == ArcadePhase.Results ? string.Format(CabinetText.Champion, cars[Champion].DriverName)
                 : string.Format(CabinetText.NextElimination, Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)), Contenders);
-            var order = Phase == ArcadePhase.Results ? cars.OrderBy(c => finalPlaces[c.index])
-                : cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? finalPlaces[c.index] : -c.score);
+            var order = Phase == ArcadePhase.Results ? cars.OrderBy(c => c.FinalPlace)
+                : cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? c.FinalPlace : -c.score);
             if (leaderboard != null)
                 leaderboard.text = string.Join("\n", order.Select((c, rank) =>
                     "<color=#" + ColorUtility.ToHtmlStringRGB(c.body.color) + ">" + (rank + 1) + " " + c.DriverName.PadRight(4)

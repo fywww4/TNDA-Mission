@@ -94,7 +94,7 @@
 | 檔案 | 用途 |
 | --- | --- |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | 整合版玩法；含 BreakableProp／ArenaPickup、AI、積分、淘汰、道具與重生。 |
-| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛、道具、淘汰旗標與護盾時間。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
+| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次與 AI 暫存。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
 | `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour。 |
 | `Assets/Prototype/Runtime/ArcadeGame.cs` | 標題、倒數、輸入、音效、結算與重玩；已移除舊場景切換。 |
 | `Assets/Prototype/Runtime/ArcadeEngineAudio.cs` | 真人車循環引擎聲。 |
@@ -142,3 +142,6 @@
 - 票單 08 的 `code-review` 雙軸審查完成：Standards 0 項、Spec 0 項；以票單 01 結案提交 `ba54a92` 為固定點，實作提交 `6ea6804`。
 - 2026-10-13 完成架構票單 09：畫面文字集中於 `CabinetText`，字型字元清單改由文字表＋場景文字產生，不再掃描原始碼檔名。`Game3Text.PatchScene()` 已重跑並儲存；比賽中底部提示改用與標題畫面相同的全形空白（P1 約 230px，在 312px 框內）。`tmp/g3text.cs`（Play Mode）驗證底部提示與標題畫面一致、無缺字、所有文字為 11 的倍數；320×320 標題與比賽截圖清晰。`g3cherry`／`g3wreck`／`g3rocket` 回歸通過。重新編譯及網域重新載入完成，Console 零錯誤、零警告。
 - 票單 09 的 `code-review` 雙軸審查：Standards 無硬性違規（判斷項：道具代碼 1/2/3 的條件式重複、`startMessages` 仍為可在 Inspector 覆寫的場景值，屬票單 08 保留調整值的既定設計）；Spec 判定完成。
+- 2026-10-13 完成架構票單 02：撞毀、永久淘汰、重生、櫻桃與碰碰車滑行集中於 `ArcadeVehicle`，不再以比賽主程式的平行陣列保存每車狀態；AI 暫存也移至車輛，接觸冷卻依車對車關係保存。一般撞毀會清除道具、櫻桃、滑行與硬直／冷卻，飛出後隱藏，3 秒重生保留扣分後分數與 AI 身分，提供 2 秒保護；計時淘汰保留分數與名次並永久退場。致命火箭或衝撞不再把硬直寫回已撞毀的車。
+- 票單 02 的公開介面驗證 `g3lifecycle`／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket` 共 66 項斷言通過，全部不使用反射；`g3ai` 改為讀取車輛目標。AI、油門、特效、開局標語與文字回歸可正常執行，實際 320×320 飛出及重生保護畫面已檢視。已重新編譯並確認網域重新載入完成，Console 即時為零錯誤、零警告，完成後停止 Play Mode。額外的場景修補回歸 `g3patch` 因場景有未儲存狀態而未執行，該狀態保留。
+- 票單 02 的 `code-review` 雙軸審查完成：Standards 0 項、Spec 0 項；固定點為票單 09 提交 `9dd9646`。

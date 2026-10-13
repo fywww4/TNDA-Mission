@@ -1,25 +1,48 @@
 var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
-var sb = new System.Text.StringBuilder(); float dt = 1f/60; var none = new TNDA.Prototype.ArcadeInput();
-g.enabled = false;
-try {
-  g.StartRun(1); while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none);
-  for (int f = 0; f < 150; f++) g.Advance(dt, none, none);
-  var ai = g.cars[2]; ai.spawnProtection = 0; ai.shieldSeconds = 0; float h0 = ai.heading;
-  g.DamageVehicle(ai, 1);
-  sb.Append("wrecked " + ai.DriverName + " alive=" + ai.alive + " visible=" + ai.gameObject.activeSelf + " at " + ai.position + "\n");
-  float gone = -1, back = -1;
-  for (int f = 1; f <= 300; f++) {
+var checks = new System.Collections.Generic.Dictionary<string, bool>();
+float dt = 1f / 60;
+var none = new TNDA.Prototype.ArcadeInput();
+bool wasEnabled = g.enabled;
+try
+{
+    g.enabled = false;
+    // Both a player and an AI use the same three-second wreck/respawn lifecycle.
+    foreach (int index in new[] { 0, 2 })
+    {
+        g.StartRun(1);
+        while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none);
+        var car = g.cars[index];
+        car.spawnProtection = car.shieldSeconds = 0;
+        car.score = 1000;
+        car.GiveCherry(8);
+        car.ApplySlide(UnityEngine.Vector2.up * 2);
+        g.DamageVehicle(car, 1);
+        checks[index + " wreck"] = !car.alive && car.IsSpinningOut && car.gameObject.activeSelf && car.score == 750
+            && !car.HasCherry && car.SlideVelocity == UnityEngine.Vector2.zero && g.Wrecks == 1;
+        float heading = car.heading;
+        g.Advance(.25f, none, none);
+        checks[index + " spins four turns per second"] = UnityEngine.Mathf.Abs(car.heading - heading - 360) < .01f;
+        for (int f = 0; f < 105; f++) g.Advance(dt, none, none);
+        checks[index + " hides before respawn"] = !car.alive && !car.gameObject.activeSelf && !car.IsSpinningOut;
+        for (int f = 0; f < 59; f++) g.Advance(dt, none, none);
+        checks[index + " stays dead before three seconds"] = !car.alive;
+        g.Advance(.025f, none, none);
+        checks[index + " respawns with retained score"] = car.alive && car.gameObject.activeSelf && car.health == 1
+            && car.score == 750 && car.spawnProtection == 2 && car.computer == (index == 2);
+        g.Advance(.13f, none, none);
+        bool shown = g.shieldViews[index].gameObject.activeSelf;
+        g.Advance(.125f, none, none);
+        checks[index + " protection blinks"] = shown != g.shieldViews[index].gameObject.activeSelf;
+        g.DamageVehicle(car, 1);
+        checks[index + " respawn protection blocks damage"] = car.alive && car.health == 1;
+    }
+    g.PreparePreview();
     g.Advance(dt, none, none);
-    if (f % 15 == 0 && gone < 0) sb.Append("  +" + (f/60f).ToString("0.00") + "s pos=" + ai.position + " spun=" + ((ai.heading - h0)/360).ToString("0.0") + " turns\n");
-    if (gone < 0 && !ai.gameObject.activeSelf) gone = f/60f;
-    if (back < 0 && ai.alive) { back = f/60f; sb.Append("  respawned at " + back.ToString("0.00") + "s pos=" + ai.position + " visible=" + ai.gameObject.activeSelf + " AI=" + ai.computer + "\n"); break; }
-  }
-  sb.Append("  left screen after " + gone.ToString("0.00") + "s\n");
-  // Demo: P1's car wrecked during attract must come back AI-driven.
-  g.PreparePreview();
-  for (int f = 0; f < 120; f++) g.Advance(dt, none, none);
-  var c0 = g.cars[0]; c0.spawnProtection = 0; c0.shieldSeconds = 0; g.DamageVehicle(c0, 1);
-  for (int f = 0; f < 240 && !c0.alive; f++) g.Advance(dt, none, none);
-  sb.Append("demo: car0 respawned alive=" + c0.alive + " AI=" + c0.computer + " phase=" + g.Phase);
-} catch (System.Exception e) { sb.Append("EXCEPTION " + e); }
-g.enabled = true; g.PreparePreview(); return sb.ToString();
+    var demoCar = g.cars[0];
+    demoCar.spawnProtection = demoCar.shieldSeconds = 0;
+    g.DamageVehicle(demoCar, 1);
+    for (int f = 0; f < 190; f++) g.Advance(dt, none, none);
+    checks["demo respawn keeps AI"] = demoCar.alive && demoCar.computer && g.Phase == TNDA.Prototype.ArcadePhase.Attract;
+}
+finally { g.PreparePreview(); g.enabled = wasEnabled; }
+return checks;
