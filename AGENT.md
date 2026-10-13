@@ -93,12 +93,15 @@
 
 | 檔案 | 用途 |
 | --- | --- |
-| `Assets/Prototype/Runtime/DemolitionGame.cs` | 整合版比賽流程；含 BreakableProp／ArenaPickup、碰撞、積分、淘汰與重生，並以 `IAiArena`／`IItemArena` 提供局面給 AI 駕駛與道具 module。 |
+| `Assets/Prototype/Runtime/DemolitionMatch.cs` | 比賽規則模擬（不需場景物件）：駕駛、破壞物、木箱、碰撞、火箭、撞毀、計時淘汰與冠軍；`MatchTuning` 為規則數值，以 `IAiArena`／`IItemArena` 提供局面給 AI 駕駛與道具 module，發生的事記錄為 `Events`。 |
+| `Assets/Prototype/Runtime/MatchEvents.cs` | 比賽事件（火箭命中、防護罩擋下、撞毀、撞毀獎勵、淘汰、比賽結束等）。 |
+| `Assets/Prototype/Runtime/DemolitionGame.cs` | GAME3 場景 adapter：BreakableProp／ArenaPickup、Inspector 調整值與輸入送進 `DemolitionMatch`，再把狀態與事件轉成車輛／破壞物／木箱／火箭顯示、爆炸特效、提示文字與音效。 |
+| `Assets/Prototype/Tests/EditMode/` | EditMode 測試組件 `TNDA.Prototype.Tests.EditMode`（不載入 GAME3 場景），以 Unity CLI `run_tests --mode editor` 執行；執行期程式在 `TNDA.Prototype` 組件。 |
 | `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
 | `Assets/Prototype/Runtime/AiDriver.cs` | AI 駕駛 module（`car.Ai`）：選目標、輪替策略、閃避玩家、逃離櫻桃、道具時機；比對車輛的 `Collisions`／`Spawns` 與存活車數自行重新規劃。比賽主程式經 `IAiArena` 提供局面。 |
 | `Assets/Prototype/Runtime/ArenaItems.cs` | 道具 module：`ArenaItem` 列舉、木箱抽選、使用效果、名稱／標籤／狀態文字；比賽主程式經 `IItemArena` 提供火箭與提示。 |
 | `Assets/Prototype/Runtime/VehicleHarmPolicy.cs` | 衝撞、櫻桃、火箭與 AI 選目標共用的傷害資格規則；所有 AI 攻擊在開局前 10 秒不傷玩家，之後可傷玩家。 |
-| `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour。 |
+| `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour；顯示由場景 adapter 同步。 |
 | `Assets/Prototype/Runtime/ArcadeGame.cs` | 標題、倒數、輸入、音效、結算與重玩；已移除舊場景切換。 |
 | `Assets/Prototype/Runtime/ArcadeEngineAudio.cs` | 真人車循環引擎聲。 |
 | `Assets/Prototype/Runtime/CabinetText.cs` | 所有畫面文字的唯一來源（含格式模板）；場景修補、執行期 HUD 與字型字元清單都讀它。 |
@@ -152,3 +155,4 @@
 - 票單 04 的 `code-review` 雙軸審查完成：Standards 0 項、Spec 0 項；固定點為票單 02 提交 `7812c0e`。
 - 2026-10-13 完成架構票單 03：防護罩、火箭、櫻桃集中於 `ArenaItems`（`ArenaItem` 列舉沿用 0～3 序列化代碼）。`tmp/g3items.cs` 16 項斷言通過，既有回歸全部通過；Console 零錯誤、零警告。
 - 2026-10-13 完成架構票單 05：AI 駕駛收進 `AiDriver`，碰撞、場地與生死流程不再改 AI 思考計時。`tmp/g3driver.cs` 14 項斷言通過；固定亂數 `g3ai` 抽取前後相同；既有回歸全部通過，Console 零錯誤、零警告。
+- 2026-10-13 完成架構票單 06：比賽規則移到 `DemolitionMatch`，回傳 `MatchEvents` 事件，`DemolitionGame` 只當場景 adapter。火箭命中完全經由事件呈現（爆炸特效、命中音效、防護罩／撞毀提示）。新增 `TNDA.Prototype` 執行期組件與 EditMode 測試組件，4 個 EditMode 測試（火箭命中、致命火箭的撞毀與獎勵順序、防護罩格擋、整局淘汰到冠軍）以 Unity CLI 執行全部通過；`g3lifecycle`／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket`／`g3harm`／`g3items`／`g3driver` 164 項斷言通過。重新編譯與網域重新載入完成，Console 零錯誤、零警告。

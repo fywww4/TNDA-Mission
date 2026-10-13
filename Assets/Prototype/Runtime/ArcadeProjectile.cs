@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace TNDA.Prototype
 {
+    // Rocket pool slot. The match moves it; DemolitionGame mirrors it onto the view each frame.
     [Serializable]
     public class ArcadeProjectile
     {
@@ -15,10 +16,7 @@ namespace TNDA.Prototype
         public void Spawn(Vector2 point, Vector2 movement, int source = -1)
         {
             position = point; velocity = movement; owner = source; age = 0; active = true;
-            view.gameObject.SetActive(true);
-            Sync();
         }
-        public void Hide() { active = false; view.gameObject.SetActive(false); }
-        public void Sync() { view.transform.position = ArcadeGame.PixelPosition(position); }
+        public void Hide() { active = false; }
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using TMPro;
@@ -27,8 +26,12 @@ namespace TNDA.Prototype
         public bool available;
     }
 
-    public class DemolitionGame : ArcadeGame, IItemArena, IAiArena
+    // The GAME3 scene adapter: Inspector tuning, input and cabinet phases go into DemolitionMatch, and the match's
+    // state and events come back out as car, prop, crate and rocket views, the explosion, notices and sounds.
+    public class DemolitionGame : ArcadeGame
     {
+        private static readonly MatchTuning Defaults = new MatchTuning();
+
         public ArcadeVehicle[] cars;
         public BreakableProp[] props;
         public ArenaPickup[] pickups = Array.Empty<ArenaPickup>();
@@ -38,29 +41,29 @@ namespace TNDA.Prototype
         public Transform[] healthBars, shieldViews;
 
         [Header("Elimination arena tuning")]
-        public float firstElimination = 60, secondElimination = 90, roundSeconds = 120;
-        public float driveSpeed = 2.8f;
+        public float firstElimination = Defaults.firstElimination, secondElimination = Defaults.secondElimination, roundSeconds = Defaults.roundSeconds;
+        public float driveSpeed = Defaults.driveSpeed;
         [Tooltip("Speed gained per second while gas is held (reaches top speed in about 2s).")]
-        public float accelerationPerSecond = 1.4f;
+        public float accelerationPerSecond = Defaults.accelerationPerSecond;
         [Tooltip("Speed lost per second after gas is released.")]
-        public float coastDownPerSecond = 2.2f;
-        public float enemyRespawnSeconds = 3;
-        public int wreckPenalty = 250, wreckBonus = 300;
-        public float shieldDuration = 6, pickupRespawnSeconds = 8;
+        public float coastDownPerSecond = Defaults.coastDownPerSecond;
+        public float enemyRespawnSeconds = Defaults.respawnSeconds;
+        public int wreckPenalty = Defaults.wreckPenalty, wreckBonus = Defaults.wreckBonus;
+        public float shieldDuration = Defaults.shieldDuration, pickupRespawnSeconds = Defaults.pickupRespawnSeconds;
 
         [Header("AI aggression")]
         [Tooltip("Seconds after GO during which AI only targets other AI, steers around players and cannot damage them.")]
-        public float aiGraceSeconds = 10;
+        public float aiGraceSeconds = Defaults.aiGraceSeconds;
         [Tooltip("How much AI prefers high-scoring targets over nearby ones (0 = nearest only).")]
-        public float leaderBias = 1.5f;
+        public float leaderBias = Defaults.leaderBias;
         [Tooltip("A car this many points ahead of an AI is hunted on purpose.")]
-        public float leaderHuntMargin = 300;
+        public float leaderHuntMargin = Defaults.leaderHuntMargin;
 
         [Header("Cherry: crate item only the last-place car can roll")]
         [Tooltip("While active the car is faster and wrecks any car it drives into, but any ram or rocket wrecks it.")]
-        public float cherryDuration = 8;
-        public float cherrySpeedMultiplier = 1.35f;
-        [Range(0, 1)] public float trailingCherryChance = .5f;
+        public float cherryDuration = Defaults.cherryDuration;
+        public float cherrySpeedMultiplier = Defaults.cherrySpeedMultiplier;
+        [Range(0, 1)] public float trailingCherryChance = Defaults.trailingCherryChance;
         public SpriteRenderer[] cherryViews;
 
         [Header("Rocket explosion")]
@@ -71,8 +74,8 @@ namespace TNDA.Prototype
 
         [Header("Elimination spin-out")]
         [Tooltip("Eliminated cars spin and skid off the screen instead of vanishing.")]
-        public float spinOutTurnsPerSecond = 4;
-        public float spinOutStartSpeed = 4, spinOutAcceleration = 14;
+        public float spinOutTurnsPerSecond = Defaults.spinOutTurnsPerSecond;
+        public float spinOutStartSpeed = Defaults.spinOutStartSpeed, spinOutAcceleration = Defaults.spinOutAcceleration;
 
         [Header("Start messages")]
         [Tooltip("Shown one after another in the centre right after GO.")]
@@ -83,33 +86,47 @@ namespace TNDA.Prototype
 
         [Header("Bumper-car knockback")]
         [Tooltip("Sliding push given to cars that touch, so they bounce apart instead of sticking.")]
-        public float contactBump = 1.4f;
+        public float contactBump = Defaults.contactBump;
         [Tooltip("Extra push for the car that gets rammed, scaled by impact speed.")]
-        public float ramBump = 2.4f;
+        public float ramBump = Defaults.ramBump;
         [Tooltip("How fast the sliding push fades (per second).")]
-        public float bumpFriction = 4.5f;
+        public float bumpFriction = Defaults.bumpFriction;
         public bool HasCherry(ArcadeVehicle car) => car.HasCherry;
-        public Vector2 arenaMin = new Vector2(-4.35f, -3.85f);
-        public Vector2 arenaMax = new Vector2(4.35f, 1.65f);
+        public Vector2 arenaMin = Defaults.arenaMin;
+        public Vector2 arenaMax = Defaults.arenaMax;
         public AudioClip engineClip;
 
         private readonly ArcadeEngineAudio engine = new ArcadeEngineAudio();
-        private readonly Dictionary<(ArcadeVehicle, ArcadeVehicle), float> contactCooldowns = new Dictionary<(ArcadeVehicle, ArcadeVehicle), float>();
-        private int eliminationStage;
+        private DemolitionMatch match;
 
-        private VehicleLifecycleRules LifecycleRules => new VehicleLifecycleRules {
-            wreckPenalty = wreckPenalty, respawnSeconds = enemyRespawnSeconds,
-            spinStartSpeed = spinOutStartSpeed, spinAcceleration = spinOutAcceleration,
-            spinTurnsPerSecond = spinOutTurnsPerSecond, arenaCentre = (arenaMin + arenaMax) / 2
-        };
+        // Rebuilt when scene tooling swaps an array; the Inspector tuning is copied in on every use.
+        private DemolitionMatch Match
+        {
+            get
+            {
+                if (match == null || match.Cars != cars || match.Props != props || match.Pickups != pickups || match.Rockets != rockets)
+                    match = new DemolitionMatch(cars, props, pickups, rockets, new MatchTuning());
+                var t = match.Tuning;
+                t.firstElimination = firstElimination; t.secondElimination = secondElimination; t.roundSeconds = roundSeconds;
+                t.driveSpeed = driveSpeed; t.accelerationPerSecond = accelerationPerSecond; t.coastDownPerSecond = coastDownPerSecond;
+                t.respawnSeconds = enemyRespawnSeconds; t.wreckPenalty = wreckPenalty; t.wreckBonus = wreckBonus;
+                t.shieldDuration = shieldDuration; t.pickupRespawnSeconds = pickupRespawnSeconds;
+                t.aiGraceSeconds = aiGraceSeconds; t.leaderBias = leaderBias; t.leaderHuntMargin = leaderHuntMargin;
+                t.cherryDuration = cherryDuration; t.cherrySpeedMultiplier = cherrySpeedMultiplier; t.trailingCherryChance = trailingCherryChance;
+                t.spinOutTurnsPerSecond = spinOutTurnsPerSecond; t.spinOutStartSpeed = spinOutStartSpeed; t.spinOutAcceleration = spinOutAcceleration;
+                t.contactBump = contactBump; t.ramBump = ramBump; t.bumpFriction = bumpFriction;
+                t.arenaMin = arenaMin; t.arenaMax = arenaMax;
+                return match;
+            }
+        }
 
         public float Remaining => Mathf.Max(0, roundSeconds - Elapsed);
-        public float NextElimination => eliminationStage == 0 ? firstElimination : eliminationStage == 1 ? secondElimination : roundSeconds;
-        public int Contenders => cars.Count(c => !c.eliminated);
+        public float NextElimination => Match.NextElimination;
+        public int Contenders => Match.Contenders;
         public int LivePlayers => cars.Count(c => !c.computer && c.alive);
-        public bool Survived { get; private set; }
-        public int Wrecks { get; private set; }
-        public int Champion { get; private set; } = -1;
+        public bool Survived => Match.Survived;
+        public int Wrecks => Match.Wrecks;
+        public int Champion => Match.Champion;
 
         [Header("Attract mode (title screen demo)")]
         public GameObject attractScreen;
@@ -125,7 +142,11 @@ namespace TNDA.Prototype
             if (!demo || Elapsed >= demoLoopSeconds) StartDemo();
             Elapsed += dt;
             Tick(dt, new ArcadeInput(), new ArcadeInput());
-            if (eliminationStage == 0 && Elapsed >= demoEliminationSeconds) EliminateLowest();
+            if (Match.EliminationStage == 0 && Elapsed >= demoEliminationSeconds)
+            {
+                Match.EliminateLowest();
+                Present();
+            }
         }
 
         private void StartDemo()
@@ -139,378 +160,73 @@ namespace TNDA.Prototype
         protected override void ResetMatch()
         {
             demo = startingDemo;
-            Survived = false;
-            Wrecks = eliminationStage = 0;
-            Champion = -1;
-            Vector2[] starts = { new Vector2(-3.3f, -3.1f), new Vector2(3.3f, -3.1f), new Vector2(3.3f, 1.1f), new Vector2(-3.3f, 1.1f) };
+            Match.Reset(demo ? 0 : PlayerCount, demo);
             for (int i = 0; i < cars.Length; i++)
-            {
-                cars[i].ResetVehicle(starts[i], i < 2 ? 90 : -90, startingDemo ? 0 : PlayerCount);
-                cars[i].Ai.BeginMatch();
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].GetComponentInChildren<SpriteRenderer>().color = cars[i].body.color;
-            }
-            foreach (var prop in props)
-            {
-                prop.broken = false;
-                prop.respawn = 0;
-                prop.view.gameObject.SetActive(true);
-            }
-            foreach (var pickup in pickups)
-            {
-                pickup.available = true;
-                pickup.respawn = 0;
-                pickup.view.gameObject.SetActive(true);
-            }
-            foreach (var rocket in rockets) rocket.Hide();
-            contactCooldowns.Clear();
             explosionAge = new float[explosions == null ? 0 : explosions.Length];
             for (int i = 0; i < explosionAge.Length; i++) explosionAge[i] = -1;
             if (explosions != null) foreach (var blast in explosions) if (blast != null) blast.gameObject.SetActive(false);
+            SyncViews();
         }
 
         protected override void Tick(float dt, ArcadeInput p1, ArcadeInput p2)
         {
-            RefreshSpawns(dt);
-            foreach (var car in cars)
-            {
-                car.AdvanceTimers(dt);
-                if (car.eliminated) continue;
-                if (!car.alive)
-                {
-                    if (car.ReadyToRespawn) RespawnVehicle(car);
-                    continue;
-                }
-                ArcadeInput input = car.computer ? car.Ai.Drive(this, dt) : car.index == 0 ? p1 : p2;
-                // The item button only fires a held item; a human item requires a fresh press.
-                if (car.item != ArenaItem.None && car.cooldown <= 0 && (car.computer ? input.action : input.actionPressed)
-                    && ArenaItems.Use(car, this)) Sound(2);
-                // Holding gas builds speed gradually; releasing it coasts down a little faster.
-                float ramp = input.throttle > .1f ? accelerationPerSecond : coastDownPerSecond;
-                float topSpeed = driveSpeed * (car.computer ? .87f : 1) * (HasCherry(car) ? cherrySpeedMultiplier : 1);
-                car.Drive(dt, input, topSpeed, ramp);
-                // Bumper-car slide from recent hits, fading out.
-                car.AdvanceSlide(dt, bumpFriction);
-                ConstrainToArena(car);
-                HitProps(car);
-                CollectPickup(car);
-                car.Sync();
-            }
-            ResolveContacts(dt);
-            MoveRockets(dt);
-            while (Phase == ArcadePhase.Playing && Elapsed >= NextElimination) EliminateLowest();
+            Match.Tick(dt, p1, p2);
+            Present();
         }
 
-        private void RefreshSpawns(float dt)
+        public void DamageVehicle(ArcadeVehicle car, float damage)
         {
-            foreach (var prop in props)
+            Match.ApplyDamage(car, damage);
+            Present();
+        }
+
+        // Shows what the match reported, in order, then forgets it.
+        private void Present()
+        {
+            foreach (var e in Match.Events)
             {
-                if (!prop.broken) continue;
-                prop.respawn -= dt;
-                if (prop.respawn <= 0 && SpawnClear(prop.point, .9f))
+                switch (e)
                 {
-                    prop.broken = false;
-                    prop.view.gameObject.SetActive(true);
-                }
-            }
-            foreach (var pickup in pickups)
-            {
-                if (pickup.available) continue;
-                pickup.respawn -= dt;
-                if (pickup.respawn <= 0 && SpawnClear(pickup.point, .8f))
-                {
-                    pickup.available = true;
-                    pickup.view.gameObject.SetActive(true);
+                    case RocketHit hit:
+                        Explode(hit.Point);
+                        PlayHit(.75f);
+                        break;
+                    case ShieldBlocked blocked:
+                        Announce(string.Format(CabinetText.ShieldBlocked, blocked.Car.DriverName), Cyan, .75f);
+                        break;
+                    case VehicleWrecked wreck:
+                        Announce(string.Format(CabinetText.Wrecked, wreck.Car.DriverName, wreck.Deducted, enemyRespawnSeconds.ToString("0")), Yellow, 2.5f);
+                        break;
+                    case WreckBonus bonus:
+                        Announce(string.Format(CabinetText.WreckBonus, bonus.Attacker.DriverName, bonus.Points), bonus.Attacker.body.color, 2);
+                        break;
+                    case VehicleEliminated eliminated:
+                        PlayHit(1);
+                        Announce(string.Format(CabinetText.Eliminated, eliminated.Car.DriverName), Yellow, 4);
+                        Sound(3);
+                        break;
+                    case MatchEnded end:
+                        ShowResults(end.Winner);
+                        break;
+                    case NoticeCue notice:
+                        Announce(notice.Text, notice.Color, notice.Seconds);
+                        break;
+                    case ToneCue tone:
+                        Sound(tone.Kind);
+                        break;
+                    case HitCue hitSound:
+                        PlayHit(hitSound.Volume);
+                        break;
                 }
             }
+            Match.ClearEvents();
+            SyncViews();
         }
 
-        private bool SpawnClear(Vector2 point, float radius) => cars.All(c => !c.alive || Vector2.Distance(c.position, point) > radius);
-
-        private bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) =>
-            VehicleHarmPolicy.CanHarm(attacker, victim, Elapsed, aiGraceSeconds);
-
-        IReadOnlyList<ArcadeVehicle> IAiArena.Cars => cars;
-        IReadOnlyList<BreakableProp> IAiArena.Props => props;
-        IReadOnlyList<ArenaPickup> IAiArena.Pickups => pickups;
-        float IAiArena.LeaderBias => leaderBias;
-        float IAiArena.LeaderHuntMargin => leaderHuntMargin;
-        bool IAiArena.CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) => CanHarm(attacker, victim);
-
-        private void ConstrainToArena(ArcadeVehicle car)
+        private void ShowResults(ArcadeVehicle winner)
         {
-            Vector2 bounded = new Vector2(Mathf.Clamp(car.position.x, arenaMin.x, arenaMax.x), Mathf.Clamp(car.position.y, arenaMin.y, arenaMax.y));
-            if (bounded == car.position) return;
-            bool hitX = !Mathf.Approximately(car.position.x, bounded.x);
-            bool hitY = !Mathf.Approximately(car.position.y, bounded.y);
-            car.position = bounded;
-            // A bumper slide into a wall rebounds softly instead of pinning the car.
-            car.ReboundSlide(hitX, hitY);
-            car.RecordCollision();
-            // Walls slow players without draining durability. AI cars bounce back into the arena.
-            if (car.computer)
-            {
-                if (hitX) car.heading = 180 - car.heading;
-                if (hitY) car.heading = -car.heading;
-            }
-            if (Mathf.Abs(car.speed) > 1) PlayHit(.2f);
-            car.speed = 0;
-            car.stun = .12f;
-        }
-
-        private void HitProps(ArcadeVehicle car)
-        {
-            foreach (var prop in props)
-            {
-                if (prop.broken || Vector2.Distance(car.position, prop.point) > .6f) continue;
-                if (Mathf.Abs(car.speed) >= 2.1f)
-                {
-                    prop.broken = true;
-                    prop.respawn = 6;
-                    prop.view.gameObject.SetActive(false);
-                    car.score += prop.points;
-                    car.speed *= .75f;
-                    Sound(2);
-                    Announce(string.Format(CabinetText.Smashed, car.DriverName, prop.points), car.body.color, 1.2f);
-                    car.RecordCollision();
-                }
-                else
-                {
-                    Vector2 away = (car.position - prop.point).normalized;
-                    if (away.sqrMagnitude < .001f) away = -car.Forward;
-                    car.position = prop.point + away * .65f;
-                    car.speed *= -.3f;
-                    car.stun = .15f;
-                    car.RecordCollision();
-                }
-            }
-        }
-
-        private void CollectPickup(ArcadeVehicle car)
-        {
-            if (car.item != ArenaItem.None) return;
-            foreach (var pickup in pickups)
-            {
-                if (!pickup.available || Vector2.Distance(car.position, pickup.point) > .58f) continue;
-                car.item = pickup.item != ArenaItem.None ? pickup.item
-                    : ArenaItems.Roll(ArenaItems.IsTrailing(car, cars), trailingCherryChance, () => UnityEngine.Random.value);
-                pickup.available = false;
-                pickup.respawn = pickupRespawnSeconds;
-                pickup.view.gameObject.SetActive(false);
-                Sound(2);
-                if (!car.computer) Announce(ArenaItems.PickupMessage(car), car.body.color);
-                break;
-            }
-        }
-
-        float IItemArena.ShieldSeconds => shieldDuration;
-        float IItemArena.CherrySeconds => cherryDuration;
-        void IItemArena.ItemFeedback(string message, Color color, float seconds) => Announce(message, color, seconds);
-
-        bool IItemArena.LaunchRocket(ArcadeVehicle car)
-        {
-            var rocket = rockets.FirstOrDefault(r => !r.active);
-            if (rocket == null) return false;
-            rocket.Spawn(car.position + car.Forward * .62f, car.Forward * 6, car.index);
-            rocket.view.color = car.body.color;
-            rocket.view.transform.rotation = Quaternion.Euler(0, 0, car.heading - 90);
-            return true;
-        }
-
-        private void CherryWreck(ArcadeVehicle attacker, ArcadeVehicle victim)
-        {
-            PlayHit(.9f);
-            if (!CanHarm(attacker, victim)) { attacker.speed *= .3f; return; }
-            if (ApplyDamage(victim, 1) && !victim.alive)
-            {
-                AwardWreck(attacker);
-                Announce(string.Format(CabinetText.CherryWreck, attacker.DriverName, victim.DriverName), attacker.body.color, 2);
-            }
-        }
-
-        private void ResolveContacts(float dt)
-        {
-            for (int i = 0; i < cars.Length; i++) for (int j = i + 1; j < cars.Length; j++)
-            {
-                var a = cars[i];
-                var b = cars[j];
-                var pair = (a, b);
-                contactCooldowns.TryGetValue(pair, out float cooldown);
-                contactCooldowns[pair] = Mathf.Max(0, cooldown - dt);
-                if (!a.alive || !b.alive || Vector2.Distance(a.position, b.position) >= .62f) continue;
-                Vector2 separation = (a.position - b.position).normalized;
-                if (separation.sqrMagnitude < .001f) separation = Vector2.right;
-                float overlap = .63f - Vector2.Distance(a.position, b.position);
-                a.position += separation * overlap * .5f;
-                b.position -= separation * overlap * .5f;
-                if (contactCooldowns[pair] <= 0)
-                {
-                    // Every new touch bounces both cars apart a little; a real ram adds more in ResolveImpact.
-                    a.ApplySlide(separation * contactBump);
-                    b.ApplySlide(-separation * contactBump);
-                    a.RecordCollision();
-                    b.RecordCollision();
-                    ResolveImpact(a, b);
-                    contactCooldowns[pair] = .8f;
-                }
-                a.Sync();
-                b.Sync();
-            }
-        }
-
-        private void ResolveImpact(ArcadeVehicle a, ArcadeVehicle b)
-        {
-            float approachA = Vector2.Dot(a.Forward * a.speed, (b.position - a.position).normalized);
-            float approachB = Vector2.Dot(b.Forward * b.speed, (a.position - b.position).normalized);
-            if (HasCherry(a) != HasCherry(b))
-            {
-                // Cherry: any touch wrecks the other car, unless that car actually rammed the cherry car first.
-                var cherry = HasCherry(a) ? a : b;
-                var other = cherry == a ? b : a;
-                float otherRam = cherry == a ? approachB : approachA, cherryRam = cherry == a ? approachA : approachB;
-                if (otherRam >= 1 && otherRam > cherryRam) CherryWreck(other, cherry);
-                else CherryWreck(cherry, other);
-                return;
-            }
-            var attacker = approachA >= approachB ? a : b;
-            var victim = attacker == a ? b : a;
-            float impact = Mathf.Max(0, Mathf.Max(approachA, approachB));
-            if (impact < 1) return;
-            float alignment = Vector2.Dot(attacker.Forward, victim.Forward);
-            float rear = Vector2.Dot((attacker.position - victim.position).normalized, victim.Forward);
-            float multiplier = Mathf.Abs(alignment) < .5f ? 2 : alignment > .6f && rear < -.25f ? 1.5f : 1;
-            float damage = (.035f + impact * .035f) * multiplier;
-            if (!CanHarm(attacker, victim)) damage = 0;
-            bool damaged = ApplyDamage(victim, damage);
-            if (damaged)
-            {
-                attacker.score += Mathf.RoundToInt(impact * 30 * multiplier);
-                if (!victim.alive) AwardWreck(attacker);
-            }
-            ApplyDamage(attacker, damage * .15f);
-            attacker.speed *= .6f;
-            if (damaged && victim.alive) { victim.speed *= .4f; victim.stun = .12f; }
-            // Bumper cars: the rammed car slides away and its nose is knocked aside; the rammer rebounds.
-            Vector2 push = (victim.position - attacker.position).normalized;
-            victim.ApplySlide(push * ramBump * (.6f + impact * .4f));
-            attacker.ApplySlide(-push * ramBump * .35f);
-            victim.heading += UnityEngine.Random.Range(15f, 30f) * (UnityEngine.Random.value < .5f ? -1 : 1);
-            if (damaged && victim.alive) Announce(string.Format(CabinetText.Rammed, attacker.DriverName, multiplier.ToString("0.0")), attacker.body.color, 1);
-            PlayHit(Mathf.Clamp(.3f + impact * .1f, .3f, .75f));
-        }
-
-        private void MoveRockets(float dt)
-        {
-            foreach (var rocket in rockets)
-            {
-                if (!rocket.active) continue;
-                var owner = cars[rocket.owner];
-                if (owner.eliminated) { rocket.Hide(); continue; }
-                Vector2 from = rocket.position;
-                rocket.position += rocket.velocity * dt;
-                rocket.age += dt;
-                // Swept hit detection avoids skipping cars at high projectile speed.
-                var victim = cars.Where(c => CanHarm(owner, c))
-                    .Where(c => SegmentDistance(c.position, from, rocket.position) < .42f)
-                    .OrderBy(c => Vector2.Distance(from, c.position)).FirstOrDefault();
-                if (victim != null)
-                {
-                    if (ApplyDamage(victim, HasCherry(victim) ? 1 : .38f))
-                    {
-                        owner.score += 120;
-                        if (!victim.alive) AwardWreck(owner);
-                        if (victim.alive)
-                        {
-                            victim.stun = .5f;
-                            victim.speed *= .2f;
-                        }
-                    }
-                    Explode(victim.position);
-                    rocket.Hide();
-                    PlayHit(.75f);
-                    continue;
-                }
-                var prop = props.FirstOrDefault(p => !p.broken && SegmentDistance(p.point, from, rocket.position) < .4f);
-                if (prop != null)
-                {
-                    prop.broken = true;
-                    prop.respawn = 6;
-                    prop.view.gameObject.SetActive(false);
-                    owner.score += prop.points;
-                    rocket.Hide();
-                    Sound(2);
-                    continue;
-                }
-                if (rocket.age > 1.6f || rocket.position.x < arenaMin.x || rocket.position.x > arenaMax.x
-                    || rocket.position.y < arenaMin.y || rocket.position.y > arenaMax.y) rocket.Hide();
-                else rocket.Sync();
-            }
-        }
-
-        private static float SegmentDistance(Vector2 point, Vector2 from, Vector2 to)
-        {
-            Vector2 segment = to - from;
-            float t = segment.sqrMagnitude > .00001f ? Mathf.Clamp01(Vector2.Dot(point - from, segment) / segment.sqrMagnitude) : 0;
-            return Vector2.Distance(point, from + segment * t);
-        }
-
-        public void DamageVehicle(ArcadeVehicle car, float damage) => ApplyDamage(car, damage);
-
-        private bool ApplyDamage(ArcadeVehicle car, float damage)
-        {
-            float previousScore = car.score;
-            if (!car.TakeDamage(damage, LifecycleRules))
-            {
-                if (car.alive && damage > 0 && car.shieldSeconds > 0)
-                    Announce(string.Format(CabinetText.ShieldBlocked, car.DriverName), Cyan, .75f);
-                return false;
-            }
-            if (!car.alive)
-            {
-                int deducted = Mathf.FloorToInt(previousScore - car.score);
-                Wrecks++;
-                Announce(string.Format(CabinetText.Wrecked, car.DriverName, deducted, enemyRespawnSeconds.ToString("0")), Yellow, 2.5f);
-            }
-            return true;
-        }
-
-        private void AwardWreck(ArcadeVehicle attacker)
-        {
-            attacker.score += wreckBonus;
-            Announce(string.Format(CabinetText.WreckBonus, attacker.DriverName, wreckBonus), attacker.body.color, 2);
-        }
-
-        private void RespawnVehicle(ArcadeVehicle car)
-        {
-            Vector2[] corners = { new Vector2(-3.5f, 1.1f), new Vector2(3.5f, 1.1f), new Vector2(3.5f, -3.2f), new Vector2(-3.5f, -3.2f) };
-            Vector2 spawn = corners.OrderByDescending(p => cars.Where(c => c.alive)
-                .Select(c => Vector2.Distance(p, c.position)).DefaultIfEmpty(10).Min()).First();
-            car.Respawn(spawn, spawn.x > 0 ? 180 : 0);
-        }
-
-        private void EliminateLowest()
-        {
-            int count = Contenders;
-            if (count <= 1) { EndRound(); return; }
-            // Ties: lower durability loses first, then the higher car index. Never random.
-            var loser = cars.Where(c => !c.eliminated).OrderBy(c => c.score).ThenBy(c => c.health).ThenByDescending(c => c.index).First();
-            loser.Eliminate(count, LifecycleRules);
-            PlayHit(1);
-            foreach (var rocket in rockets.Where(r => r.active && r.owner == loser.index)) rocket.Hide();
-            eliminationStage++;
-            Announce(string.Format(CabinetText.Eliminated, loser.DriverName), Yellow, 4);
-            Sound(3);
-            if (Contenders == 1) EndRound();
-        }
-
-        private void EndRound()
-        {
-            var winner = cars.First(c => !c.eliminated);
-            Champion = winner.index;
-            Survived = !winner.computer;
-            if (!winner.alive) RespawnVehicle(winner);
-            winner.FinalPlace = 1;
-            foreach (var rocket in rockets) rocket.Hide();
             int best = Mathf.Max(PlayerPrefs.GetInt("WreckBest", 0), Mathf.RoundToInt(cars.Where(c => !c.computer).Max(c => c.score)));
             PlayerPrefs.SetInt("WreckBest", best);
             string standings = string.Join("\n", cars.OrderBy(c => c.FinalPlace)
@@ -519,11 +235,21 @@ namespace TNDA.Prototype
                 + "\n\n" + string.Format(CabinetText.ResultsSummary, best, Wrecks) + "\n\n" + CabinetText.EliminationRule);
         }
 
-        private void UpdateSpinOuts(float dt)
+        // Mirrors match state onto the scene: cars placed, props and crates shown or hidden, rockets placed and coloured.
+        private void SyncViews()
         {
-            Vector2 view = sceneCamera.transform.position;
-            float half = sceneCamera.orthographicSize + 1;
-            foreach (var car in cars) car.AdvanceSpinOut(dt, LifecycleRules, view, half);
+            foreach (var car in cars) car.Sync();
+            foreach (var prop in props) prop.view.gameObject.SetActive(!prop.broken);
+            foreach (var pickup in pickups) pickup.view.gameObject.SetActive(pickup.available);
+            foreach (var rocket in rockets)
+            {
+                rocket.view.gameObject.SetActive(rocket.active);
+                if (!rocket.active) continue;
+                rocket.view.transform.position = PixelPosition(rocket.position);
+                if (rocket.owner >= 0 && rocket.owner < cars.Length) rocket.view.color = cars[rocket.owner].body.color;
+                if (rocket.velocity.sqrMagnitude > .0001f)
+                    rocket.view.transform.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(rocket.velocity.y, rocket.velocity.x) * Mathf.Rad2Deg - 90);
+            }
         }
 
         // Rocket hit: the supplied explosion picture pops up over the car and fades out.
@@ -555,7 +281,7 @@ namespace TNDA.Prototype
 
         protected override void AfterTick(float dt)
         {
-            UpdateSpinOuts(dt);
+            Match.AdvanceSpinOuts(dt, sceneCamera.transform.position, sceneCamera.orthographicSize + 1);
             UpdateExplosions(dt);
             engine.Update(this, engineClip, cars, Phase == ArcadePhase.Playing || Phase == ArcadePhase.Countdown, driveSpeed);
         }
