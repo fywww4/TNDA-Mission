@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -33,8 +34,11 @@ namespace TNDA.Prototype
             new Definition { name = CabinetText.Cherry, tag = CabinetText.CherryTag, use = UseCherry },
         };
 
-        public static string Name(ArenaItem item) => Definitions[(int)item].name;
-        public static string Tag(ArenaItem item) => Definitions[(int)item].tag;
+        // An unknown stored code reads as no item, like the old integer checks.
+        private static Definition Of(ArenaItem item) => (uint)item < Definitions.Length ? Definitions[(int)item] : Definitions[0];
+
+        public static string Name(ArenaItem item) => Of(item).name;
+        public static string Tag(ArenaItem item) => Of(item).tag;
 
         // Crates are random: shield or rocket half each; a car in last place first has cherryChance of a cherry.
         public static ArenaItem Roll(bool trailing, float cherryChance, Func<float> random)
@@ -44,19 +48,19 @@ namespace TNDA.Prototype
         }
 
         // Last place counts ties; eliminated cars are out of the standings.
-        public static bool IsTrailing(ArcadeVehicle car, ArcadeVehicle[] cars) =>
+        public static bool IsTrailing(ArcadeVehicle car, IReadOnlyList<ArcadeVehicle> cars) =>
             cars.Where(c => !c.eliminated).All(c => c == car || c.score >= car.score);
 
         // Uses the held item and reports whether it was spent. A rocket with a full pool stays held for later.
         public static bool Use(ArcadeVehicle car, IItemArena arena)
         {
-            var use = Definitions[(int)car.item].use;
+            var use = Of(car.item).use;
             if (use == null || !use(car, arena)) return false;
             car.item = ArenaItem.None;
             return true;
         }
 
-        public static string Pickup(ArcadeVehicle car) => string.Format(CabinetText.GotItem, car.DriverName, Name(car.item));
+        public static string PickupMessage(ArcadeVehicle car) => string.Format(CabinetText.GotItem, car.DriverName, Name(car.item));
 
         public static string Status(ArcadeVehicle car)
         {

@@ -93,7 +93,7 @@
 
 | 檔案 | 用途 |
 | --- | --- |
-| `Assets/Prototype/Runtime/DemolitionGame.cs` | 整合版玩法；含 BreakableProp／ArenaPickup、AI、積分、淘汰、道具與重生。 |
+| `Assets/Prototype/Runtime/DemolitionGame.cs` | 整合版比賽流程；含 BreakableProp／ArenaPickup、碰撞、積分、淘汰與重生，並以 `IAiArena`／`IItemArena` 提供局面給 AI 駕駛與道具 module。 |
 | `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
 | `Assets/Prototype/Runtime/AiDriver.cs` | AI 駕駛 module（`car.Ai`）：選目標、輪替策略、閃避玩家、逃離櫻桃、道具時機；比對車輛的 `Collisions`／`Spawns` 與存活車數自行重新規劃。比賽主程式經 `IAiArena` 提供局面。 |
 | `Assets/Prototype/Runtime/ArenaItems.cs` | 道具 module：`ArenaItem` 列舉、木箱抽選、使用效果、名稱／標籤／狀態文字；比賽主程式經 `IItemArena` 提供火箭與提示。 |

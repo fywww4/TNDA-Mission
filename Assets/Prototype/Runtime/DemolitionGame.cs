@@ -298,7 +298,7 @@ namespace TNDA.Prototype
                 pickup.respawn = pickupRespawnSeconds;
                 pickup.view.gameObject.SetActive(false);
                 Sound(2);
-                if (!car.computer) Announce(ArenaItems.Pickup(car), car.body.color);
+                if (!car.computer) Announce(ArenaItems.PickupMessage(car), car.body.color);
                 break;
             }
         }

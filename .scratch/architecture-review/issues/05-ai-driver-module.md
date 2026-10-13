@@ -19,3 +19,13 @@ AI 自行察覺需要重新規劃：車輛只記錄物理事實 `Collisions`（�
 `tmp/g3driver.cs` 14 項斷言（先紅後綠）：擺好局面驗證領先 300 分以上被追撞、未達門檻改去破壞物、緩衝期只追領先的 AI 而非更近的領先玩家、逃離櫻桃車；撞牆、撞破壞物、撞碎破壞物、車輛接觸、淘汰、重生後下一幀重新規劃（另有無事件時維持原計畫的對照）；30 秒四台 AI 對戰與標題示範（20 秒淘汰、30 秒重來）無例外。暫時停用察覺機制時，6 項重新規劃斷言全部失敗，證明測試有鑑別力。
 
 固定亂數 4 組 `g3ai` 在抽取前（`5b80127`）後結果相同（每組目標幀數最多差 2 幀）。電腦1 領先情境中，10 秒後 AI 仍集中攻擊電腦1；偶爾也會鎖定附近 0 分的 P1（抽取前同樣如此，例如亂數 3 有 71 幀），所以「P1 未被鎖定」只是單次觀察。`g3harm` 移除直接設定 AI 思考計時的固定步驟後，68 項斷言仍全部通過；`g3items`／`g3lifecycle`／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket`／`g3text` 全部通過，`g3drive`／`g3fx`／`g3msgshot` 正常。重新編譯與網域重新載入完成，Console 零錯誤、零警告。
+
+## Standards
+
+無硬性違規：畫面文字仍全部來自 `CabinetText`，未手動修改場景 YAML，Inspector 調整值保留。已修正：`ArenaItems.Pickup` 改名 `PickupMessage`；`IsTrailing` 改收 `IReadOnlyList`；超出範圍的道具代碼視為無道具（舊整數判斷的行為）。判斷項保留：AI 的道具時機（`AiDriver.WantsItem`）與 Editor 暫用外觀仍各自依道具分支；`ArenaItems.Status` 讀取車輛的櫻桃／護盾計時；`DemolitionGame` 的介面成員只是轉接；搬移過來的 AI 常數與「最近者」寫法維持原樣。
+
+## Spec
+
+未發現行為差異：重新規劃時機與舊的 `aiThink = 0` 同為下一幀，首次規劃錯開時間相同，亂數順序相同。對外除 `Drive` 外另有 `BeginMatch` 與唯讀的 `Target`／`Destination`，供開局與驗證讀取。撞毀中的車 `Target` 回傳 null（撞毀車不駕駛，無影響）；`RecordCollision` 也會計入真人車，但沒有讀取者。`AGENT.md` 的 DemolitionGame 說明已更新。
+
+以票單 04 提交 `fb4ef07` 為固定點，與票單 03 一起雙軸審查。
