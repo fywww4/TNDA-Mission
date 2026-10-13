@@ -227,15 +227,14 @@ namespace TNDA.Prototype
 
         private bool SpawnClear(Vector2 point, float radius) => cars.All(c => !c.alive || Vector2.Distance(c.position, point) > radius);
 
-        public bool AiGrace => Elapsed < aiGraceSeconds;
-        // During the opening grace period AI cannot hurt players by ramming, rockets or cherry.
-        public bool CanAiHurt(ArcadeVehicle victim) => victim.computer || !AiGrace;
+        private bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) =>
+            VehicleHarmPolicy.CanHarm(attacker, victim, Elapsed, aiGraceSeconds);
 
         // Which car an AI wants to ram: high scores first, nearer is better. During the grace period only other AI.
         private ArcadeVehicle PickRival(ArcadeVehicle car)
         {
             float top = cars.Max(c => c.score) + 1;
-            return cars.Where(c => c.alive && !c.eliminated && c != car && CanAiHurt(c))
+            return cars.Where(c => CanHarm(car, c))
                 .OrderByDescending(c => (1 + leaderBias * c.score / top) / (1 + Vector2.Distance(c.position, car.position) * .35f)
                     * UnityEngine.Random.Range(.85f, 1.15f))
                 .FirstOrDefault();
@@ -246,12 +245,8 @@ namespace TNDA.Prototype
         {
             car.aiThink -= dt;
             if (car.aiThink <= 0 || Vector2.Distance(car.position, car.aiDestination) < .4f
-                || (car.aiTarget != null && !car.aiTarget.alive)) ChooseDestination(car);
-            if (HasCherry(car) && (car.aiTarget == null || !CanAiHurt(car.aiTarget)))
-            {
-                var prey = PickRival(car);
-                if (prey != null && CanAiHurt(prey)) car.aiTarget = prey;
-            }
+                || (car.aiTarget != null && !CanHarm(car, car.aiTarget))) ChooseDestination(car);
+            if (HasCherry(car) && car.aiTarget == null) car.aiTarget = PickRival(car);
             if (car.aiTarget != null) car.aiDestination = car.aiTarget.position;
             Vector2 delta = car.aiDestination - car.position;
             float desired = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
@@ -264,7 +259,7 @@ namespace TNDA.Prototype
                 desired = Mathf.Atan2(flee.y, flee.x) * Mathf.Rad2Deg;
             }
             // Players are steered around unless they are this AI's target after the grace period.
-            foreach (var human in cars.Where(c => !c.computer && c.alive && !(c == car.aiTarget && CanAiHurt(c))))
+            foreach (var human in cars.Where(c => !c.computer && c.alive && !(c == car.aiTarget && CanHarm(car, c))))
             {
                 Vector2 toHuman = human.position - car.position;
                 if (toHuman.magnitude < 1.6f && Vector2.Dot(car.Forward, toHuman.normalized) > -.1f)
@@ -276,11 +271,12 @@ namespace TNDA.Prototype
                 }
             }
             float error = Mathf.DeltaAngle(car.heading, desired);
-            bool humansClear = !AiGrace || cars.All(c => c.computer || !c.alive || Vector2.Distance(c.position, car.position) > 1.8f);
+            bool humansClear = cars.All(c => c == car || !c.alive || CanHarm(car, c)
+                || Vector2.Distance(c.position, car.position) > 1.8f);
             bool rivalAhead = car.aiTarget != null && delta.magnitude < 2.7f && Mathf.Abs(error) < 22;
             bool hasPropAhead = props.Any(p => !p.broken && Vector2.Distance(p.point, car.position) < 1.6f
                 && Vector2.Dot(car.Forward, (p.point - car.position).normalized) > .8f);
-            bool rivalNear = cars.Any(c => CanAiHurt(c) && c.alive && c != car && Vector2.Distance(c.position, car.position) < 3);
+            bool rivalNear = cars.Any(c => CanHarm(car, c) && Vector2.Distance(c.position, car.position) < 3);
             bool activate = car.item == 1 ? car.health < .75f || rivalAhead
                 : car.item == 2 ? rivalAhead || hasPropAhead
                 : car.item == 3 && rivalNear;
@@ -298,7 +294,7 @@ namespace TNDA.Prototype
             car.aiTarget = null;
             var rival = PickRival(car);
             // A car well ahead of this AI is hunted on purpose, whatever the current strategy.
-            bool huntLeader = rival != null && CanAiHurt(rival) && rival.score >= car.score + leaderHuntMargin;
+            bool huntLeader = rival != null && rival.score >= car.score + leaderHuntMargin;
             var prop = props.Where(p => !p.broken).OrderBy(p => Vector2.Distance(p.point, car.position)).FirstOrDefault();
             var pickup = car.item == 0 ? pickups.Where(p => p.available)
                 .OrderBy(p => Vector2.Distance(p.point, car.position)).FirstOrDefault() : null;
@@ -416,8 +412,7 @@ namespace TNDA.Prototype
         private void CherryWreck(ArcadeVehicle attacker, ArcadeVehicle victim)
         {
             PlayHit(.9f);
-            // AI never harms a human player, even with a cherry.
-            if (attacker.computer && !CanAiHurt(victim)) { attacker.speed *= .3f; return; }
+            if (!CanHarm(attacker, victim)) { attacker.speed *= .3f; return; }
             if (ApplyDamage(victim, 1) && !victim.alive)
             {
                 AwardWreck(attacker);
@@ -485,8 +480,7 @@ namespace TNDA.Prototype
             float rear = Vector2.Dot((attacker.position - victim.position).normalized, victim.Forward);
             float multiplier = Mathf.Abs(alignment) < .5f ? 2 : alignment > .6f && rear < -.25f ? 1.5f : 1;
             float damage = (.035f + impact * .035f) * multiplier;
-            // AI never damages a human by initiating a collision, even if avoidance failed.
-            if (attacker.computer && !CanAiHurt(victim)) damage = 0;
+            if (!CanHarm(attacker, victim)) damage = 0;
             bool damaged = ApplyDamage(victim, damage);
             if (damaged)
             {
@@ -516,7 +510,7 @@ namespace TNDA.Prototype
                 rocket.position += rocket.velocity * dt;
                 rocket.age += dt;
                 // Swept hit detection avoids skipping cars at high projectile speed.
-                var victim = cars.Where(c => c.alive && c != owner && (!owner.computer || CanAiHurt(c)))
+                var victim = cars.Where(c => CanHarm(owner, c))
                     .Where(c => SegmentDistance(c.position, from, rocket.position) < .42f)
                     .OrderBy(c => Vector2.Distance(from, c.position)).FirstOrDefault();
                 if (victim != null)

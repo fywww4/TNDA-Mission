@@ -54,11 +54,11 @@
 - 防護罩持續 6 秒，抵擋耐久傷害，車身顯示青色圓框。
 - 火箭沿車頭方向直飛，命中車扣 38% 耐久並給攻擊者 120 分；撞毀仍加 300 分。可撞碎破壞物並取得其分數。
 - **櫻桃（小精靈吃豆玩法）**：只有最後一名能從木箱開到。按道具鍵吃下後 8 秒（`cherryDuration`）：最高速 ×1.35（`cherrySpeedMultiplier`），車旁顯示櫻桃圖示，最後 2 秒閃爍。櫻桃車碰到任何車即撞毀對方（攻擊者得撞毀獎勵 300 分）；但若對方實際衝撞櫻桃車（接近速度 ≥1 且大於櫻桃車），或被火箭命中，櫻桃車立即撞毀。防護罩與重生保護仍可擋下。
-- 櫻桃 AI：持有櫻桃的 AI 追殺最近的 AI；其他 AI 在 2.2 單位內會逃離櫻桃車。維持既有規則：AI（含櫻桃 AI）不會撞毀或傷害真人。
+- 櫻桃 AI：持有櫻桃的 AI 依 `PickRival` 追殺對手；其他 AI 在 2.2 單位內會逃離櫻桃車。前 10 秒不傷真人，之後可以撞毀玩家，與一般衝撞／火箭共用 `VehicleHarmPolicy`（2026-10-13 票單 04 使用者確認）。
 - 櫻桃圖：使用者提供的圖片，去白背景後縮為 13×14 四色像素圖 `Art/Cherry.png`，來源 `Art/Source/CherrySource.png`。場景修補：`Game3ItemArt.PatchScene()`；`Game3SceneBuilder.IntegrateExisting` 也會呼叫 `Game3ItemArt.Apply`。
 - 櫻桃期間整台車變黃色（2026-10-13 使用者要求）：`CarPalette.shader` 新增 `_Solid`／`_SolidColor`，以 MaterialPropertyBlock 個別設定，車身與白色部分都變黃、只保留黑色外框車窗；最後 2 秒與櫻桃圖示一起閃爍。不改 `body.color`，所以排行榜與車名顏色不變。玩家與 AI 吃櫻桃都適用。
 - 火箭命中任何車輛（玩家或 AI，含被防護罩擋下）都在命中點顯示爆炸特效（2026-10-13 使用者要求）：使用者提供的爆炸圖去白背景後縮為 34×32 四色像素圖 `Art/Explosion.png`（橘紅尖刺與金色雲→黃、深橘陰影→黑、淺黃核心→白；來源 `Art/Source/ExplosionSource.png`）。0.45 秒內由 0.5 倍彈到 1.15 倍再回 1 倍，最後閃爍消失（不使用透明度以維持四色）。每枚火箭一個顯示物件（`Effects/Rocket explosion 0～1`），由 `Game3ItemArt.Apply` 建立。
-- 已在 Play Mode 驗證：最後一名約 50% 開到櫻桃、領先者 0%；櫻桃速度提升；櫻桃車碰 AI 使其撞毀並 +300；P2 衝撞櫻桃 P1 使 P1 撞毀；火箭一發擊毀櫻桃車（一般車只扣 38%）；櫻桃 AI 不傷真人；30 秒 AI 對戰無例外。
+- 已在 Play Mode 驗證：最後一名約 50% 開到櫻桃、領先者 0%；櫻桃速度提升；櫻桃車碰 AI 使其撞毀並 +300；P2 衝撞櫻桃 P1 使 P1 撞毀；火箭一發擊毀櫻桃車（一般車只扣 38%）；櫻桃 AI 在前 10 秒不傷真人，10 秒後可以；30 秒 AI 對戰無例外。
 - 火箭最多同時兩發；池已滿時保留道具，稍後再按。
 - 1／2、C、Space、Enter 或手把 Start：開局；左 Ctrl 可開單人，數字鍵盤 Enter 可開雙人。
 - P1：左／右方向鍵轉向，上方向鍵為油門，左 Ctrl 使用道具。
@@ -95,6 +95,7 @@
 | --- | --- |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | 整合版玩法；含 BreakableProp／ArenaPickup、AI、積分、淘汰、道具與重生。 |
 | `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次與 AI 暫存。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
+| `Assets/Prototype/Runtime/VehicleHarmPolicy.cs` | 衝撞、櫻桃、火箭與 AI 選目標共用的傷害資格規則；所有 AI 攻擊在開局前 10 秒不傷玩家，之後可傷玩家。 |
 | `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour。 |
 | `Assets/Prototype/Runtime/ArcadeGame.cs` | 標題、倒數、輸入、音效、結算與重玩；已移除舊場景切換。 |
 | `Assets/Prototype/Runtime/ArcadeEngineAudio.cs` | 真人車循環引擎聲。 |
@@ -145,3 +146,5 @@
 - 2026-10-13 完成架構票單 02：撞毀、永久淘汰、重生、櫻桃與碰碰車滑行集中於 `ArcadeVehicle`，不再以比賽主程式的平行陣列保存每車狀態；AI 暫存也移至車輛，接觸冷卻依車對車關係保存。一般撞毀會清除道具、櫻桃、滑行與硬直／冷卻，飛出後隱藏，3 秒重生保留扣分後分數與 AI 身分，提供 2 秒保護；計時淘汰保留分數與名次並永久退場。致命火箭或衝撞不再把硬直寫回已撞毀的車。
 - 票單 02 的公開介面驗證 `g3lifecycle`／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket` 共 66 項斷言通過，全部不使用反射；`g3ai` 改為讀取車輛目標。AI、油門、特效、開局標語與文字回歸可正常執行，實際 320×320 飛出及重生保護畫面已檢視。已重新編譯並確認網域重新載入完成，Console 即時為零錯誤、零警告，完成後停止 Play Mode。額外的場景修補回歸 `g3patch` 因場景有未儲存狀態而未執行，該狀態保留。
 - 票單 02 的 `code-review` 雙軸審查完成：Standards 0 項、Spec 0 項；固定點為票單 09 提交 `9dd9646`。
+- 2026-10-13 完成架構票單 04：衝撞、櫻桃、火箭與 AI 選目標改由 `VehicleHarmPolicy` 決定傷害資格；使用者確認所有 AI 攻擊於 10 秒後皆可傷害玩家。`tmp/g3harm.cs` 的 68 項斷言在抽取前後全部通過，加上既有生命週期／道具與文字回歸共 136 項全部通過；AI、油門、特效與開局文字檢查正常。P1 領先 1500 分時，前 10 秒無 AI 鎖定且耐久 100%，10～25 秒 AI 追撞。重新編譯與網域重新載入完成，Console 即時零錯誤、零警告；停止 Play Mode。
+- 票單 04 的 `code-review` 雙軸審查完成：Standards 0 項、Spec 0 項；固定點為票單 02 提交 `7812c0e`。
