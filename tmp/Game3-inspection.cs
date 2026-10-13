@@ -74,9 +74,9 @@ try {
     g.Advance(.02f, new TNDA.Prototype.ArcadeInput { throttle = 1 }, idle);
     report["propDestroyed"] = g.props[0].broken && !g.props[0].view.gameObject.activeSelf;
     report["propPoints"] = g.cars[0].score;
-    float normal = impact(180, 2.6f), side = impact(90, 2.6f), rear = impact(0, 2.6f), fast = impact(180, 4.29f);
+    float normal = impact(180, 2.6f), side = impact(90, 2.6f), rear = impact(0, 2.6f);
     report["headOnPoints"] = normal; report["sidePoints"] = side;
-    report["rearPoints"] = rear; report["fastPoints"] = fast;
+    report["rearPoints"] = rear;
     g.StartRun(1); isolateRivals();
     var attacker = g.cars[0]; var victim = g.cars[1];
     attacker.position = new UnityEngine.Vector2(-.3f, 0); attacker.heading = 0; attacker.speed = 2.6f;
