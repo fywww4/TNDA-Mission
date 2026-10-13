@@ -1,6 +1,6 @@
 # TNDA Mission：GAME3 整合版交接
 
-更新日期：2026-10-13（Asia/Taipei）。目前只製作 GAME3；使用者的新要求優先於先前三案規格。
+更新日期：2026-10-14（Asia/Taipei）。目前只製作 GAME3；使用者的新要求優先於先前三案規格。
 
 ## 最新需求與現況
 
@@ -102,7 +102,7 @@
 | `Assets/Prototype/Runtime/ArenaItems.cs` | 道具 module：`ArenaItem` 列舉、木箱抽選、使用效果、名稱／標籤／狀態文字；比賽主程式經 `IItemArena` 提供火箭與持續時間；撿到／使用道具的提示文字由 `PickupMessage`／`UsedMessage` 產生，經事件由場景 adapter 顯示。 |
 | `Assets/Prototype/Runtime/VehicleHarmPolicy.cs` | 衝撞、櫻桃、火箭與 AI 選目標共用的傷害資格規則；所有 AI 攻擊在開局前 10 秒不傷玩家，之後可傷玩家。 |
 | `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour；顯示由場景 adapter 同步。 |
-| `Assets/Prototype/Runtime/ArcadeGame.cs` | 標題、倒數、輸入、音效、結算與重玩；已移除舊場景切換。 |
+| `Assets/Prototype/Runtime/ArcadeGame.cs` | 街機框架：標題、倒數、輸入、音效、結算與重玩。給遊戲的掛點只有 `ResetMatch`、`Tick`（每幀一次，傳入該幀開始時的階段）、`RefreshHud`（票單 10）。 |
 | `Assets/Prototype/Runtime/ArcadeEngineAudio.cs` | 真人車循環引擎聲。 |
 | `Assets/Prototype/Runtime/CabinetText.cs` | 所有畫面文字的唯一來源（含格式模板）；場景修補、執行期 HUD 與字型字元清單都讀它。 |
 | `Assets/Prototype/Editor/Game3SceneBuilder.cs` | Build 供空原型；IntegrateExisting 直接修補既有 GAME3，重複執行不會多建道具／介面。 |
@@ -157,3 +157,4 @@
 - 2026-10-13 完成架構票單 05：AI 駕駛收進 `AiDriver`，碰撞、場地與生死流程不再改 AI 思考計時。`tmp/g3driver.cs` 14 項斷言通過；固定亂數 `g3ai` 抽取前後相同；既有回歸全部通過，Console 零錯誤、零警告。
 - 2026-10-13 完成架構票單 06：比賽規則移到 `DemolitionMatch`，回傳 `MatchEvents` 事件，`DemolitionGame` 只當場景 adapter。火箭命中完全經由事件呈現（爆炸特效、命中音效、防護罩／撞毀提示）。新增 `TNDA.Prototype` 執行期組件與 EditMode 測試組件，4 個 EditMode 測試（火箭命中、致命火箭的撞毀與獎勵順序、防護罩格擋、整局淘汰到冠軍）以 Unity CLI 執行全部通過；`g3lifecycle`／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket`／`g3harm`／`g3items`／`g3driver` 164 項斷言通過。重新編譯與網域重新載入完成，Console 零錯誤、零警告。
 - 2026-10-13 完成架構票單 07：其餘提示文字、音效與車輛顯示隱藏全部改走事件，`DemolitionMatch`／`ArcadeVehicle`／`ArenaItems` 不再碰觸任何畫面或音效物件（EditMode 測試以沒有 sprite 的車輛跑完整局證明）。待機示範的靜音與不顯示提示集中在 `DemolitionGame.Present()`。`ArcadeGame.sounds` 標為 `[NonSerialized]`，避免 Editor 重新載入網域後變成空陣列而在 edit mode 驗證時越界。EditMode 測試 26 個全部通過（新增撞毀扣分與獎勵、扣分不低於 0、計時淘汰同分比耐久再比索引、60／90 秒依時間淘汰且示範不淘汰、冠軍與 Survived、各事件）。Play Mode `tmp/g3cues.cs` 17 項確認各路徑提示文字、顏色、停留時間與音效與修改前相同，待機示範 21 秒無音效、無提示；`tmp/g3attract.cs`（edit mode）6 項，停用 adapter 統一判斷時 2 項失敗。既有回歸 `g3lifecycle`（改讀 `car.Visible`）／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket`／`g3harm`／`g3items`／`g3driver`／`g3text` 全部通過，固定亂數 AI 軌跡與修改前完全相同。重新編譯與網域重新載入完成，Console 零錯誤、零警告。
+- 2026-10-14 完成架構票單 10：`ArcadeGame` 的掛點縮為 `ResetMatch`／`Tick`／`RefreshHud`，移除 `SupportsTwoPlayers`、`TickIdle`、`AfterTick` 與可覆寫的 `Awake`。`tmp/g3flow.cs` 逐幀記錄完整流程（待機示範、投幣、倒數、比賽、結算 20 秒返回、雙人、R、Esc），修改前後 11,701 幀完全相同；`tmp/g3tools.cs` 確認音效與字型設定工具仍可套用。EditMode 26 個測試與既有 Play Mode 回歸通過，Console 零錯誤、零警告。

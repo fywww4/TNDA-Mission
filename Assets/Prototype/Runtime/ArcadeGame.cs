@@ -13,6 +13,9 @@ namespace TNDA.Prototype
         public bool action, actionPressed;
     }
 
+    // The cabinet around GAME3: title (attract) -> 3-2-1 countdown -> match -> results -> back to title, coin and
+    // restart keys, player input, the notice line and sounds. The game fills in three things: resetting the match,
+    // one frame of simulation, and the HUD.
     public abstract class ArcadeGame : MonoBehaviour
     {
         public static readonly Color White = new Color32(245, 245, 245, 255);
@@ -36,16 +39,14 @@ namespace TNDA.Prototype
         public TMP_Text countdownLabel;
         public AudioClip countdownClip, hitClip;
 
-        public ArcadePhase Phase { get; protected set; }
+        public ArcadePhase Phase { get; private set; }
         public int PlayerCount { get; private set; } = 1;
         public float Elapsed { get; protected set; }
         public float CountdownLeft { get; private set; }
-        protected float resultAge, noticeAge;
-        private float goFlash;
+        private float resultAge, noticeAge, goFlash;
         [NonSerialized] private AudioClip[] sounds; // generated in Awake; a reload must not turn it into an empty array
-        protected virtual bool SupportsTwoPlayers => true;
 
-        protected virtual void Awake()
+        private void Awake()
         {
             // The game never uses slow motion; guard against a time scale left over from editor tooling.
             Time.timeScale = 1;
@@ -72,7 +73,7 @@ namespace TNDA.Prototype
                 || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
             if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
             {
-                if ((Pressed(Key.Digit2) || Pressed(Key.NumpadEnter)) && SupportsTwoPlayers) StartRun(2);
+                if (Pressed(Key.Digit2) || Pressed(Key.NumpadEnter)) StartRun(2);
                 else if (coin || Pressed(Key.Digit1)) StartRun(1);
             }
             Advance(Mathf.Min(Time.deltaTime, .05f), ReadInput(0), ReadInput(1));
@@ -84,11 +85,8 @@ namespace TNDA.Prototype
             noticeAge = Mathf.Max(0, noticeAge - dt);
             if (noticeAge == 0) notice.text = "";
             if (goFlash > 0 && (goFlash -= dt) <= 0 && countdownLabel != null) countdownLabel.text = "";
-            if (Phase == ArcadePhase.Playing)
-            {
-                Elapsed += dt;
-                Tick(dt, p1, p2);
-            }
+            var startPhase = Phase;
+            if (Phase == ArcadePhase.Playing) Elapsed += dt;
             else if (Phase == ArcadePhase.Countdown)
             {
                 CountdownLeft -= dt;
@@ -101,24 +99,20 @@ namespace TNDA.Prototype
                 }
                 else SetCountdownLabel(Mathf.CeilToInt(CountdownLeft).ToString());
             }
-            else
+            else if (Phase == ArcadePhase.Results && presentationSeconds > 0)
             {
-                TickIdle(dt);
-                if (Phase == ArcadePhase.Results && presentationSeconds > 0)
-                {
-                    resultAge += dt;
-                    overlayHint.text = string.Format(CabinetText.ReturnToTitle,
-                        Mathf.CeilToInt(Mathf.Max(0, presentationSeconds - resultAge)));
-                    if (resultAge >= presentationSeconds) PreparePreview();
-                }
+                resultAge += dt;
+                overlayHint.text = string.Format(CabinetText.ReturnToTitle,
+                    Mathf.CeilToInt(Mathf.Max(0, presentationSeconds - resultAge)));
+                if (resultAge >= presentationSeconds) PreparePreview();
             }
-            AfterTick(dt);
+            Tick(dt, startPhase, p1, p2);
             RefreshHud();
         }
 
         public void StartRun(int players = 1)
         {
-            PlayerCount = SupportsTwoPlayers ? Mathf.Clamp(players, 1, 2) : 1;
+            PlayerCount = Mathf.Clamp(players, 1, 2);
             Elapsed = resultAge = 0;
             bool countdown = countdownSeconds > 0;
             Phase = countdown ? ArcadePhase.Countdown : ArcadePhase.Playing;
@@ -156,14 +150,14 @@ namespace TNDA.Prototype
             ShowOverlay(cabinetTitle, instructions, CabinetText.AttractHint);
         }
 
-        protected void ShowOverlay(string title, string body, string hint)
+        private void ShowOverlay(string title, string body, string hint)
         {
             overlay.SetActive(true);
             overlayTitle.text = title;
             overlayBody.text = body;
             overlayHint.text = hint;
             onePlayerButton.gameObject.SetActive(true);
-            twoPlayerButton.gameObject.SetActive(SupportsTwoPlayers);
+            twoPlayerButton.gameObject.SetActive(true);
         }
 
         protected void Finish(string title, string body)
@@ -181,12 +175,13 @@ namespace TNDA.Prototype
             noticeAge = duration;
         }
 
+        // Puts the cars and arena back for a new match (or the title demo); Phase and PlayerCount are already set.
         protected abstract void ResetMatch();
-        protected abstract void Tick(float dt, ArcadeInput p1, ArcadeInput p2);
+        // One frame of the game, after the cabinet's own phase step (Elapsed already advanced while playing). startPhase
+        // is the phase the frame began in, so the frame that turns the countdown into GO, or the results back into the
+        // title, is not yet simulated as the new phase; Phase is already the new one.
+        protected abstract void Tick(float dt, ArcadePhase startPhase, ArcadeInput p1, ArcadeInput p2);
         protected abstract void RefreshHud();
-        protected virtual void TickIdle(float dt) { }
-        // Runs every frame in every phase, after the phase logic (e.g. for looping engine audio).
-        protected virtual void AfterTick(float dt) { }
 
         private static bool Pressed(Key key) => Keyboard.current != null && Keyboard.current[key].wasPressedThisFrame;
 
@@ -226,7 +221,7 @@ namespace TNDA.Prototype
         }
 
         // Plays a recorded clip when one is assigned, otherwise the matching generated sound.
-        protected void PlayClip(AudioClip clip, int fallback, float volume = .6f)
+        private void PlayClip(AudioClip clip, int fallback, float volume = .6f)
         {
             if (clip != null && speaker != null) speaker.PlayOneShot(clip, volume);
             else Sound(fallback);

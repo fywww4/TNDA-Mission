@@ -135,13 +135,24 @@ namespace TNDA.Prototype
         public float demoEliminationSeconds = 20, demoLoopSeconds = 30;
         private bool demo, startingDemo;
 
-        // Title screen: four AI cars play a silent demo match behind the coin prompt.
-        protected override void TickIdle(float dt)
+        protected override void Tick(float dt, ArcadePhase startPhase, ArcadeInput p1, ArcadeInput p2)
         {
-            if (Phase != ArcadePhase.Attract) return;
+            if (startPhase == ArcadePhase.Playing) Simulate(dt, p1, p2);
+            else if (startPhase == ArcadePhase.Attract) TickDemo(dt);
+            // Every phase: spin-outs fly off, views follow, explosions fade, and the engine loop follows the current
+            // Phase (silent from the frame the match ends).
+            Match.AdvanceSpinOuts(dt, sceneCamera.transform.position, sceneCamera.orthographicSize + 1);
+            SyncViews();
+            UpdateExplosions(dt);
+            engine.Update(this, engineClip, cars, Phase == ArcadePhase.Playing || Phase == ArcadePhase.Countdown, driveSpeed);
+        }
+
+        // Title screen: four AI cars play a silent demo match behind the coin prompt.
+        private void TickDemo(float dt)
+        {
             if (!demo || Elapsed >= demoLoopSeconds) StartDemo();
             Elapsed += dt;
-            Tick(dt, new ArcadeInput(), new ArcadeInput());
+            Simulate(dt, new ArcadeInput(), new ArcadeInput());
             if (Match.EliminationStage == 0 && Elapsed >= demoEliminationSeconds)
             {
                 Match.EliminateLowest();
@@ -171,7 +182,7 @@ namespace TNDA.Prototype
             SyncViews();
         }
 
-        protected override void Tick(float dt, ArcadeInput p1, ArcadeInput p2)
+        private void Simulate(float dt, ArcadeInput p1, ArcadeInput p2)
         {
             Match.Tick(dt, p1, p2);
             Present();
@@ -318,14 +329,6 @@ namespace TNDA.Prototype
                 explosions[i].transform.localScale = new Vector3(scale, scale, 1);
                 explosions[i].enabled = t < .6f || Mathf.FloorToInt(explosionAge[i] * 20) % 2 == 0;
             }
-        }
-
-        protected override void AfterTick(float dt)
-        {
-            Match.AdvanceSpinOuts(dt, sceneCamera.transform.position, sceneCamera.orthographicSize + 1);
-            SyncViews();
-            UpdateExplosions(dt);
-            engine.Update(this, engineClip, cars, Phase == ArcadePhase.Playing || Phase == ArcadePhase.Countdown, driveSpeed);
         }
 
         protected override void OnDestroy()
