@@ -35,7 +35,6 @@ namespace TNDA.Prototype
         public TMP_Text arenaBoard, leaderboard;
         public TMP_Text[] carLabels;
         public Transform[] healthBars, shieldViews;
-        public SpriteRenderer[] ramTrails;
 
         [Header("Elimination arena tuning")]
         public float firstElimination = 60, secondElimination = 90, roundSeconds = 120;
@@ -198,7 +197,7 @@ namespace TNDA.Prototype
                 // Holding gas builds speed gradually; releasing it coasts down a little faster.
                 float ramp = input.throttle > .1f ? accelerationPerSecond : coastDownPerSecond;
                 float topSpeed = driveSpeed * (car.computer ? .87f : 1) * (HasCherry(car) ? cherrySpeedMultiplier : 1);
-                car.Drive(dt, input, topSpeed, ramp, 0);
+                car.Drive(dt, input, topSpeed, ramp);
                 // Bumper-car slide from recent hits, fading out.
                 car.position += knock[car.index] * dt;
                 knock[car.index] *= Mathf.Exp(-bumpFriction * dt);
@@ -284,7 +283,6 @@ namespace TNDA.Prototype
                     Vector2 away = car.position - human.position;
                     if (away.sqrMagnitude < .01f) away = Vector2.right;
                     desired = Mathf.Atan2(away.y, away.x) * Mathf.Rad2Deg;
-                    car.boost = 0;
                     break;
                 }
             }
@@ -346,7 +344,6 @@ namespace TNDA.Prototype
             }
             if (Mathf.Abs(car.speed) > 1) PlayHit(.2f);
             car.speed = 0;
-            car.boost = 0;
             car.stun = .12f;
         }
 
@@ -511,7 +508,6 @@ namespace TNDA.Prototype
             ApplyDamage(attacker, damage * .15f);
             attacker.speed *= .6f;
             if (damaged) { victim.speed *= .4f; victim.stun = .12f; }
-            attacker.boost = 0;
             // Bumper cars: the rammed car slides away and its nose is knocked aside; the rammer rebounds.
             Vector2 push = (victim.position - attacker.position).normalized;
             knock[victim.index] += push * ramBump * (.6f + impact * .4f);
@@ -590,7 +586,7 @@ namespace TNDA.Prototype
                 car.score = Mathf.Max(0, car.score - wreckPenalty);
                 car.alive = false;
                 car.respawn = enemyRespawnSeconds;
-                car.speed = car.boost = car.shieldSeconds = cherrySeconds[car.index] = 0;
+                car.speed = car.shieldSeconds = cherrySeconds[car.index] = 0;
                 car.item = 0;
                 StartSpinOut(car, false); // wrecked cars skid off screen too; the impact already played a hit
                 Wrecks++;
@@ -628,7 +624,7 @@ namespace TNDA.Prototype
             finalPlaces[loser.index] = count;
             loser.eliminated = true;
             loser.alive = false;
-            loser.speed = loser.boost = loser.shieldSeconds = loser.spawnProtection = cherrySeconds[loser.index] = 0;
+            loser.speed = loser.shieldSeconds = loser.spawnProtection = cherrySeconds[loser.index] = 0;
             loser.item = 0;
             StartSpinOut(loser);
             foreach (var rocket in rockets.Where(r => r.active && r.owner == loser.index)) rocket.Hide();
@@ -774,12 +770,6 @@ namespace TNDA.Prototype
                 }
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].localScale = new Vector3(Mathf.Clamp01(car.health), 1, 1);
-                if (ramTrails != null && i < ramTrails.Length && ramTrails[i] != null)
-                {
-                    ramTrails[i].enabled = Phase == ArcadePhase.Playing && car.alive && car.boost > 0;
-                    ramTrails[i].transform.position = PixelPosition(car.position - car.Forward * .57f);
-                    ramTrails[i].transform.rotation = Quaternion.Euler(0, 0, car.heading - 90);
-                }
                 if (shieldViews != null && i < shieldViews.Length && shieldViews[i] != null)
                     shieldViews[i].gameObject.SetActive(car.alive && (car.shieldSeconds > 0
                         || Phase != ArcadePhase.Attract && car.spawnProtection > 0 && Mathf.FloorToInt(Elapsed * 8) % 2 == 0));

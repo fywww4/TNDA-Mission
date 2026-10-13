@@ -78,7 +78,7 @@
 
 - 保持單畫面 320×320、PPU 32、Built-in Pixel Perfect Camera；Point Filter，無 Mipmap、無壓縮。
 - 黑、白、青、黃四種顏色。靜態場景、道具、保護圓框、火箭使用 Unity 內建 Square／Circle；車圖使用使用者提供的圖片。
-- 活動實體上限 10：四車、兩個破壞物、兩個道具、兩枚火箭。車頂名稱、耐久條、保護圓框、尾焰是車的視覺元件。
+- 活動實體上限 10：四車、兩個破壞物、兩個道具、兩枚火箭。車頂名稱、耐久條、保護圓框是車的視覺元件（加速衝撞的尾焰已於 2026-10-13 隨遺留欄位清除移除）。
 - 排行榜列出四車分數與 HP／持有道具／重生倒數／淘汰順位，右側顯示玩家按鈕狀態與時間，頂端顯示下次淘汰倒數。
 - 車的像素圖與四色材料位於 `Assets/Prototype/Game3/Art/`。
 - GAME2 的車輛原始圖片已先複製至 `Assets/Prototype/Game3/Art/Source/`，才移除舊案資料夾。
@@ -94,7 +94,7 @@
 | 檔案 | 用途 |
 | --- | --- |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | 整合版玩法；含 BreakableProp／ArenaPickup、AI、積分、淘汰、道具與重生。 |
-| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛、道具、淘汰旗標與護盾時間。Drive 增加選用 idleThrottle，GAME3 傳 0。 |
+| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛、道具、淘汰旗標與護盾時間。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
 | `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour。 |
 | `Assets/Prototype/Runtime/ArcadeGame.cs` | 標題、倒數、輸入、音效、結算與重玩；已移除舊場景切換。 |
 | `Assets/Prototype/Runtime/ArcadeEngineAudio.cs` | 真人車循環引擎聲。 |

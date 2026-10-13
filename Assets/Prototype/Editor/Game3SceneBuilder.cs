@@ -63,7 +63,6 @@ namespace TNDA.Prototype.Editor
                 game.cars = new ArcadeVehicle[4];
                 game.carLabels = new TMP_Text[4];
                 game.healthBars = new Transform[4];
-                game.ramTrails = new SpriteRenderer[4];
                 for (int i = 0; i < 4; i++)
                 {
                     var car = new GameObject("Car " + i).AddComponent<ArcadeVehicle>();
@@ -88,8 +87,6 @@ namespace TNDA.Prototype.Editor
                     label.rectTransform.sizeDelta = new Vector2(1.5f, .25f);
                     label.sortingOrder = 23;
                     game.carLabels[i] = label;
-                    game.ramTrails[i] = SpriteObject(car.transform, "Ram exhaust", square, Vector2.zero,
-                        new Vector2(.15625f, .375f), ArcadeGame.Yellow, 8);
                     game.cars[i] = car;
                 }
 

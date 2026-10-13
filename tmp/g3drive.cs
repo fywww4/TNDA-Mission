@@ -9,7 +9,7 @@ for (int f = 1; f <= 150; f++) { g.Advance(dt, gas, none); if (f % 30 == 0) sb.A
 for (int f = 1; f <= 90; f++) { g.Advance(dt, none, none); if (f % 30 == 0) sb.Append("release " + (f/60f).ToString("0.0") + "s speed=" + car.speed.ToString("0.00") + "\n"); }
 var press = new TNDA.Prototype.ArcadeInput(); press.action = true; press.actionPressed = true;
 g.Advance(dt, press, none);
-sb.Append("Ctrl without item: boost=" + car.boost + " item=" + car.item + "\n");
+sb.Append("Ctrl without item: shield=" + car.shieldSeconds + " item=" + car.item + "\n");
 car.item = 1; g.Advance(dt, press, none);
 sb.Append("Ctrl with shield: item=" + car.item + " shield=" + car.shieldSeconds.ToString("0.0") + " notice=" + g.notice.text + "\n");
 sb.Append("hud=" + g.hud.text.Replace("\n"," | ") + "\nboard=" + g.arenaBoard.text + "\nfooter=" + g.footer.text.Replace("\n"," | "));

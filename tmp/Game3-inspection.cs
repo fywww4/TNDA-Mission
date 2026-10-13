@@ -44,7 +44,6 @@ System.Func<float, float, float> impact = (victimHeading, speed) => {
     isolateRivals();
     var a = g.cars[0]; var b = g.cars[1];
     a.position = new UnityEngine.Vector2(-.3f, 0); a.heading = 0; a.speed = speed;
-    if (speed > g.driveSpeed) a.boost = 1;
     b.alive = true; b.gameObject.SetActive(true); b.position = new UnityEngine.Vector2(.3f, 0);
     b.heading = victimHeading; b.speed = 0; b.stun = 1;
     g.Advance(.02f, new TNDA.Prototype.ArcadeInput { throttle = 1 }, idle);

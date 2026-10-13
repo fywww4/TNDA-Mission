@@ -5,12 +5,12 @@ using UnityEngine.InputSystem;
 
 namespace TNDA.Prototype
 {
-    public enum ArcadePhase { Attract, Playing, Continue, Results, Countdown }
+    public enum ArcadePhase { Attract, Playing, Results, Countdown }
 
     public struct ArcadeInput
     {
         public float steer, throttle;
-        public bool action, actionPressed, jumpPressed;
+        public bool action, actionPressed;
     }
 
     public abstract class ArcadeGame : MonoBehaviour
@@ -50,8 +50,8 @@ namespace TNDA.Prototype
             // The game never uses slow motion; guard against a time scale left over from editor tooling.
             Time.timeScale = 1;
             MakeSounds();
-            onePlayerButton.onClick.AddListener(() => MenuAction(1));
-            twoPlayerButton.onClick.AddListener(() => MenuAction(2));
+            onePlayerButton.onClick.AddListener(() => StartRun(1));
+            twoPlayerButton.onClick.AddListener(() => StartRun(2));
             PreparePreview();
         }
 
@@ -70,8 +70,7 @@ namespace TNDA.Prototype
             if (Pressed(Key.Escape)) ShowAttract();
             bool coin = Pressed(Key.C) || Pressed(Key.Space) || Pressed(Key.Enter) || Pressed(Key.LeftCtrl)
                 || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
-            if (Phase == ArcadePhase.Continue && coin) ContinueRun();
-            else if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
+            if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
             {
                 if ((Pressed(Key.Digit2) || Pressed(Key.NumpadEnter)) && SupportsTwoPlayers) StartRun(2);
                 else if (coin || Pressed(Key.Digit1)) StartRun(1);
@@ -148,12 +147,6 @@ namespace TNDA.Prototype
             else Announce(text, Yellow, 1);
         }
 
-        private void MenuAction(int players)
-        {
-            if (Phase == ArcadePhase.Continue) ContinueRun();
-            else StartRun(players);
-        }
-
         public void ShowAttract()
         {
             if (Phase == ArcadePhase.Countdown && speaker != null) speaker.Stop();
@@ -170,7 +163,7 @@ namespace TNDA.Prototype
             overlayBody.text = body;
             overlayHint.text = hint;
             onePlayerButton.gameObject.SetActive(true);
-            twoPlayerButton.gameObject.SetActive(SupportsTwoPlayers && Phase != ArcadePhase.Continue);
+            twoPlayerButton.gameObject.SetActive(SupportsTwoPlayers);
         }
 
         protected void Finish(string title, string body)
@@ -195,7 +188,6 @@ namespace TNDA.Prototype
         protected virtual void TickIdle(float dt) { }
         // Runs every frame in every phase, after the phase logic (e.g. for looping engine audio).
         protected virtual void AfterTick(float dt) { }
-        public virtual void ContinueRun() { StartRun(PlayerCount); }
 
         private static bool Pressed(Key key) => Keyboard.current != null && Keyboard.current[key].wasPressedThisFrame;
 
@@ -269,12 +261,6 @@ namespace TNDA.Prototype
         protected virtual void OnDestroy()
         {
             if (sounds != null) foreach (var clip in sounds) Destroy(clip);
-        }
-
-        protected static string Bar(float fraction, int width = 10)
-        {
-            int fill = Mathf.Clamp(Mathf.CeilToInt(fraction * width), 0, width);
-            return new string('|', fill) + new string('.', width - fill);
         }
 
         public static Vector3 PixelPosition(Vector2 position) => new Vector3(

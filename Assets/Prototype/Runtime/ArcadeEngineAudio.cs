@@ -21,9 +21,9 @@ namespace TNDA.Prototype
                     continue;
                 }
                 if (!sources[i].isPlaying) sources[i].Play();
-                // Idle burble when stopped, rising pitch and volume with speed, extra kick while boosting.
+                // Idle burble when stopped, rising pitch and volume with speed.
                 float speed = Mathf.Clamp01(Mathf.Abs(car.speed) / maxSpeed);
-                sources[i].pitch = .75f + speed * .55f + (car.boost > 0 ? .25f : 0);
+                sources[i].pitch = .75f + speed * .55f;
                 sources[i].volume = .12f + speed * .23f;
             }
         }
