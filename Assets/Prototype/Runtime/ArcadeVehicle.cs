@@ -29,10 +29,11 @@ namespace TNDA.Prototype
         public bool ReadyToRespawn => !alive && !eliminated && respawn <= 0;
         public int FinalPlace { get; internal set; }
 
-        // These belong to this driver; the match only chooses its strategy.
-        [System.NonSerialized] public float aiThink;
-        [System.NonSerialized] public Vector2 aiDestination;
-        [System.NonSerialized] public ArcadeVehicle aiTarget;
+        // Bumps into walls, props and cars, and lives started; the AI driver watches these to replan.
+        public int Collisions { get; private set; }
+        public int Spawns { get; private set; }
+        public AiDriver Ai => ai ?? (ai = new AiDriver(this));
+        [System.NonSerialized] private AiDriver ai;
         private float spinSpeed;
         private Vector2 spinDirection;
         private const float ProtectionSeconds = 2;
@@ -57,6 +58,7 @@ namespace TNDA.Prototype
             heading = angle;
             health = 1;
             alive = true;
+            Spawns++;
             spawnProtection = ProtectionSeconds;
             gameObject.SetActive(true);
             Sync();
@@ -68,9 +70,6 @@ namespace TNDA.Prototype
             item = ArenaItem.None;
             FinalPlace = 0;
             SlideVelocity = spinDirection = Vector2.zero;
-            aiThink = 0;
-            aiDestination = Vector2.zero;
-            aiTarget = null;
         }
 
         // Damage and both exit paths own their cleanup; callers only handle match-wide effects.
@@ -115,6 +114,8 @@ namespace TNDA.Prototype
             spawnProtection = Mathf.Max(0, spawnProtection - dt);
             CherrySeconds = Mathf.Max(0, CherrySeconds - dt);
         }
+
+        public void RecordCollision() => Collisions++;
 
         public void ApplySlide(Vector2 impulse)
         {

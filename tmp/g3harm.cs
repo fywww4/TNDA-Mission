@@ -27,9 +27,6 @@ try
         victim.computer = pair.Item2 >= 2;
         attacker.position = new UnityEngine.Vector2(0, -1); attacker.heading = 0;
         victim.position = new UnityEngine.Vector2(.55f, -1); victim.heading = 90;
-        attacker.aiThink = victim.aiThink = 1000;
-        attacker.aiDestination = new UnityEngine.Vector2(4, -1);
-        victim.aiDestination = victim.position + UnityEngine.Vector2.up * 4;
         bool allowed = late || pair.Item1 == 0 || pair.Item2 == 3;
         if (attack == "ram") attacker.speed = 2.8f;
         if (attack == "cherry") attacker.GiveCherry(8);
@@ -58,7 +55,7 @@ try
         p1.score = System.Math.Max(1500, p1.score);
         g.Advance(dt, none, none);
         foreach (var ai in g.cars)
-            if (ai.computer && ai.aiTarget == p1) { if (g.Elapsed < 10) earlySafe = false; else lateTarget = true; }
+            if (ai.computer && ai.Ai.Target == p1) { if (g.Elapsed < 10) earlySafe = false; else lateTarget = true; }
         if (g.Elapsed < 10 && (!p1.alive || p1.health != 1)) earlySafe = false;
     }
     checks["leader protected and never targeted during first ten seconds"] = earlySafe;
@@ -67,7 +64,7 @@ try
     // The exact GO-time boundary releases protection for every attack, independent of held cherry state.
     start(9.998f);
     var owner = g.cars[2]; var target = g.cars[0]; owner.computer = true;
-    owner.aiThink = 1000; owner.aiDestination = owner.position;
+
     target.position = new UnityEngine.Vector2(1, -1);
     g.rockets[0].Spawn(target.position, UnityEngine.Vector2.zero, owner.index);
     g.Advance(.001f, none, none);

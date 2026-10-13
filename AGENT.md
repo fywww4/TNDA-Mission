@@ -94,7 +94,8 @@
 | 檔案 | 用途 |
 | --- | --- |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | 整合版玩法；含 BreakableProp／ArenaPickup、AI、積分、淘汰、道具與重生。 |
-| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次與 AI 暫存。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
+| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
+| `Assets/Prototype/Runtime/AiDriver.cs` | AI 駕駛 module（`car.Ai`）：選目標、輪替策略、閃避玩家、逃離櫻桃、道具時機；比對車輛的 `Collisions`／`Spawns` 與存活車數自行重新規劃。比賽主程式經 `IAiArena` 提供局面。 |
 | `Assets/Prototype/Runtime/ArenaItems.cs` | 道具 module：`ArenaItem` 列舉、木箱抽選、使用效果、名稱／標籤／狀態文字；比賽主程式經 `IItemArena` 提供火箭與提示。 |
 | `Assets/Prototype/Runtime/VehicleHarmPolicy.cs` | 衝撞、櫻桃、火箭與 AI 選目標共用的傷害資格規則；所有 AI 攻擊在開局前 10 秒不傷玩家，之後可傷玩家。 |
 | `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour。 |
@@ -150,3 +151,4 @@
 - 2026-10-13 完成架構票單 04：衝撞、櫻桃、火箭與 AI 選目標改由 `VehicleHarmPolicy` 決定傷害資格；使用者確認所有 AI 攻擊於 10 秒後皆可傷害玩家。`tmp/g3harm.cs` 的 68 項斷言在抽取前後全部通過，加上既有生命週期／道具與文字回歸共 136 項全部通過；AI、油門、特效與開局文字檢查正常。P1 領先 1500 分時，前 10 秒無 AI 鎖定且耐久 100%，10～25 秒 AI 追撞。重新編譯與網域重新載入完成，Console 即時零錯誤、零警告；停止 Play Mode。
 - 票單 04 的 `code-review` 雙軸審查完成：Standards 0 項、Spec 0 項；固定點為票單 02 提交 `7812c0e`。
 - 2026-10-13 完成架構票單 03：防護罩、火箭、櫻桃集中於 `ArenaItems`（`ArenaItem` 列舉沿用 0～3 序列化代碼）。`tmp/g3items.cs` 16 項斷言通過，既有回歸全部通過；Console 零錯誤、零警告。
+- 2026-10-13 完成架構票單 05：AI 駕駛收進 `AiDriver`，碰撞、場地與生死流程不再改 AI 思考計時。`tmp/g3driver.cs` 14 項斷言通過；固定亂數 `g3ai` 抽取前後相同；既有回歸全部通過，Console 零錯誤、零警告。

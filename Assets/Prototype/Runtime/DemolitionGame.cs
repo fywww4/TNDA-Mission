@@ -27,7 +27,7 @@ namespace TNDA.Prototype
         public bool available;
     }
 
-    public class DemolitionGame : ArcadeGame, IItemArena
+    public class DemolitionGame : ArcadeGame, IItemArena, IAiArena
     {
         public ArcadeVehicle[] cars;
         public BreakableProp[] props;
@@ -146,8 +146,7 @@ namespace TNDA.Prototype
             for (int i = 0; i < cars.Length; i++)
             {
                 cars[i].ResetVehicle(starts[i], i < 2 ? 90 : -90, startingDemo ? 0 : PlayerCount);
-                cars[i].aiThink = .2f + i * .15f;
-                cars[i].aiDestination = new Vector2(i % 2 == 0 ? -1.8f : 1.8f, -.6f);
+                cars[i].Ai.BeginMatch();
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].GetComponentInChildren<SpriteRenderer>().color = cars[i].body.color;
             }
@@ -182,7 +181,7 @@ namespace TNDA.Prototype
                     if (car.ReadyToRespawn) RespawnVehicle(car);
                     continue;
                 }
-                ArcadeInput input = car.computer ? ComputerInput(car, dt) : car.index == 0 ? p1 : p2;
+                ArcadeInput input = car.computer ? car.Ai.Drive(this, dt) : car.index == 0 ? p1 : p2;
                 // The item button only fires a held item; a human item requires a fresh press.
                 if (car.item != ArenaItem.None && car.cooldown <= 0 && (car.computer ? input.action : input.actionPressed)
                     && ArenaItems.Use(car, this)) Sound(2);
@@ -231,85 +230,12 @@ namespace TNDA.Prototype
         private bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) =>
             VehicleHarmPolicy.CanHarm(attacker, victim, Elapsed, aiGraceSeconds);
 
-        // Which car an AI wants to ram: high scores first, nearer is better. During the grace period only other AI.
-        private ArcadeVehicle PickRival(ArcadeVehicle car)
-        {
-            float top = cars.Max(c => c.score) + 1;
-            return cars.Where(c => CanHarm(car, c))
-                .OrderByDescending(c => (1 + leaderBias * c.score / top) / (1 + Vector2.Distance(c.position, car.position) * .35f)
-                    * UnityEngine.Random.Range(.85f, 1.15f))
-                .FirstOrDefault();
-        }
-
-        // AI competes for props/items and rams rivals, preferring the leaders. Players are spared early on.
-        private ArcadeInput ComputerInput(ArcadeVehicle car, float dt)
-        {
-            car.aiThink -= dt;
-            if (car.aiThink <= 0 || Vector2.Distance(car.position, car.aiDestination) < .4f
-                || (car.aiTarget != null && !CanHarm(car, car.aiTarget))) ChooseDestination(car);
-            if (HasCherry(car) && car.aiTarget == null) car.aiTarget = PickRival(car);
-            if (car.aiTarget != null) car.aiDestination = car.aiTarget.position;
-            Vector2 delta = car.aiDestination - car.position;
-            float desired = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-            var hunter = HasCherry(car) ? null : cars.FirstOrDefault(c => c != car && HasCherry(c)
-                && Vector2.Distance(c.position, car.position) < 2.2f);
-            if (hunter != null)
-            {
-                Vector2 flee = car.position - hunter.position;
-                if (flee.sqrMagnitude < .01f) flee = Vector2.right;
-                desired = Mathf.Atan2(flee.y, flee.x) * Mathf.Rad2Deg;
-            }
-            // Players are steered around unless they are this AI's target after the grace period.
-            foreach (var human in cars.Where(c => !c.computer && c.alive && !(c == car.aiTarget && CanHarm(car, c))))
-            {
-                Vector2 toHuman = human.position - car.position;
-                if (toHuman.magnitude < 1.6f && Vector2.Dot(car.Forward, toHuman.normalized) > -.1f)
-                {
-                    Vector2 away = car.position - human.position;
-                    if (away.sqrMagnitude < .01f) away = Vector2.right;
-                    desired = Mathf.Atan2(away.y, away.x) * Mathf.Rad2Deg;
-                    break;
-                }
-            }
-            float error = Mathf.DeltaAngle(car.heading, desired);
-            bool humansClear = cars.All(c => c == car || !c.alive || CanHarm(car, c)
-                || Vector2.Distance(c.position, car.position) > 1.8f);
-            bool rivalAhead = car.aiTarget != null && delta.magnitude < 2.7f && Mathf.Abs(error) < 22;
-            bool hasPropAhead = props.Any(p => !p.broken && Vector2.Distance(p.point, car.position) < 1.6f
-                && Vector2.Dot(car.Forward, (p.point - car.position).normalized) > .8f);
-            bool rivalNear = cars.Any(c => CanHarm(car, c) && Vector2.Distance(c.position, car.position) < 3);
-            bool activate = car.item == ArenaItem.Shield ? car.health < .75f || rivalAhead
-                : car.item == ArenaItem.Rocket ? rivalAhead || hasPropAhead
-                : car.item == ArenaItem.Cherry && rivalNear;
-            return new ArcadeInput {
-                steer = -Mathf.Clamp(error / 38, -1, 1),
-                throttle = Mathf.Abs(error) > 65 ? .35f : 1,
-                action = humansClear && activate
-            };
-        }
-
-        private void ChooseDestination(ArcadeVehicle car)
-        {
-            int i = car.index;
-            car.aiThink = 2.2f + i * .35f;
-            car.aiTarget = null;
-            var rival = PickRival(car);
-            // A car well ahead of this AI is hunted on purpose, whatever the current strategy.
-            bool huntLeader = rival != null && rival.score >= car.score + leaderHuntMargin;
-            var prop = props.Where(p => !p.broken).OrderBy(p => Vector2.Distance(p.point, car.position)).FirstOrDefault();
-            var pickup = car.item == ArenaItem.None ? pickups.Where(p => p.available)
-                .OrderBy(p => Vector2.Distance(p.point, car.position)).FirstOrDefault() : null;
-            // Rotate priorities so rivals collide as well as collecting and breaking objects.
-            int strategy = (Mathf.FloorToInt(Elapsed / 4) + i) % 3;
-            if (rival != null && (huntLeader || strategy == 0 || car.item == ArenaItem.Rocket || prop == null && pickup == null))
-            {
-                car.aiTarget = rival;
-                car.aiDestination = rival.position;
-            }
-            else if (pickup != null && (strategy == 1 || prop == null)) car.aiDestination = pickup.point;
-            else if (prop != null) car.aiDestination = prop.point;
-            else car.aiDestination = new Vector2(Mathf.Sin(Elapsed + i) * 2.8f, Mathf.Cos(Elapsed + i) * 1.6f - .6f);
-        }
+        IReadOnlyList<ArcadeVehicle> IAiArena.Cars => cars;
+        IReadOnlyList<BreakableProp> IAiArena.Props => props;
+        IReadOnlyList<ArenaPickup> IAiArena.Pickups => pickups;
+        float IAiArena.LeaderBias => leaderBias;
+        float IAiArena.LeaderHuntMargin => leaderHuntMargin;
+        bool IAiArena.CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) => CanHarm(attacker, victim);
 
         private void ConstrainToArena(ArcadeVehicle car)
         {
@@ -320,12 +246,12 @@ namespace TNDA.Prototype
             car.position = bounded;
             // A bumper slide into a wall rebounds softly instead of pinning the car.
             car.ReboundSlide(hitX, hitY);
-            // Walls slow players without draining durability. AI turns back into the arena.
+            car.RecordCollision();
+            // Walls slow players without draining durability. AI cars bounce back into the arena.
             if (car.computer)
             {
                 if (hitX) car.heading = 180 - car.heading;
                 if (hitY) car.heading = -car.heading;
-                car.aiThink = 0;
             }
             if (Mathf.Abs(car.speed) > 1) PlayHit(.2f);
             car.speed = 0;
@@ -346,7 +272,7 @@ namespace TNDA.Prototype
                     car.speed *= .75f;
                     Sound(2);
                     Announce(string.Format(CabinetText.Smashed, car.DriverName, prop.points), car.body.color, 1.2f);
-                    car.aiThink = 0;
+                    car.RecordCollision();
                 }
                 else
                 {
@@ -355,7 +281,7 @@ namespace TNDA.Prototype
                     car.position = prop.point + away * .65f;
                     car.speed *= -.3f;
                     car.stun = .15f;
-                    if (car.computer) car.aiThink = 0;
+                    car.RecordCollision();
                 }
             }
         }
@@ -422,8 +348,8 @@ namespace TNDA.Prototype
                     // Every new touch bounces both cars apart a little; a real ram adds more in ResolveImpact.
                     a.ApplySlide(separation * contactBump);
                     b.ApplySlide(-separation * contactBump);
-                    if (a.computer) a.aiThink = 0;
-                    if (b.computer) b.aiThink = 0;
+                    a.RecordCollision();
+                    b.RecordCollision();
                     ResolveImpact(a, b);
                     contactCooldowns[pair] = .8f;
                 }
@@ -574,7 +500,6 @@ namespace TNDA.Prototype
             eliminationStage++;
             Announce(string.Format(CabinetText.Eliminated, loser.DriverName), Yellow, 4);
             Sound(3);
-            foreach (var car in cars) car.aiThink = 0;
             if (Contenders == 1) EndRound();
         }
 
