@@ -29,7 +29,7 @@ try
     car.AdvanceTimers(1.5f);
     car.score = 1000;
     checks["lethal damage applied"] = car.TakeDamage(1, rules);
-    checks["wreck starts spin and clears powers"] = !car.alive && car.IsSpinningOut && car.gameObject.activeSelf
+    checks["wreck starts spin and clears powers"] = !car.alive && car.IsSpinningOut && car.Visible
         && car.score == 750 && car.respawn == 3 && !car.HasCherry && car.CherrySeconds == 0
         && car.SlideVelocity == UnityEngine.Vector2.zero && car.cooldown == 0 && car.spawnProtection == 0;
     car.ApplySlide(UnityEngine.Vector2.up);
@@ -39,13 +39,13 @@ try
     checks["spin motion unchanged"] = UnityEngine.Vector2.Distance(car.position, new UnityEngine.Vector2(2.875f, 0)) < .001f
         && UnityEngine.Mathf.Abs(car.heading - 360) < .001f;
     for (int f = 0; f < 120; f++) car.AdvanceSpinOut(1f / 60, rules, UnityEngine.Vector2.zero, 6);
-    checks["spin hides off screen"] = !car.IsSpinningOut && !car.gameObject.activeSelf;
+    checks["spin hides off screen"] = !car.IsSpinningOut && !car.Visible;
     car.AdvanceTimers(2.99f);
     checks["no early respawn"] = !car.ReadyToRespawn;
     car.AdvanceTimers(.02f);
     checks["respawn due after three seconds"] = car.ReadyToRespawn;
     car.Respawn(new UnityEngine.Vector2(-3.5f, 1.1f), 0);
-    checks["respawn restores protected car and score"] = car.alive && car.gameObject.activeSelf && car.health == 1
+    checks["respawn restores protected car and score"] = car.alive && car.Visible && car.health == 1
         && car.spawnProtection == 2 && car.score == 750 && !car.IsSpinningOut && car.respawn == 0;
     // Respawn can interrupt a fly-out when tuned to occur before it reaches the edge.
     car.spawnProtection = 0;

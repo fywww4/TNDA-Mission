@@ -15,7 +15,6 @@ namespace TNDA.Prototype
         float CherrySeconds { get; }
         // False when every rocket is still flying.
         bool LaunchRocket(ArcadeVehicle car);
-        void ItemFeedback(string message, Color color, float seconds);
     }
 
     // The three crate items: crate draw, use effect and every name/tag/status text, in one place.
@@ -23,15 +22,15 @@ namespace TNDA.Prototype
     {
         private struct Definition
         {
-            public string name, tag;
+            public string name, tag, used;
             public Func<ArcadeVehicle, IItemArena, bool> use;
         }
 
         private static readonly Definition[] Definitions = {
             new Definition { name = CabinetText.NoItem, tag = "" },
-            new Definition { name = CabinetText.Shield, tag = CabinetText.ShieldTag, use = UseShield },
-            new Definition { name = CabinetText.Rocket, tag = CabinetText.RocketTag, use = UseRocket },
-            new Definition { name = CabinetText.Cherry, tag = CabinetText.CherryTag, use = UseCherry },
+            new Definition { name = CabinetText.Shield, tag = CabinetText.ShieldTag, used = CabinetText.ShieldUp, use = UseShield },
+            new Definition { name = CabinetText.Rocket, tag = CabinetText.RocketTag, used = CabinetText.RocketFired, use = UseRocket },
+            new Definition { name = CabinetText.Cherry, tag = CabinetText.CherryTag, used = CabinetText.CherryEaten, use = UseCherry },
         };
 
         // An unknown stored code reads as no item, like the old integer checks.
@@ -60,7 +59,11 @@ namespace TNDA.Prototype
             return true;
         }
 
-        public static string PickupMessage(ArcadeVehicle car) => string.Format(CabinetText.GotItem, car.DriverName, Name(car.item));
+        public static string PickupMessage(ArcadeVehicle car, ArenaItem item) => string.Format(CabinetText.GotItem, car.DriverName, Name(item));
+
+        // seconds is how long the item lasts (shield and cherry); the rocket message ignores it.
+        public static string UsedMessage(ArcadeVehicle car, ArenaItem item, float seconds) =>
+            string.Format(Of(item).used ?? "", car.DriverName, seconds.ToString("0"));
 
         public static string Status(ArcadeVehicle car)
         {
@@ -76,26 +79,19 @@ namespace TNDA.Prototype
         {
             car.shieldSeconds = arena.ShieldSeconds;
             car.cooldown = .35f;
-            arena.ItemFeedback(string.Format(CabinetText.ShieldUp, car.DriverName, arena.ShieldSeconds.ToString("0")), ArcadeGame.Cyan, 2);
             return true;
         }
 
         private static bool UseRocket(ArcadeVehicle car, IItemArena arena)
         {
-            if (!arena.LaunchRocket(car))
-            {
-                if (!car.computer) arena.ItemFeedback(CabinetText.RocketBusy, ArcadeGame.Yellow, 1);
-                return false;
-            }
+            if (!arena.LaunchRocket(car)) return false;
             car.cooldown = .5f;
-            arena.ItemFeedback(string.Format(CabinetText.RocketFired, car.DriverName), ArcadeGame.Yellow, 1);
             return true;
         }
 
         private static bool UseCherry(ArcadeVehicle car, IItemArena arena)
         {
             car.GiveCherry(arena.CherrySeconds);
-            arena.ItemFeedback(string.Format(CabinetText.CherryEaten, car.DriverName, arena.CherrySeconds.ToString("0")), car.body.color, 2.5f);
             return true;
         }
     }

@@ -27,6 +27,9 @@ namespace TNDA.Prototype
         public Vector2 SlideVelocity { get; private set; }
         public bool IsSpinningOut => spinSpeed > 0;
         public bool ReadyToRespawn => !alive && !eliminated && respawn <= 0;
+        // Shown while driving or spinning off; a wreck waiting to respawn and a finished fly-out are hidden. An
+        // already-hidden wreck that gets eliminated shows again while it flies out.
+        public bool Visible => alive || IsSpinningOut;
         public int FinalPlace { get; internal set; }
 
         // Bumps into walls, props and cars, and lives started; the AI driver watches these to replan.
@@ -46,7 +49,6 @@ namespace TNDA.Prototype
             eliminated = false;
             score = 0;
             computer = index >= playerCount;
-            body.color = index == 0 ? ArcadeGame.Cyan : index == 1 && !computer ? ArcadeGame.Yellow : ArcadeGame.White;
             Respawn(start, angle);
         }
 
@@ -60,8 +62,6 @@ namespace TNDA.Prototype
             alive = true;
             Spawns++;
             spawnProtection = ProtectionSeconds;
-            gameObject.SetActive(true);
-            Sync();
         }
 
         private void ClearTransientState()
@@ -140,8 +140,6 @@ namespace TNDA.Prototype
             if (away.sqrMagnitude < .01f) away = Forward;
             spinDirection = away.normalized;
             spinSpeed = rules.spinStartSpeed;
-            gameObject.SetActive(true); // An already-hidden wreck can still be eliminated and fly out.
-            Sync();
         }
 
         public void AdvanceSpinOut(float dt, VehicleLifecycleRules rules, Vector2 viewCentre, float viewHalfSize)
@@ -150,12 +148,8 @@ namespace TNDA.Prototype
             spinSpeed += rules.spinAcceleration * dt;
             position += spinDirection * spinSpeed * dt;
             heading += rules.spinTurnsPerSecond * 360 * dt;
-            Sync();
             if (Mathf.Abs(position.x - viewCentre.x) > viewHalfSize || Mathf.Abs(position.y - viewCentre.y) > viewHalfSize)
-            {
                 spinSpeed = 0;
-                gameObject.SetActive(false);
-            }
         }
 
         public void Drive(float dt, ArcadeInput input, float maxSpeed, float acceleration)
@@ -175,6 +169,7 @@ namespace TNDA.Prototype
             position += Forward * speed * dt;
         }
 
+        // Mirrors the car onto its sprite and name tag; only the scene adapter calls this.
         public void Sync()
         {
             transform.position = ArcadeGame.PixelPosition(position);

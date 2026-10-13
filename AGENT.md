@@ -70,7 +70,7 @@
 ### 標題畫面（街機待機示範，2026-10-12 使用者要求）
 
 - 待機時四台車全由 AI 駕駛，背景自動播放一局示範（`DemolitionGame.TickIdle`）：第 20 秒淘汰最後一名以展示打滑飛出，第 30 秒重新開始（`demoEliminationSeconds`／`demoLoopSeconds`）。示範不計入正式比賽、不觸發結算。
-- 待機期間靜音、不顯示提示文字（`ArcadeGame.Sound/PlayClip/Announce` 在 Attract 階段直接略過），隱藏排行榜、狀態、車名與原本的標題說明面板／1P2P 按鈕。
+- 待機期間靜音、不顯示提示文字（場景 adapter `DemolitionGame.Present()` 在 Attract 階段只呈現畫面事件，統一略過提示與音效），隱藏排行榜、狀態、車名與原本的標題說明面板／1P2P 按鈕。
 - 畫面只顯示：標題「廢車場大亂鬥」、「每位玩家 1 枚硬幣」、閃爍的「按 1 單人　按 2 雙人」，以及底部 P1／P2 操作提示（規則說明已依使用者要求簡化，只留操作）。文字定義在執行期文字表 `CabinetText`（`P1Controls`、`P2Controls`、`CoinRule`、`CoinPrompt`），介面由 `Game3Text.CreateAttractScreen` 建立（場景物件 `Attract screen`，每次修補會重建）。
 - 開始方式不變：1／C／Space／Enter／左 Ctrl 單人，2／數字鍵 Enter 雙人；開始後恢復正常 HUD 與 3-2-1 倒數。
 
@@ -94,12 +94,12 @@
 | 檔案 | 用途 |
 | --- | --- |
 | `Assets/Prototype/Runtime/DemolitionMatch.cs` | 比賽規則模擬（不需場景物件）：駕駛、破壞物、木箱、碰撞、火箭、撞毀、計時淘汰與冠軍；`MatchTuning` 為規則數值，以 `IAiArena`／`IItemArena` 提供局面給 AI 駕駛與道具 module，發生的事記錄為 `Events`。 |
-| `Assets/Prototype/Runtime/MatchEvents.cs` | 比賽事件（火箭命中、防護罩擋下、撞毀、撞毀獎勵、淘汰、比賽結束等）。 |
+| `Assets/Prototype/Runtime/MatchEvents.cs` | 比賽事件：火箭命中、撞擊、櫻桃撞車、撞牆、撞碎破壞物、撿到／使用道具、火箭仍在飛、防護罩擋下、撞毀、撞毀獎勵、淘汰、比賽結束。規則只記錄事件，提示文字、顏色、停留時間與音效都由 `DemolitionGame.Cue` 決定。 |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | GAME3 場景 adapter：BreakableProp／ArenaPickup、Inspector 調整值與輸入送進 `DemolitionMatch`，再把狀態與事件轉成車輛／破壞物／木箱／火箭顯示、爆炸特效、提示文字與音效。 |
 | `Assets/Prototype/Tests/EditMode/` | EditMode 測試組件 `TNDA.Prototype.Tests.EditMode`（不載入 GAME3 場景），以 Unity CLI `run_tests --mode editor` 執行；執行期程式在 `TNDA.Prototype` 組件。 |
-| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。 |
+| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。規則不碰顯示物件：`Visible`（行駛中或打滑飛出中）由場景 adapter 轉成物件顯示隱藏，車色也由 adapter 在開局設定。 |
 | `Assets/Prototype/Runtime/AiDriver.cs` | AI 駕駛 module（`car.Ai`）：選目標、輪替策略、閃避玩家、逃離櫻桃、道具時機；比對車輛的 `Collisions`／`Spawns` 與存活車數自行重新規劃。比賽主程式經 `IAiArena` 提供局面。 |
-| `Assets/Prototype/Runtime/ArenaItems.cs` | 道具 module：`ArenaItem` 列舉、木箱抽選、使用效果、名稱／標籤／狀態文字；比賽主程式經 `IItemArena` 提供火箭與提示。 |
+| `Assets/Prototype/Runtime/ArenaItems.cs` | 道具 module：`ArenaItem` 列舉、木箱抽選、使用效果、名稱／標籤／狀態文字；比賽主程式經 `IItemArena` 提供火箭與持續時間；撿到／使用道具的提示文字由 `PickupMessage`／`UsedMessage` 產生，經事件由場景 adapter 顯示。 |
 | `Assets/Prototype/Runtime/VehicleHarmPolicy.cs` | 衝撞、櫻桃、火箭與 AI 選目標共用的傷害資格規則；所有 AI 攻擊在開局前 10 秒不傷玩家，之後可傷玩家。 |
 | `Assets/Prototype/Runtime/ArcadeProjectile.cs` | 固定彈體池資料，並非 MonoBehaviour；顯示由場景 adapter 同步。 |
 | `Assets/Prototype/Runtime/ArcadeGame.cs` | 標題、倒數、輸入、音效、結算與重玩；已移除舊場景切換。 |
@@ -156,3 +156,4 @@
 - 2026-10-13 完成架構票單 03：防護罩、火箭、櫻桃集中於 `ArenaItems`（`ArenaItem` 列舉沿用 0～3 序列化代碼）。`tmp/g3items.cs` 16 項斷言通過，既有回歸全部通過；Console 零錯誤、零警告。
 - 2026-10-13 完成架構票單 05：AI 駕駛收進 `AiDriver`，碰撞、場地與生死流程不再改 AI 思考計時。`tmp/g3driver.cs` 14 項斷言通過；固定亂數 `g3ai` 抽取前後相同；既有回歸全部通過，Console 零錯誤、零警告。
 - 2026-10-13 完成架構票單 06：比賽規則移到 `DemolitionMatch`，回傳 `MatchEvents` 事件，`DemolitionGame` 只當場景 adapter。火箭命中完全經由事件呈現（爆炸特效、命中音效、防護罩／撞毀提示）。新增 `TNDA.Prototype` 執行期組件與 EditMode 測試組件，4 個 EditMode 測試（火箭命中、致命火箭的撞毀與獎勵順序、防護罩格擋、整局淘汰到冠軍）以 Unity CLI 執行全部通過；`g3lifecycle`／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket`／`g3harm`／`g3items`／`g3driver` 164 項斷言通過。重新編譯與網域重新載入完成，Console 零錯誤、零警告。
+- 2026-10-13 完成架構票單 07：其餘提示文字、音效與車輛顯示隱藏全部改走事件，`DemolitionMatch`／`ArcadeVehicle`／`ArenaItems` 不再碰觸任何畫面或音效物件（EditMode 測試以沒有 sprite 的車輛跑完整局證明）。待機示範的靜音與不顯示提示集中在 `DemolitionGame.Present()`。`ArcadeGame.sounds` 標為 `[NonSerialized]`，避免 Editor 重新載入網域後變成空陣列而在 edit mode 驗證時越界。EditMode 測試 26 個全部通過（新增撞毀扣分與獎勵、扣分不低於 0、計時淘汰同分比耐久再比索引、60／90 秒依時間淘汰且示範不淘汰、冠軍與 Survived、各事件）。Play Mode `tmp/g3cues.cs` 17 項確認各路徑提示文字、顏色、停留時間與音效與修改前相同，待機示範 21 秒無音效、無提示；`tmp/g3attract.cs`（edit mode）6 項，停用 adapter 統一判斷時 2 項失敗。既有回歸 `g3lifecycle`（改讀 `car.Visible`）／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket`／`g3harm`／`g3items`／`g3driver`／`g3text` 全部通過，固定亂數 AI 軌跡與修改前完全相同。重新編譯與網域重新載入完成，Console 零錯誤、零警告。

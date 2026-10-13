@@ -42,7 +42,7 @@ namespace TNDA.Prototype
         public float CountdownLeft { get; private set; }
         protected float resultAge, noticeAge;
         private float goFlash;
-        private AudioClip[] sounds;
+        [NonSerialized] private AudioClip[] sounds; // generated in Awake; a reload must not turn it into an empty array
         protected virtual bool SupportsTwoPlayers => true;
 
         protected virtual void Awake()
@@ -176,7 +176,6 @@ namespace TNDA.Prototype
 
         protected void Announce(string text, Color color, float duration = 2)
         {
-            if (Phase == ArcadePhase.Attract) return; // the attract demo plays without pop-up text
             notice.text = text;
             notice.color = color;
             noticeAge = duration;
@@ -223,14 +222,12 @@ namespace TNDA.Prototype
 
         protected void Sound(int kind)
         {
-            // The attract demo runs silently, like an arcade cabinet waiting for a coin.
-            if (Phase != ArcadePhase.Attract && sounds != null && speaker != null) speaker.PlayOneShot(sounds[kind], .12f);
+            if (sounds != null && speaker != null) speaker.PlayOneShot(sounds[kind], .12f);
         }
 
         // Plays a recorded clip when one is assigned, otherwise the matching generated sound.
         protected void PlayClip(AudioClip clip, int fallback, float volume = .6f)
         {
-            if (Phase == ArcadePhase.Attract) return;
             if (clip != null && speaker != null) speaker.PlayOneShot(clip, volume);
             else Sound(fallback);
         }

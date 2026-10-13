@@ -102,8 +102,12 @@ namespace TNDA.Prototype
                 }
                 ArcadeInput input = car.computer ? car.Ai.Drive(this, dt) : car.index == 0 ? p1 : p2;
                 // The item button only fires a held item; a human item requires a fresh press.
-                if (car.item != ArenaItem.None && car.cooldown <= 0 && (car.computer ? input.action : input.actionPressed)
-                    && ArenaItems.Use(car, this)) events.Add(new ToneCue(2));
+                var held = car.item;
+                if (held != ArenaItem.None && car.cooldown <= 0 && (car.computer ? input.action : input.actionPressed))
+                {
+                    if (ArenaItems.Use(car, this)) events.Add(new ItemUsed(car, held));
+                    else if (held == ArenaItem.Rocket) events.Add(new RocketsBusy(car));
+                }
                 // Holding gas builds speed gradually; releasing it coasts down a little faster.
                 float ramp = input.throttle > .1f ? Tuning.accelerationPerSecond : Tuning.coastDownPerSecond;
                 float topSpeed = Tuning.driveSpeed * (car.computer ? .87f : 1) * (car.HasCherry ? Tuning.cherrySpeedMultiplier : 1);
@@ -170,7 +174,7 @@ namespace TNDA.Prototype
                 if (hitX) car.heading = 180 - car.heading;
                 if (hitY) car.heading = -car.heading;
             }
-            if (Mathf.Abs(car.speed) > 1) events.Add(new HitCue(.2f));
+            if (Mathf.Abs(car.speed) > 1) events.Add(new WallHit(car));
             car.speed = 0;
             car.stun = .12f;
         }
@@ -186,8 +190,7 @@ namespace TNDA.Prototype
                     prop.respawn = 6;
                     car.score += prop.points;
                     car.speed *= .75f;
-                    events.Add(new ToneCue(2));
-                    events.Add(new NoticeCue(string.Format(CabinetText.Smashed, car.DriverName, prop.points), car.body.color, 1.2f));
+                    events.Add(new PropSmashed(car, prop.points, false));
                     car.RecordCollision();
                 }
                 else
@@ -212,15 +215,13 @@ namespace TNDA.Prototype
                     : ArenaItems.Roll(ArenaItems.IsTrailing(car, Cars), Tuning.trailingCherryChance, () => Random.value);
                 pickup.available = false;
                 pickup.respawn = Tuning.pickupRespawnSeconds;
-                events.Add(new ToneCue(2));
-                if (!car.computer) events.Add(new NoticeCue(ArenaItems.PickupMessage(car), car.body.color, 2));
+                events.Add(new ItemPicked(car, car.item));
                 break;
             }
         }
 
         float IItemArena.ShieldSeconds => Tuning.shieldDuration;
         float IItemArena.CherrySeconds => Tuning.cherryDuration;
-        void IItemArena.ItemFeedback(string message, Color color, float seconds) => events.Add(new NoticeCue(message, color, seconds));
 
         bool IItemArena.LaunchRocket(ArcadeVehicle car)
         {
@@ -232,13 +233,15 @@ namespace TNDA.Prototype
 
         private void CherryWreck(ArcadeVehicle attacker, ArcadeVehicle victim)
         {
-            events.Add(new HitCue(.9f));
-            if (!CanHarm(attacker, victim)) { attacker.speed *= .3f; return; }
-            if (ApplyDamage(victim, 1) && !victim.alive)
+            if (!CanHarm(attacker, victim))
             {
-                AwardWreck(attacker);
-                events.Add(new NoticeCue(string.Format(CabinetText.CherryWreck, attacker.DriverName, victim.DriverName), attacker.body.color, 2));
+                attacker.speed *= .3f;
+                events.Add(new CherryStrike(attacker, victim, false));
+                return;
             }
+            bool wrecked = ApplyDamage(victim, 1) && !victim.alive;
+            if (wrecked) AwardWreck(attacker);
+            events.Add(new CherryStrike(attacker, victim, wrecked));
         }
 
         private void ResolveContacts(float dt)
@@ -306,8 +309,7 @@ namespace TNDA.Prototype
             victim.ApplySlide(push * Tuning.ramBump * (.6f + impact * .4f));
             attacker.ApplySlide(-push * Tuning.ramBump * .35f);
             victim.heading += Random.Range(15f, 30f) * (Random.value < .5f ? -1 : 1);
-            if (damaged && victim.alive) events.Add(new NoticeCue(string.Format(CabinetText.Rammed, attacker.DriverName, multiplier.ToString("0.0")), attacker.body.color, 1));
-            events.Add(new HitCue(Mathf.Clamp(.3f + impact * .1f, .3f, .75f)));
+            events.Add(new CarRammed(attacker, victim, impact, multiplier, damaged && victim.alive));
         }
 
         private void MoveRockets(float dt)
@@ -347,7 +349,7 @@ namespace TNDA.Prototype
                     prop.respawn = 6;
                     owner.score += prop.points;
                     rocket.Hide();
-                    events.Add(new ToneCue(2));
+                    events.Add(new PropSmashed(owner, prop.points, true));
                     continue;
                 }
                 if (rocket.age > 1.6f || rocket.position.x < Tuning.arenaMin.x || rocket.position.x > Tuning.arenaMax.x

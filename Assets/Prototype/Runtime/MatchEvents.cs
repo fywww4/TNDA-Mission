@@ -14,6 +14,67 @@ namespace TNDA.Prototype
         public RocketHit(ArcadeVehicle attacker, ArcadeVehicle victim, Vector2 point) { Attacker = attacker; Victim = victim; Point = point; }
     }
 
+    // A car rammed a prop to pieces, or its rocket did, scoring the prop's Points.
+    public sealed class PropSmashed : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public readonly int Points;
+        public readonly bool ByRocket;
+        public PropSmashed(ArcadeVehicle car, int points, bool byRocket) { Car = car; Points = points; ByRocket = byRocket; }
+    }
+
+    // A car drove over a crate and now holds Item.
+    public sealed class ItemPicked : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public readonly ArenaItem Item;
+        public ItemPicked(ArcadeVehicle car, ArenaItem item) { Car = car; Item = item; }
+    }
+
+    // A car spent its held Item.
+    public sealed class ItemUsed : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public readonly ArenaItem Item;
+        public ItemUsed(ArcadeVehicle car, ArenaItem item) { Car = car; Item = item; }
+    }
+
+    // A car pressed for its rocket while both rockets were still flying, so it keeps the rocket for later.
+    public sealed class RocketsBusy : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public RocketsBusy(ArcadeVehicle car) { Car = car; }
+    }
+
+    // Attacker drove into Victim (Impact is the closing speed, Multiplier 2 for a side hit, 1.5 from behind).
+    // VictimHurt: the victim lost durability and is still driving.
+    public sealed class CarRammed : MatchEvent
+    {
+        public readonly ArcadeVehicle Attacker, Victim;
+        public readonly float Impact, Multiplier;
+        public readonly bool VictimHurt;
+        public CarRammed(ArcadeVehicle attacker, ArcadeVehicle victim, float impact, float multiplier, bool victimHurt)
+        {
+            Attacker = attacker; Victim = victim; Impact = impact; Multiplier = multiplier; VictimHurt = victimHurt;
+        }
+    }
+
+    // A cherry car touched another car (or rammed it while the other held the cherry). Wrecked is false when the harm
+    // rules protected the victim.
+    public sealed class CherryStrike : MatchEvent
+    {
+        public readonly ArcadeVehicle Attacker, Victim;
+        public readonly bool Wrecked;
+        public CherryStrike(ArcadeVehicle attacker, ArcadeVehicle victim, bool wrecked) { Attacker = attacker; Victim = victim; Wrecked = wrecked; }
+    }
+
+    // A car hit the arena wall fast enough to be heard.
+    public sealed class WallHit : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public WallHit(ArcadeVehicle car) { Car = car; }
+    }
+
     public sealed class ShieldBlocked : MatchEvent
     {
         public readonly ArcadeVehicle Car;
@@ -47,28 +108,5 @@ namespace TNDA.Prototype
     {
         public readonly ArcadeVehicle Winner;
         public MatchEnded(ArcadeVehicle winner) { Winner = winner; }
-    }
-
-    // Cues the rules still choose themselves until ticket 07 turns them into events like the ones above.
-    public sealed class NoticeCue : MatchEvent
-    {
-        public readonly string Text;
-        public readonly Color Color;
-        public readonly float Seconds;
-        public NoticeCue(string text, Color color, float seconds) { Text = text; Color = color; Seconds = seconds; }
-    }
-
-    // One of the cabinet's generated tones (ArcadeGame.Sound).
-    public sealed class ToneCue : MatchEvent
-    {
-        public readonly int Kind;
-        public ToneCue(int kind) { Kind = kind; }
-    }
-
-    // The recorded hit sound at a volume (ArcadeGame.PlayHit).
-    public sealed class HitCue : MatchEvent
-    {
-        public readonly float Volume;
-        public HitCue(float volume) { Volume = volume; }
     }
 }

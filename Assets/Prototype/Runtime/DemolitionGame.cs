@@ -161,6 +161,7 @@ namespace TNDA.Prototype
         {
             demo = startingDemo;
             Match.Reset(demo ? 0 : PlayerCount, demo);
+            foreach (var car in cars) car.body.color = car.index == 0 ? Cyan : car.index == 1 && !car.computer ? Yellow : White;
             for (int i = 0; i < cars.Length; i++)
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].GetComponentInChildren<SpriteRenderer>().color = cars[i].body.color;
@@ -182,47 +183,82 @@ namespace TNDA.Prototype
             Present();
         }
 
-        // Shows what the match reported, in order, then forgets it.
+        // Shows what the match reported, in order, then forgets it. The attract demo plays the picture only: no notice
+        // text and no sound, like a cabinet waiting for a coin.
         private void Present()
         {
+            bool quiet = Phase == ArcadePhase.Attract;
             foreach (var e in Match.Events)
             {
-                switch (e)
-                {
-                    case RocketHit hit:
-                        Explode(hit.Point);
-                        PlayHit(.75f);
-                        break;
-                    case ShieldBlocked blocked:
-                        Announce(string.Format(CabinetText.ShieldBlocked, blocked.Car.DriverName), Cyan, .75f);
-                        break;
-                    case VehicleWrecked wreck:
-                        Announce(string.Format(CabinetText.Wrecked, wreck.Car.DriverName, wreck.Deducted, enemyRespawnSeconds.ToString("0")), Yellow, 2.5f);
-                        break;
-                    case WreckBonus bonus:
-                        Announce(string.Format(CabinetText.WreckBonus, bonus.Attacker.DriverName, bonus.Points), bonus.Attacker.body.color, 2);
-                        break;
-                    case VehicleEliminated eliminated:
-                        PlayHit(1);
-                        Announce(string.Format(CabinetText.Eliminated, eliminated.Car.DriverName), Yellow, 4);
-                        Sound(3);
-                        break;
-                    case MatchEnded end:
-                        ShowResults(end.Winner);
-                        break;
-                    case NoticeCue notice:
-                        Announce(notice.Text, notice.Color, notice.Seconds);
-                        break;
-                    case ToneCue tone:
-                        Sound(tone.Kind);
-                        break;
-                    case HitCue hitSound:
-                        PlayHit(hitSound.Volume);
-                        break;
-                }
+                if (e is RocketHit hit) Explode(hit.Point);
+                else if (e is MatchEnded end) ShowResults(end.Winner);
+                if (!quiet) Cue(e);
             }
             Match.ClearEvents();
             SyncViews();
+        }
+
+        // The notice text and sound for one event.
+        private void Cue(MatchEvent e)
+        {
+            switch (e)
+            {
+                case RocketHit _:
+                    PlayHit(.75f);
+                    break;
+                case CarRammed ram:
+                    if (ram.VictimHurt)
+                        Announce(string.Format(CabinetText.Rammed, ram.Attacker.DriverName, ram.Multiplier.ToString("0.0")), ram.Attacker.body.color, 1);
+                    PlayHit(Mathf.Clamp(.3f + ram.Impact * .1f, .3f, .75f));
+                    break;
+                case CherryStrike strike:
+                    PlayHit(.9f);
+                    if (strike.Wrecked)
+                        Announce(string.Format(CabinetText.CherryWreck, strike.Attacker.DriverName, strike.Victim.DriverName), strike.Attacker.body.color, 2);
+                    break;
+                case WallHit _:
+                    PlayHit(.2f);
+                    break;
+                case PropSmashed smash:
+                    Sound(2);
+                    if (!smash.ByRocket) Announce(string.Format(CabinetText.Smashed, smash.Car.DriverName, smash.Points), smash.Car.body.color, 1.2f);
+                    break;
+                case ItemPicked picked:
+                    Sound(2);
+                    if (!picked.Car.computer) Announce(ArenaItems.PickupMessage(picked.Car, picked.Item), picked.Car.body.color, 2);
+                    break;
+                case ItemUsed used:
+                    Sound(2);
+                    AnnounceItemUsed(used.Car, used.Item);
+                    break;
+                case RocketsBusy busy:
+                    if (!busy.Car.computer) Announce(CabinetText.RocketBusy, Yellow, 1);
+                    break;
+                case ShieldBlocked blocked:
+                    Announce(string.Format(CabinetText.ShieldBlocked, blocked.Car.DriverName), Cyan, .75f);
+                    break;
+                case VehicleWrecked wreck:
+                    Announce(string.Format(CabinetText.Wrecked, wreck.Car.DriverName, wreck.Deducted, enemyRespawnSeconds.ToString("0")), Yellow, 2.5f);
+                    break;
+                case WreckBonus bonus:
+                    Announce(string.Format(CabinetText.WreckBonus, bonus.Attacker.DriverName, bonus.Points), bonus.Attacker.body.color, 2);
+                    break;
+                case VehicleEliminated eliminated:
+                    PlayHit(1);
+                    Announce(string.Format(CabinetText.Eliminated, eliminated.Car.DriverName), Yellow, 4);
+                    Sound(3);
+                    break;
+            }
+        }
+
+        private void AnnounceItemUsed(ArcadeVehicle car, ArenaItem item)
+        {
+            switch (item)
+            {
+                case ArenaItem.Shield: Announce(ArenaItems.UsedMessage(car, item, shieldDuration), Cyan, 2); break;
+                case ArenaItem.Rocket: Announce(ArenaItems.UsedMessage(car, item, 0), Yellow, 1); break;
+                case ArenaItem.Cherry: Announce(ArenaItems.UsedMessage(car, item, cherryDuration), car.body.color, 2.5f); break;
+            }
         }
 
         private void ShowResults(ArcadeVehicle winner)
@@ -235,10 +271,15 @@ namespace TNDA.Prototype
                 + "\n\n" + string.Format(CabinetText.ResultsSummary, best, Wrecks) + "\n\n" + CabinetText.EliminationRule);
         }
 
-        // Mirrors match state onto the scene: cars placed, props and crates shown or hidden, rockets placed and coloured.
+        // Mirrors match state onto the scene: cars placed and shown or hidden, props and crates shown or hidden, rockets
+        // placed and coloured.
         private void SyncViews()
         {
-            foreach (var car in cars) car.Sync();
+            foreach (var car in cars)
+            {
+                car.gameObject.SetActive(car.Visible);
+                car.Sync();
+            }
             foreach (var prop in props) prop.view.gameObject.SetActive(!prop.broken);
             foreach (var pickup in pickups) pickup.view.gameObject.SetActive(pickup.available);
             foreach (var rocket in rockets)
@@ -282,6 +323,7 @@ namespace TNDA.Prototype
         protected override void AfterTick(float dt)
         {
             Match.AdvanceSpinOuts(dt, sceneCamera.transform.position, sceneCamera.orthographicSize + 1);
+            SyncViews();
             UpdateExplosions(dt);
             engine.Update(this, engineClip, cars, Phase == ArcadePhase.Playing || Phase == ArcadePhase.Countdown, driveSpeed);
         }
