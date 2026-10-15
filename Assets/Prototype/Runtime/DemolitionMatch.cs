@@ -18,6 +18,7 @@ namespace TNDA.Prototype
         public float spinOutTurnsPerSecond = 4, spinOutStartSpeed = 4, spinOutAcceleration = 14;
         public float contactBump = 1.4f, ramBump = 2.4f, bumpFriction = 4.5f;
         public Vector2 arenaMin = new Vector2(-4.35f, -3.85f), arenaMax = new Vector2(4.35f, 1.65f);
+        public bool randomPropSpots = true;
     }
 
     // The elimination match rules: driving, props, crates, contacts, rockets, wrecks, timed eliminations and the
@@ -73,15 +74,16 @@ namespace TNDA.Prototype
                 Cars[i].ResetVehicle(starts[i], i < 2 ? 90 : -90, humans);
                 Cars[i].Ai.BeginMatch();
             }
-            foreach (var prop in Props)
-            {
-                prop.broken = false;
-                prop.respawn = 0;
-            }
             foreach (var pickup in Pickups)
             {
                 pickup.available = true;
                 pickup.respawn = 0;
+            }
+            foreach (var prop in Props)
+            {
+                prop.broken = false;
+                prop.respawn = 0;
+                if (Tuning.randomPropSpots) prop.point = RandomPropSpot(prop, prop.point);
             }
             foreach (var rocket in Rockets) rocket.Hide();
             contactCooldowns.Clear();
@@ -135,7 +137,9 @@ namespace TNDA.Prototype
             {
                 if (!prop.broken) continue;
                 prop.respawn -= dt;
-                if (prop.respawn <= 0 && SpawnClear(prop.point, .9f)) prop.broken = false;
+                if (prop.respawn > 0) continue;
+                if (Tuning.randomPropSpots) prop.point = RandomPropSpot(prop, prop.point);
+                if (SpawnClear(prop.point, .9f)) prop.broken = false;
             }
             foreach (var pickup in Pickups)
             {
@@ -146,6 +150,20 @@ namespace TNDA.Prototype
         }
 
         private bool SpawnClear(Vector2 point, float radius) => Cars.All(c => !c.alive || Vector2.Distance(c.position, point) > radius);
+
+        // A random arena spot clear of cars, crates and the other props; keeps the fallback when none turns up.
+        private Vector2 RandomPropSpot(BreakableProp prop, Vector2 fallback)
+        {
+            Vector2 min = Tuning.arenaMin + Vector2.one * .5f, max = Tuning.arenaMax - Vector2.one * .5f;
+            for (int attempt = 0; attempt < 40; attempt++)
+            {
+                var spot = new Vector2(Random.Range(min.x, max.x), Random.Range(min.y, max.y));
+                if (SpawnClear(spot, 1.2f) && Pickups.All(p => Vector2.Distance(p.point, spot) > 1)
+                    && Props.All(p => p == prop || Vector2.Distance(p.point, spot) > 1.4f))
+                    return spot;
+            }
+            return fallback;
+        }
 
         private bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) =>
             VehicleHarmPolicy.CanHarm(attacker, victim, Elapsed, Tuning.aiGraceSeconds);

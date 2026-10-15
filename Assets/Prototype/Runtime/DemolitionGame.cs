@@ -50,6 +50,8 @@ namespace TNDA.Prototype
         public float enemyRespawnSeconds = Defaults.respawnSeconds;
         public int wreckPenalty = Defaults.wreckPenalty, wreckBonus = Defaults.wreckBonus;
         public float shieldDuration = Defaults.shieldDuration, pickupRespawnSeconds = Defaults.pickupRespawnSeconds;
+        [Tooltip("Breakable obstacles appear at a random clear spot at the start and on every respawn.")]
+        public bool randomPropSpots = Defaults.randomPropSpots;
 
         [Header("AI aggression")]
         [Tooltip("Seconds after GO during which AI only targets other AI, steers around players and cannot damage them.")]
@@ -115,7 +117,7 @@ namespace TNDA.Prototype
                 t.cherryDuration = cherryDuration; t.cherrySpeedMultiplier = cherrySpeedMultiplier; t.trailingCherryChance = trailingCherryChance;
                 t.spinOutTurnsPerSecond = spinOutTurnsPerSecond; t.spinOutStartSpeed = spinOutStartSpeed; t.spinOutAcceleration = spinOutAcceleration;
                 t.contactBump = contactBump; t.ramBump = ramBump; t.bumpFriction = bumpFriction;
-                t.arenaMin = arenaMin; t.arenaMax = arenaMax;
+                t.arenaMin = arenaMin; t.arenaMax = arenaMax; t.randomPropSpots = randomPropSpots;
                 return match;
             }
         }
@@ -291,7 +293,11 @@ namespace TNDA.Prototype
                 car.gameObject.SetActive(car.Visible);
                 car.Sync();
             }
-            foreach (var prop in props) prop.view.gameObject.SetActive(!prop.broken);
+            foreach (var prop in props)
+            {
+                prop.view.gameObject.SetActive(!prop.broken);
+                if (!prop.broken) prop.view.position = PixelPosition(prop.point);
+            }
             foreach (var pickup in pickups) pickup.view.gameObject.SetActive(pickup.available);
             foreach (var rocket in rockets)
             {

@@ -336,17 +336,17 @@ namespace TNDA.Prototype.Editor
             view.position = ArcadeGame.PixelPosition(position);
             if (style == 0)
             {
-                SpriteObject(view, "Frame", square, Vector2.zero, new Vector2(.56f, .56f), ArcadeGame.Yellow, 3);
+                SpriteObject(view, "Frame", square, Vector2.zero, new Vector2(.56f, .56f), ArcadeGame.White, 3);
                 SpriteObject(view, "Inset", square, Vector2.zero, new Vector2(.44f, .44f), Color.black, 4);
                 foreach (int sign in new[] { -1, 1 })
                 {
-                    var brace = SpriteObject(view, "Crate brace", square, Vector2.zero, new Vector2(.5f, .0625f), ArcadeGame.Yellow, 5);
+                    var brace = SpriteObject(view, "Crate brace", square, Vector2.zero, new Vector2(.5f, .0625f), ArcadeGame.White, 5);
                     brace.transform.localRotation = Quaternion.Euler(0, 0, sign * 45);
                 }
             }
             else if (style == 1)
             {
-                SpriteObject(view, "Barrel", circle, Vector2.zero, new Vector2(.5f, .5f), ArcadeGame.Yellow, 3);
+                SpriteObject(view, "Barrel", circle, Vector2.zero, new Vector2(.5f, .5f), ArcadeGame.White, 3);
                 SpriteObject(view, "Band", square, Vector2.zero, new Vector2(.46f, .0625f), Color.black, 4);
                 SpriteObject(view, "Cap", circle, new Vector2(0, .12f), new Vector2(.125f, .125f), Color.black, 4);
             }
@@ -354,13 +354,13 @@ namespace TNDA.Prototype.Editor
             {
                 for (int sign = -1; sign <= 1; sign += 2)
                 {
-                    SpriteObject(view, "Post", square, new Vector2(sign * .44f, 0), new Vector2(.0625f, .44f), ArcadeGame.Cyan, 3);
-                    SpriteObject(view, "Rail", square, new Vector2(0, sign * .12f), new Vector2(.9375f, .0625f), ArcadeGame.Cyan, 3);
+                    SpriteObject(view, "Post", square, new Vector2(sign * .44f, 0), new Vector2(.0625f, .44f), ArcadeGame.White, 3);
+                    SpriteObject(view, "Rail", square, new Vector2(0, sign * .12f), new Vector2(.9375f, .0625f), ArcadeGame.White, 3);
                 }
             }
             else
             {
-                SpriteObject(view, "Roadblock", square, Vector2.zero, new Vector2(.9375f, .3125f), ArcadeGame.Yellow, 3);
+                SpriteObject(view, "Roadblock", square, Vector2.zero, new Vector2(.9375f, .3125f), ArcadeGame.White, 3);
                 for (int stripe = -1; stripe <= 1; stripe++)
                 {
                     var mark = SpriteObject(view, "Warning stripe", square, new Vector2(stripe * .25f, 0), new Vector2(.0625f, .28f), Color.black, 4);

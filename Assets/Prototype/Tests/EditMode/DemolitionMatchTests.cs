@@ -35,7 +35,7 @@ namespace TNDA.Prototype.Tests
             };
             var pickups = new[] { new ArenaPickup { point = new Vector2(0, 1), item = ArenaItem.Shield } };
             rockets = new[] { new ArcadeProjectile(), new ArcadeProjectile() };
-            match = new DemolitionMatch(cars, props, pickups, rockets, new MatchTuning());
+            match = new DemolitionMatch(cars, props, pickups, rockets, new MatchTuning { randomPropSpots = false });
         }
 
         [TearDown]

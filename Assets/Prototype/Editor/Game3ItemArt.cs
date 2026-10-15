@@ -37,26 +37,31 @@ namespace TNDA.Prototype.Editor
         {
             // The supplied crate photo turns into noise at 16px, so the crate is redrawn from its design:
             // a wooden frame around vertical planks (no diagonal brace, which the breakable X box already uses).
+            // White and 12px since 2026-10-15 (was yellow, 16px).
             var crate = DrawSprite("ItemCrate", new[] {
-                "################",
-                "#YYYYYYYYYYYYYY#",
-                "#YYYYYYYYYYYYYY#",
-                "#YY##########YY#",
-                "#YY#YY#YY#YY#YY#",
-                "#YY#YY#YY#YY#YY#",
-                "#YY#YY#YY#YY#YY#",
-                "#YY#YY#YY#YY#YY#",
-                "#YY#YY#YY#YY#YY#",
-                "#YY#YY#YY#YY#YY#",
-                "#YY#YY#YY#YY#YY#",
-                "#YY#YY#YY#YY#YY#",
-                "#YY##########YY#",
-                "#YYYYYYYYYYYYYY#",
-                "#YYYYYYYYYYYYYY#",
-                "################" });
+                "############",
+                "#WWWWWWWWWW#",
+                "#W########W#",
+                "#W#W#WW#W#W#",
+                "#W#W#WW#W#W#",
+                "#W#W#WW#W#W#",
+                "#W#W#WW#W#W#",
+                "#W#W#WW#W#W#",
+                "#W#W#WW#W#W#",
+                "#W########W#",
+                "#WWWWWWWWWW#",
+                "############" });
             // Cherry: from the supplied picture with its white backdrop removed; keep the gap between the two fruits.
             var cherry = MakeSprite("Cherry", 14, 1, .34f, new Rect(0, 0, 1, 1), 0);
             Undo.RecordObject(game, "GAME3 crates and cherry");
+            // Breakable obstacles are white (2026-10-15).
+            foreach (var prop in game.props)
+                foreach (var part in prop.view.GetComponentsInChildren<SpriteRenderer>(true))
+                    if (part.color != Color.black && part.color != ArcadeGame.White)
+                    {
+                        Undo.RecordObject(part, "GAME3 crates and cherry");
+                        part.color = ArcadeGame.White;
+                    }
             foreach (var pickup in game.pickups)
             {
                 pickup.item = ArenaItem.None; // random crate
