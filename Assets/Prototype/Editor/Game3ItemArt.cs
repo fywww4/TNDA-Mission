@@ -28,7 +28,8 @@ namespace TNDA.Prototype.Editor
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            var result = new { scene = scenePath, crate = Size(sprites[0]), cherry = Size(sprites[1]), explosion = Size(sprites[2]), saved = !scene.isDirty };
+            var result = new { scene = scenePath, crate = Size(sprites[0]), cherry = Size(sprites[1]), explosion = Size(sprites[2]), rocket = Size(sprites[3]), shield = Size(sprites[4]), oil = Size(sprites[5]),
+                slick = Size(sprites[6]), lava = Size(sprites[7]), saved = !scene.isDirty };
             if (newlyOpened) EditorSceneManager.CloseScene(scene, true);
             return result;
         }
@@ -77,21 +78,58 @@ namespace TNDA.Prototype.Editor
                 art.sortingOrder = 4;
                 pickup.view.name = "Item crate";
             }
-            game.cherryViews = new SpriteRenderer[game.cars.Length];
+            // Held-item icons trail behind each car (2026-10-16). Rocket: from the supplied pixel picture. Shield: redrawn
+            // from the supplied picture's design (spiked rim, blue face, white "!"), whose dot vanishes when reduced to
+            // 12px. The cherry reuses its sprite. An eaten cherry shows as the striped car instead of an icon.
+            var rocket = MakeSprite("Rocket", 12, 1, .5f, new Rect(0, 0, 1, 1), 0, RocketColour);
+            var shield = DrawSprite("Shield", new[] {
+                "W....WW....W",
+                "WWWWWWWWWWWW",
+                "WCCCCWWCCCCW",
+                "WCCCCWWCCCCW",
+                "WCCCCWWCCCCW",
+                "WCCCCWWCCCCW",
+                ".WCCCWWCCCW.",
+                ".WCCCCCCCCW.",
+                "..WCCWWCCW..",
+                "...WCCCCW...",
+                "....WCCW....",
+                ".....WW....." });
+            // Oil (2026-10-16): the icon is the supplied black drop, given a white outline and highlight so it shows on
+            // the black floor (source Art/Source/OilSource.png); the slick on the floor is the supplied yellow splat.
+            var oil = DrawSprite("Oil", new[] {
+                "....WW....",
+                "...W##W...",
+                "...W##W...",
+                "..W####W..",
+                "..W####W..",
+                ".W######W.",
+                ".W######W.",
+                "W########W",
+                "W#W######W",
+                "W#W######W",
+                ".W#W####W.",
+                "..WWWWWW.." });
+            var slick = MakeSprite("OilSlick", 12, 1, .5f, new Rect(0, 0, 1, 1), 0, c => 3);
+            // Lava: the supplied lava picture in the four colours (red-orange black, orange yellow, bright yellow white),
+            // 32px = 1 world unit, the pool's size.
+            var lava = MakeSprite("Lava", 32, 1, .5f, new Rect(0, 0, 1, 1), 0, LavaColour);
+            game.itemSprites = new[] { shield, rocket, cherry, oil };
+            game.itemViews = new SpriteRenderer[game.cars.Length];
             for (int i = 0; i < game.cars.Length; i++)
             {
-                var icon = game.cars[i].transform.Find("Cherry power")?.GetComponent<SpriteRenderer>();
+                var old = game.cars[i].transform.Find("Cherry power");
+                if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+                var icon = game.cars[i].transform.Find("Held item")?.GetComponent<SpriteRenderer>();
                 if (icon == null)
                 {
-                    icon = new GameObject("Cherry power", typeof(SpriteRenderer)).GetComponent<SpriteRenderer>();
-                    Undo.RegisterCreatedObjectUndo(icon.gameObject, "GAME3 crates and cherry");
+                    icon = new GameObject("Held item", typeof(SpriteRenderer)).GetComponent<SpriteRenderer>();
+                    Undo.RegisterCreatedObjectUndo(icon.gameObject, "GAME3 held items");
                     icon.transform.SetParent(game.cars[i].transform, false);
                 }
-                icon.sprite = cherry;
                 icon.sortingOrder = 21;
-                icon.transform.localPosition = new Vector3(.44f, .34f, 0);
                 icon.gameObject.SetActive(false);
-                game.cherryViews[i] = icon;
+                game.itemViews[i] = icon;
             }
             // Rocket-hit explosion from the supplied picture: one view per rocket so two hits can overlap.
             var blast = MakeSprite("Explosion", 32, 1, .25f, new Rect(0, 0, 1, 1), 0, ExplosionColour);
@@ -102,6 +140,23 @@ namespace TNDA.Prototype.Editor
                 Undo.RegisterCreatedObjectUndo(effects.gameObject, "GAME3 crates and cherry");
                 effects.SetParent(game.transform, false);
             }
+            SpriteRenderer EffectView(string name, Sprite sprite, int order)
+            {
+                var view = effects.Find(name)?.GetComponent<SpriteRenderer>();
+                if (view == null)
+                {
+                    view = new GameObject(name, typeof(SpriteRenderer)).GetComponent<SpriteRenderer>();
+                    Undo.RegisterCreatedObjectUndo(view.gameObject, "GAME3 lava and oil");
+                    view.transform.SetParent(effects, false);
+                }
+                view.sprite = sprite;
+                view.sortingOrder = order;
+                view.gameObject.SetActive(false);
+                return view;
+            }
+            // Floor hazards draw under the cars (order 3): the lava pool and one oil slick per rocket/oil pool slot.
+            game.lavaView = EffectView("Lava pool", lava, 3);
+            for (int i = 0; i < game.rockets.Length; i++) game.rockets[i].slickView = EffectView("Oil slick " + i, slick, 3);
             game.explosions = new SpriteRenderer[game.rockets.Length];
             for (int i = 0; i < game.explosions.Length; i++)
             {
@@ -118,7 +173,35 @@ namespace TNDA.Prototype.Editor
                 game.explosions[i] = view;
             }
             EditorUtility.SetDirty(game);
-            return new[] { crate, cherry, blast };
+            return new[] { crate, cherry, blast, rocket, shield, oil, slick, lava };
+        }
+
+        // The supplied 128x128 victory picture (Art/Source/VictorySource.png) snapped to the four colours, plus a copy
+        // with the cyan car (Player1) turned yellow for a Player2 win.
+        public static Sprite[] VictorySprites()
+        {
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            texture.LoadImage(File.ReadAllBytes(ArtPath + "/Source/VictorySource.png"));
+            int w = texture.width, h = texture.height;
+            var pixels = texture.GetPixels32();
+            UnityEngine.Object.DestroyImmediate(texture);
+            var palette = new Color32[] { Black, ArcadeGame.White, ArcadeGame.Cyan, ArcadeGame.Yellow };
+            var p1 = new Color32[pixels.Length];
+            var p2 = new Color32[pixels.Length];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                var c = pixels[i];
+                int best = 0, bestDistance = int.MaxValue;
+                for (int k = 0; k < palette.Length; k++)
+                {
+                    int dr = c.r - palette[k].r, dg = c.g - palette[k].g, db = c.b - palette[k].b;
+                    int distance = dr * dr + dg * dg + db * db;
+                    if (distance < bestDistance) { bestDistance = distance; best = k; }
+                }
+                p1[i] = palette[best];
+                p2[i] = best == 2 ? palette[3] : palette[best];
+            }
+            return new[] { SaveSprite("Victory", p1, w, h), SaveSprite("VictoryP2", p2, w, h) };
         }
 
         // Rows top to bottom: '#' black, 'Y' yellow, 'W' white, 'C' cyan, anything else transparent.
@@ -195,7 +278,7 @@ namespace TNDA.Prototype.Editor
             return SaveSprite(name, result, outW, outHeight);
         }
 
-        private static Sprite SaveSprite(string name, Color32[] result, int width, int height)
+        internal static Sprite SaveSprite(string name, Color32[] result, int width, int height)
         {
             string output = ArtPath + "/" + name + ".png";
             var small = new Texture2D(width, height, TextureFormat.RGBA32, false);
@@ -228,6 +311,26 @@ namespace TNDA.Prototype.Editor
             if (val < .3f) return 0;
             if (sat < .2f || degrees >= 48) return 1;
             if (degrees >= 30 && degrees < 40 && val < .93f) return 0;
+            return 3;
+        }
+
+        // Lava: dark red-orange black, orange and amber yellow, bright yellow and pale yellow white.
+        private static int LavaColour(Color32 c)
+        {
+            Color.RGBToHSV(c, out float hue, out float sat, out float val);
+            float degrees = hue * 360;
+            if (degrees >= 42 && val > .85f) return 1;
+            if (degrees < 16) return 0;
+            return 3;
+        }
+
+        // Rocket: red nose and fins and the orange-yellow flame yellow, pale-blue body white, blue window cyan, grey nozzle black.
+        private static int RocketColour(Color32 c)
+        {
+            Color.RGBToHSV(c, out float hue, out float sat, out float val);
+            float degrees = hue * 360;
+            if (sat < .25f) return val > .8f ? 1 : 0;
+            if (degrees > 170 && degrees < 260) return 2;
             return 3;
         }
 

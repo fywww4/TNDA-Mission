@@ -104,6 +104,37 @@ namespace TNDA.Prototype
         public VehicleEliminated(ArcadeVehicle car, int place) { Car = car; Place = place; }
     }
 
+    // Every score change (props, rams, rocket hits, wreck bonus and penalty), at the car's position when it happened.
+    // Reported after the event that caused it.
+    public sealed class ScoreChanged : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public readonly int Amount;
+        public readonly Vector2 Point;
+        public ScoreChanged(ArcadeVehicle car, int amount, Vector2 point) { Car = car; Amount = amount; Point = point; }
+    }
+
+    // A paid continue brought an eliminated car back, tied with the lowest surviving score.
+    public sealed class VehicleRevived : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public VehicleRevived(ArcadeVehicle car) { Car = car; }
+    }
+
+    // The lava pool formed at Point (it stays for the rest of the match).
+    public sealed class LavaFormed : MatchEvent
+    {
+        public readonly Vector2 Point;
+        public LavaFormed(Vector2 point) { Point = point; }
+    }
+
+    // Car drove onto Dropper's oil slick and spun out.
+    public sealed class CarSlipped : MatchEvent
+    {
+        public readonly ArcadeVehicle Car, Dropper;
+        public CarSlipped(ArcadeVehicle car, ArcadeVehicle dropper) { Car = car; Dropper = dropper; }
+    }
+
     public sealed class MatchEnded : MatchEvent
     {
         public readonly ArcadeVehicle Winner;

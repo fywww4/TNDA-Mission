@@ -54,13 +54,13 @@ try
     p1.position = new UnityEngine.Vector2(0, -1); p1.heading = 0; p1.speed = 2.8f;
     g.cars[3].position = new UnityEngine.Vector2(.55f, -1); g.cars[3].heading = 90;
     g.Advance(dt, none, none);
-    expect("ram", "P1 撞擊 x2.0", cyan, 1, true);
+    expect("ram (score pop-up only)", "", cyan, 0, true);
 
     setup(); // ram smashes a prop
     var prop0 = g.props[0]; prop0.broken = false;
     p1.position = prop0.point + new UnityEngine.Vector2(-.6f, 0); p1.heading = 0; p1.speed = 2.8f;
     g.Advance(dt, none, none);
-    expect("prop smashed", "P1 撞碎 +" + prop0.points, cyan, 1.2f, true);
+    expect("prop smashed (score pop-up only)", "", cyan, 0, true);
 
     setup(); // rocket smashes a prop: sound only
     prop0.broken = false;
@@ -72,7 +72,7 @@ try
     var crate = g.pickups[0]; crate.item = TNDA.Prototype.ArenaItem.Shield; crate.available = true;
     p1.position = crate.point;
     g.Advance(dt, none, none);
-    expect("crate pickup", "P1 拿到防護罩，按道具鍵使用", cyan, 2, true);
+    expect("crate pickup", "Player1 拿到防護罩，按道具鍵使用", cyan, 2, true);
     setup();
     crate.available = true; g.cars[2].computer = true; g.cars[2].position = crate.point;
     g.Advance(dt, none, none);
@@ -81,10 +81,10 @@ try
 
     setup();
     p1.item = TNDA.Prototype.ArenaItem.Shield; g.Advance(dt, use, none);
-    expect("shield used", "P1 防護罩 6 秒", cyan, 2, true);
+    expect("shield used", "Player1 防護罩 6 秒", cyan, 2, true);
     setup();
     p1.item = TNDA.Prototype.ArenaItem.Rocket; g.Advance(dt, use, none);
-    expect("rocket used", "P1 發射火箭！", yellow, 1, true);
+    expect("rocket used", "Player1 發射火箭！", yellow, 1, true);
     setup();
     g.rockets[0].Spawn(new UnityEngine.Vector2(-1, 0), new UnityEngine.Vector2(0, -6), 1);
     g.rockets[1].Spawn(new UnityEngine.Vector2(1, 0), new UnityEngine.Vector2(0, -6), 1);
@@ -92,13 +92,13 @@ try
     expect("rockets busy", "火箭還在飛，道具先保留", yellow, 1, false);
     setup();
     p1.item = TNDA.Prototype.ArenaItem.Cherry; g.Advance(dt, use, none);
-    expect("cherry eaten", "P1 吃下櫻桃！8 秒內碰到就撞毀", cyan, 2.5f, true);
+    expect("cherry eaten", "Player1 吃下櫻桃！8 秒內碰到就撞毀", cyan, 2.5f, true);
 
     setup(); // cherry P1 touches computer 3
     p1.GiveCherry(8); p1.position = new UnityEngine.Vector2(0, -1);
     g.cars[3].position = new UnityEngine.Vector2(.55f, -1);
     g.Advance(dt, none, none);
-    expect("cherry strike", "P1 一碰撞毀 電腦3！", cyan, 2, true);
+    expect("cherry strike (score pop-up only)", "", cyan, 0, true);
 
     setup(); // fast into the right wall: sound only
     p1.position = new UnityEngine.Vector2(g.arenaMax.x - .01f, -1); p1.heading = 0; p1.speed = 2.8f;
@@ -112,9 +112,9 @@ try
     checks["rocket hit explosion"] = g.explosions[0].gameObject.activeSelf;
     expect("rocket hit", "", cyan, 0, true);
 
-    setup(); // wreck without an attacker: only the wreck notice
+    setup(); // wreck without an attacker: no notice (scores show as pop-ups)
     g.DamageVehicle(g.cars[2], 1);
-    expect("wreck", "電腦2 被撞毀 -0，3 秒後重生", yellow, 2.5f, false);
+    expect("wreck (score pop-up only)", "", yellow, 0, false);
 
     // Attract demo: 21 seconds including the demo elimination, no notice and no sound at any frame.
     g.PreparePreview();

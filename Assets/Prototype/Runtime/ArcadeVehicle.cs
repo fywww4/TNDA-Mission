@@ -1,4 +1,3 @@
-using TMPro;
 using UnityEngine;
 
 namespace TNDA.Prototype
@@ -13,7 +12,6 @@ namespace TNDA.Prototype
     public class ArcadeVehicle : MonoBehaviour
     {
         public SpriteRenderer body;
-        public TMP_Text tagLabel;
         public int index;
         public Vector2 position;
         public float heading, speed, health, score, stun, cooldown;
@@ -23,6 +21,9 @@ namespace TNDA.Prototype
         public float respawn;
 
         public float CherrySeconds { get; private set; }
+        // Spinning on an oil slick: no control, no speed, no damage.
+        public float SlipSeconds { get; private set; }
+        public bool IsSlipping => alive && SlipSeconds > 0;
         public bool HasCherry => alive && CherrySeconds > 0;
         public Vector2 SlideVelocity { get; private set; }
         public bool IsSpinningOut => spinSpeed > 0;
@@ -41,7 +42,9 @@ namespace TNDA.Prototype
         private Vector2 spinDirection;
         private const float ProtectionSeconds = 2;
 
-        public string DriverName => index == 0 ? "P1" : index == 1 && !computer ? "P2" : string.Format(CabinetText.ComputerName, index);
+        public string DriverName => !computer ? (index == 0 ? CabinetText.PlayerOneName : CabinetText.PlayerTwoName)
+            : Ai.Personality == AiPersonality.Hunter ? CabinetText.HunterName
+            : Ai.Personality == AiPersonality.Wanderer ? CabinetText.WandererName : CabinetText.BumperName;
         public Vector2 Forward => new Vector2(Mathf.Cos(heading * Mathf.Deg2Rad), Mathf.Sin(heading * Mathf.Deg2Rad));
 
         public void ResetVehicle(Vector2 start, float angle, int playerCount)
@@ -66,16 +69,17 @@ namespace TNDA.Prototype
 
         private void ClearTransientState()
         {
-            speed = stun = cooldown = respawn = shieldSeconds = spawnProtection = CherrySeconds = spinSpeed = 0;
+            speed = stun = cooldown = respawn = shieldSeconds = spawnProtection = CherrySeconds = SlipSeconds = spinSpeed = 0;
             item = ArenaItem.None;
             FinalPlace = 0;
             SlideVelocity = spinDirection = Vector2.zero;
         }
 
-        // Damage and both exit paths own their cleanup; callers only handle match-wide effects.
-        public bool TakeDamage(float damage, VehicleLifecycleRules rules)
+        // Damage and both exit paths own their cleanup; callers only handle match-wide effects. Unblockable damage
+        // (lava) ignores the shield and spawn protection.
+        public bool TakeDamage(float damage, VehicleLifecycleRules rules, bool unblockable = false)
         {
-            if (!alive || eliminated || damage <= 0 || shieldSeconds > 0 || spawnProtection > 0) return false;
+            if (!alive || eliminated || damage <= 0 || !unblockable && (shieldSeconds > 0 || spawnProtection > 0)) return false;
             health = Mathf.Max(0, health - damage);
             if (health <= 0)
             {
@@ -98,6 +102,15 @@ namespace TNDA.Prototype
             StartSpinOut(rules);
         }
 
+        // A paid continue: an eliminated car is back in the match with at least floorScore points; the caller respawns it.
+        public void Rejoin(float floorScore)
+        {
+            if (!eliminated) return;
+            eliminated = false;
+            FinalPlace = 0;
+            score = Mathf.Max(score, floorScore);
+        }
+
         public void GiveCherry(float seconds)
         {
             if (!alive || eliminated) return;
@@ -116,6 +129,13 @@ namespace TNDA.Prototype
         }
 
         public void RecordCollision() => Collisions++;
+
+        public void Slip(float seconds)
+        {
+            if (!alive) return;
+            SlipSeconds = seconds;
+            speed = 0;
+        }
 
         public void ApplySlide(Vector2 impulse)
         {
@@ -156,6 +176,14 @@ namespace TNDA.Prototype
         {
             stun = Mathf.Max(0, stun - dt);
             cooldown = Mathf.Max(0, cooldown - dt);
+            if (SlipSeconds > 0)
+            {
+                // One full turn over the default 0.8 s slip, standing still and ignoring the controls.
+                SlipSeconds = Mathf.Max(0, SlipSeconds - dt);
+                speed = 0;
+                heading += 450 * dt;
+                return;
+            }
             if (stun > 0)
             {
                 speed = Mathf.MoveTowards(speed, 0, dt * 7);
@@ -169,17 +197,12 @@ namespace TNDA.Prototype
             position += Forward * speed * dt;
         }
 
-        // Mirrors the car onto its sprite and name tag; only the scene adapter calls this.
+        // Mirrors the car onto its sprite (the name tag is a screen-space label the scene adapter places); only the
+        // scene adapter calls this.
         public void Sync()
         {
             transform.position = ArcadeGame.PixelPosition(position);
             body.transform.localRotation = Quaternion.Euler(0, 0, heading - 90);
-            if (tagLabel != null)
-            {
-                tagLabel.text = DriverName;
-                tagLabel.color = body.color;
-                tagLabel.transform.position = ArcadeGame.PixelPosition(position + Vector2.up * .52f);
-            }
         }
     }
 }

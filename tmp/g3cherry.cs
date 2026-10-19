@@ -42,10 +42,13 @@ try
     start(1);
     var p1 = g.cars[0];
     p1.item = TNDA.Prototype.ArenaItem.Cherry;
+    g.Advance(dt, none, none);
+    checks["held cherry icon trails the car"] = g.itemViews[0].gameObject.activeSelf && g.itemViews[0].sprite == g.itemSprites[2];
     g.Advance(dt, use, none);
     var block = new UnityEngine.MaterialPropertyBlock(); p1.body.GetPropertyBlock(block);
-    checks["use cherry consumes item and shows yellow car"] = p1.HasCherry && p1.item == TNDA.Prototype.ArenaItem.None
-        && g.cherryViews[0].gameObject.activeSelf && block.GetFloat("_Solid") == 1;
+    checks["use cherry consumes item and shows striped car, no icon"] = p1.HasCherry && p1.item == TNDA.Prototype.ArenaItem.None
+        && !g.itemViews[0].gameObject.activeSelf && block.GetFloat("_Solid") == 1
+        && block.GetColor("_SolidColor") == g.cherryStripeA && block.GetColor("_StripeColor") == g.cherryStripeB;
     p1.position = new UnityEngine.Vector2(-4.1f, -.5f); p1.heading = 0;
     for (int f = 0; f < 180; f++) g.Advance(dt, gas, none);
     checks["cherry increases top speed"] = UnityEngine.Mathf.Abs(p1.speed - 3.78f) < .01f;
@@ -77,13 +80,14 @@ try
     start(1);
     p1 = g.cars[0]; p1.GiveCherry(8);
     for (int f = 0; f < 360; f++) g.Advance(dt, none, none);
-    bool shown = g.cherryViews[0].gameObject.activeSelf;
+    p1.body.GetPropertyBlock(block); float shown = block.GetFloat("_Solid");
     g.Advance(.13f, none, none);
-    checks["cherry warning blinks"] = p1.HasCherry && shown != g.cherryViews[0].gameObject.activeSelf;
+    p1.body.GetPropertyBlock(block);
+    checks["cherry warning blinks"] = p1.HasCherry && shown != block.GetFloat("_Solid");
     for (int f = 0; f < 120; f++) g.Advance(dt, none, none);
     p1.body.GetPropertyBlock(block);
     checks["cherry expiry restores car"] = !p1.HasCherry && p1.CherrySeconds == 0
-        && !g.cherryViews[0].gameObject.activeSelf && block.GetFloat("_Solid") == 0;
+        && block.GetFloat("_Solid") == 0;
 
     g.StartRun(1);
     while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, none, none);

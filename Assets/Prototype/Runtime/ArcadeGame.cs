@@ -39,10 +39,17 @@ namespace TNDA.Prototype
         public TMP_Text countdownLabel;
         public AudioClip countdownClip, hitClip;
 
+        [Header("Volume")]
+        [Tooltip("Master volume for every game sound (countdown, hits, generated beeps and engine loops). Can be changed during Play Mode.")]
+        [Range(0, 1)] public float masterVolume = .5f;
+
         public ArcadePhase Phase { get; private set; }
         public int PlayerCount { get; private set; } = 1;
         public float Elapsed { get; protected set; }
         public float CountdownLeft { get; private set; }
+        // Coins inserted and not yet spent. A 1P game costs one coin, a 2P game two, a continue one.
+        public int Credits { get; private set; }
+        public const int MaxCredits = 9;
         private float resultAge, noticeAge, goFlash;
         [NonSerialized] private AudioClip[] sounds; // generated in Awake; a reload must not turn it into an empty array
 
@@ -50,9 +57,10 @@ namespace TNDA.Prototype
         {
             // The game never uses slow motion; guard against a time scale left over from editor tooling.
             Time.timeScale = 1;
+            AudioListener.volume = masterVolume;
             MakeSounds();
-            onePlayerButton.onClick.AddListener(() => StartRun(1));
-            twoPlayerButton.onClick.AddListener(() => StartRun(2));
+            onePlayerButton.onClick.AddListener(() => TryStartRun(1));
+            twoPlayerButton.onClick.AddListener(() => TryStartRun(2));
             PreparePreview();
         }
 
@@ -67,14 +75,16 @@ namespace TNDA.Prototype
 
         private void Update()
         {
-            if (Pressed(Key.R)) StartRun(PlayerCount);
+            AudioListener.volume = masterVolume;
             if (Pressed(Key.Escape)) ShowAttract();
-            bool coin = Pressed(Key.C) || Pressed(Key.Space) || Pressed(Key.Enter) || Pressed(Key.LeftCtrl)
-                || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
+            // 5 is the coin slot (as in arcade emulators); the gamepad's Select inserts a coin too.
+            if (Pressed(Key.Digit5) || Pressed(Key.Numpad5) || (Gamepad.current != null && Gamepad.current.selectButton.wasPressedThisFrame))
+                InsertCoin();
             if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
             {
-                if (Pressed(Key.Digit2) || Pressed(Key.NumpadEnter)) StartRun(2);
-                else if (coin || Pressed(Key.Digit1)) StartRun(1);
+                if (Pressed(Key.Digit2) || Pressed(Key.NumpadEnter)) TryStartRun(2);
+                else if (Pressed(Key.Digit1) || Pressed(Key.LeftCtrl) || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame))
+                    TryStartRun(1);
             }
             Advance(Mathf.Min(Time.deltaTime, .05f), ReadInput(0), ReadInput(1));
         }
@@ -110,6 +120,35 @@ namespace TNDA.Prototype
             RefreshHud();
         }
 
+        public void InsertCoin()
+        {
+            Credits = Mathf.Min(Credits + 1, MaxCredits);
+            Sound(0);
+            Announce(string.Format(CabinetText.CoinInserted, Credits), Yellow, 1.5f);
+        }
+
+        // Spends the coins for a continue or a new game; false (nothing spent) when too few are in.
+        protected bool SpendCredits(int coins)
+        {
+            if (Credits < coins) return false;
+            Credits -= coins;
+            return true;
+        }
+
+        // A paid start: one coin per player. Without enough coins nothing happens and the prompt keeps asking.
+        public bool TryStartRun(int players)
+        {
+            players = Mathf.Clamp(players, 1, 2);
+            if (!SpendCredits(players))
+            {
+                Announce(CabinetText.InsertCoinFirst, Yellow, 1.5f);
+                return false;
+            }
+            StartRun(players);
+            return true;
+        }
+
+        // Starts without coins; only CLI checks use it (every player start goes through TryStartRun).
         public void StartRun(int players = 1)
         {
             PlayerCount = Mathf.Clamp(players, 1, 2);

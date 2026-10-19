@@ -143,6 +143,9 @@ namespace TNDA.Prototype.Editor
             Game3Text.UseScreenTags(game);
             Game3Text.PixelLayout(game);
             Game3Text.CreateAttractScreen(game);
+            Game3Text.CreateScorePopups(game);
+            Game3Text.CreateContinuePanel(game);
+            Game3Text.CreateVictoryScreen(game);
             Game3ItemArt.Apply(game);
             game.PreparePreview();
             EditorUtility.SetDirty(game);

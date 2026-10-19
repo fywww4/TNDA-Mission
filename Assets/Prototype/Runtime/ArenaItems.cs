@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace TNDA.Prototype
 {
-    // Serialized as the same 0-3 codes the scene already stores.
-    public enum ArenaItem { None = 0, Shield = 1, Rocket = 2, Cherry = 3 }
+    // Serialized as the same codes the scene already stores (Oil added 2026-10-16).
+    public enum ArenaItem { None = 0, Shield = 1, Rocket = 2, Cherry = 3, Oil = 4 }
 
     // What the item module needs from the match to apply an item.
     public interface IItemArena
@@ -15,35 +15,38 @@ namespace TNDA.Prototype
         float CherrySeconds { get; }
         // False when every rocket is still flying.
         bool LaunchRocket(ArcadeVehicle car);
+        // Drops an oil slick behind the car; false when the shared rocket/oil pool is full.
+        bool DropOil(ArcadeVehicle car);
     }
 
-    // The three crate items: crate draw, use effect and every name/tag/status text, in one place.
+    // The crate items: crate draw, use effect and every name/tag/status text, in one place.
     public static class ArenaItems
     {
         private struct Definition
         {
-            public string name, tag, used;
+            public string name, used;
             public Func<ArcadeVehicle, IItemArena, bool> use;
         }
 
         private static readonly Definition[] Definitions = {
-            new Definition { name = CabinetText.NoItem, tag = "" },
-            new Definition { name = CabinetText.Shield, tag = CabinetText.ShieldTag, used = CabinetText.ShieldUp, use = UseShield },
-            new Definition { name = CabinetText.Rocket, tag = CabinetText.RocketTag, used = CabinetText.RocketFired, use = UseRocket },
-            new Definition { name = CabinetText.Cherry, tag = CabinetText.CherryTag, used = CabinetText.CherryEaten, use = UseCherry },
+            new Definition { name = CabinetText.NoItem },
+            new Definition { name = CabinetText.Shield, used = CabinetText.ShieldUp, use = UseShield },
+            new Definition { name = CabinetText.Rocket, used = CabinetText.RocketFired, use = UseRocket },
+            new Definition { name = CabinetText.Cherry, used = CabinetText.CherryEaten, use = UseCherry },
+            new Definition { name = CabinetText.Oil, used = CabinetText.OilDropped, use = UseOil },
         };
 
         // An unknown stored code reads as no item, like the old integer checks.
         private static Definition Of(ArenaItem item) => (uint)item < Definitions.Length ? Definitions[(int)item] : Definitions[0];
 
         public static string Name(ArenaItem item) => Of(item).name;
-        public static string Tag(ArenaItem item) => Of(item).tag;
 
-        // Crates are random: shield or rocket half each; a car in last place first has cherryChance of a cherry.
+        // Crates are random: shield, rocket or oil a third each; a car in last place first has cherryChance of a cherry.
         public static ArenaItem Roll(bool trailing, float cherryChance, Func<float> random)
         {
             if (trailing && random() < cherryChance) return ArenaItem.Cherry;
-            return random() < .5f ? ArenaItem.Shield : ArenaItem.Rocket;
+            float r = random();
+            return r < 1 / 3f ? ArenaItem.Shield : r < 2 / 3f ? ArenaItem.Rocket : ArenaItem.Oil;
         }
 
         // Last place counts ties; eliminated cars are out of the standings.
@@ -86,6 +89,13 @@ namespace TNDA.Prototype
         {
             if (!arena.LaunchRocket(car)) return false;
             car.cooldown = .5f;
+            return true;
+        }
+
+        private static bool UseOil(ArcadeVehicle car, IItemArena arena)
+        {
+            if (!arena.DropOil(car)) return false;
+            car.cooldown = .35f;
             return true;
         }
 

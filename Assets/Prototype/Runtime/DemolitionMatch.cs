@@ -8,17 +8,27 @@ namespace TNDA.Prototype
     // tuning in before every reset and tick.
     public sealed class MatchTuning
     {
-        public float firstElimination = 60, secondElimination = 90, roundSeconds = 120;
+        public float firstElimination = 45, secondElimination = 80, roundSeconds = 120;
         public float driveSpeed = 2.8f, accelerationPerSecond = 1.4f, coastDownPerSecond = 2.2f;
         public float respawnSeconds = 3;
         public int wreckPenalty = 250, wreckBonus = 300;
         public float shieldDuration = 6, pickupRespawnSeconds = 8;
-        public float aiGraceSeconds = 10, leaderBias = 1.5f, leaderHuntMargin = 300;
+        public float aiGraceSeconds = 10, leaderBias = 1.5f;
+        // Computer top speed as a share of the players' (after the first elimination it rises); a 迷糊 drives slower still.
+        public float aiTopSpeed = .87f, aiLateTopSpeed = .95f, wandererTopSpeedScale = .85f;
+        // 追王 rhythm (2026-10-16): chase seconds, scatter seconds, chance a chase targets first rather than second place.
+        public float hunterChaseSeconds = 6, hunterScatterSeconds = 4, hunterLeaderChance = .6f;
         public float cherryDuration = 8, cherrySpeedMultiplier = 1.35f, trailingCherryChance = .5f;
         public float spinOutTurnsPerSecond = 4, spinOutStartSpeed = 4, spinOutAcceleration = 14;
         public float contactBump = 1.4f, ramBump = 2.4f, bumpFriction = 4.5f;
         public Vector2 arenaMin = new Vector2(-4.35f, -3.85f), arenaMax = new Vector2(4.35f, 1.65f);
         public bool randomPropSpots = true;
+        // Lava (2026-10-16): one pool forms at lavaSeconds (demoLavaSeconds in the title demo) at a random clear spot,
+        // taking one prop's slot for good; touching it wrecks a car even through a shield.
+        public float lavaSeconds = 80, demoLavaSeconds = 15, lavaHalfSize = .5f;
+        // Oil: the slick spins a car out for oilSlipSeconds, earns its dropper oilBonus, and dries after oilLifeSeconds.
+        public float oilSlipSeconds = .8f, oilLifeSeconds = 12;
+        public int oilBonus = 50;
     }
 
     // The elimination match rules: driving, props, crates, contacts, rockets, wrecks, timed eliminations and the
@@ -52,6 +62,10 @@ namespace TNDA.Prototype
         public int Champion { get; private set; } = -1;
         public float NextElimination => EliminationStage == 0 ? Tuning.firstElimination : EliminationStage == 1 ? Tuning.secondElimination : Tuning.roundSeconds;
         public int Contenders => Cars.Count(c => !c.eliminated);
+        public bool LavaActive { get; private set; }
+        public Vector2 LavaPoint { get; private set; }
+
+        private static readonly Vector2[] RespawnCorners = { new Vector2(-3.5f, 1.1f), new Vector2(3.5f, 1.1f), new Vector2(3.5f, -3.2f), new Vector2(-3.5f, -3.2f) };
 
         private VehicleLifecycleRules LifecycleRules => new VehicleLifecycleRules {
             wreckPenalty = Tuning.wreckPenalty, respawnSeconds = Tuning.respawnSeconds,
@@ -67,6 +81,7 @@ namespace TNDA.Prototype
             Finished = Survived = false;
             Wrecks = EliminationStage = 0;
             Champion = -1;
+            LavaActive = false;
             events.Clear();
             Vector2[] starts = { new Vector2(-3.3f, -3.1f), new Vector2(3.3f, -3.1f), new Vector2(3.3f, 1.1f), new Vector2(-3.3f, 1.1f) };
             for (int i = 0; i < Cars.Length; i++)
@@ -81,7 +96,7 @@ namespace TNDA.Prototype
             }
             foreach (var prop in Props)
             {
-                prop.broken = false;
+                prop.broken = prop.molten = false;
                 prop.respawn = 0;
                 if (Tuning.randomPropSpots) prop.point = RandomPropSpot(prop, prop.point);
             }
@@ -92,6 +107,7 @@ namespace TNDA.Prototype
         public void Tick(float dt, ArcadeInput p1, ArcadeInput p2)
         {
             Elapsed += dt;
+            if (!LavaActive && Elapsed >= (demo ? Tuning.demoLavaSeconds : Tuning.lavaSeconds)) FormLava();
             RefreshSpawns(dt);
             foreach (var car in Cars)
             {
@@ -112,16 +128,18 @@ namespace TNDA.Prototype
                 }
                 // Holding gas builds speed gradually; releasing it coasts down a little faster.
                 float ramp = input.throttle > .1f ? Tuning.accelerationPerSecond : Tuning.coastDownPerSecond;
-                float topSpeed = Tuning.driveSpeed * (car.computer ? .87f : 1) * (car.HasCherry ? Tuning.cherrySpeedMultiplier : 1);
+                float topSpeed = Tuning.driveSpeed * (car.computer ? AiTopSpeed(car) : 1) * (car.HasCherry ? Tuning.cherrySpeedMultiplier : 1);
                 car.Drive(dt, input, topSpeed, ramp);
                 // Bumper-car slide from recent hits, fading out.
                 car.AdvanceSlide(dt, Tuning.bumpFriction);
                 ConstrainToArena(car);
+                if (TouchesLava(car)) { ApplyDamage(car, 1, true); continue; }
                 HitProps(car);
                 CollectPickup(car);
             }
             ResolveContacts(dt);
             MoveRockets(dt);
+            UpdateSlicks(dt);
             while (!demo && !Finished && Elapsed >= NextElimination) EliminateLowest();
         }
 
@@ -135,7 +153,7 @@ namespace TNDA.Prototype
         {
             foreach (var prop in Props)
             {
-                if (!prop.broken) continue;
+                if (!prop.broken || prop.molten) continue;
                 prop.respawn -= dt;
                 if (prop.respawn > 0) continue;
                 if (Tuning.randomPropSpots) prop.point = RandomPropSpot(prop, prop.point);
@@ -159,7 +177,8 @@ namespace TNDA.Prototype
             {
                 var spot = new Vector2(Random.Range(min.x, max.x), Random.Range(min.y, max.y));
                 if (SpawnClear(spot, 1.2f) && Pickups.All(p => Vector2.Distance(p.point, spot) > 1)
-                    && Props.All(p => p == prop || Vector2.Distance(p.point, spot) > 1.4f))
+                    && Props.All(p => p == prop || Vector2.Distance(p.point, spot) > 1.4f)
+                    && (!LavaActive || Vector2.Distance(LavaPoint, spot) > Tuning.lavaHalfSize + .9f))
                     return spot;
             }
             return fallback;
@@ -172,7 +191,18 @@ namespace TNDA.Prototype
         IReadOnlyList<BreakableProp> IAiArena.Props => Props;
         IReadOnlyList<ArenaPickup> IAiArena.Pickups => Pickups;
         float IAiArena.LeaderBias => Tuning.leaderBias;
-        float IAiArena.LeaderHuntMargin => Tuning.leaderHuntMargin;
+        bool IAiArena.LavaActive => LavaActive;
+        Vector2 IAiArena.LavaPoint => LavaPoint;
+        float IAiArena.LavaHalfSize => Tuning.lavaHalfSize;
+        float IAiArena.HunterChaseSeconds => Tuning.hunterChaseSeconds;
+        float IAiArena.HunterScatterSeconds => Tuning.hunterScatterSeconds;
+        float IAiArena.HunterLeaderChance => Tuning.hunterLeaderChance;
+        Vector2 IAiArena.ArenaMin => Tuning.arenaMin;
+        Vector2 IAiArena.ArenaMax => Tuning.arenaMax;
+
+        // Late in the match (from the first elimination) the computer cars speed up; personalities stay the same.
+        public float AiTopSpeed(ArcadeVehicle car) => (EliminationStage > 0 ? Tuning.aiLateTopSpeed : Tuning.aiTopSpeed)
+            * (car.Ai.Personality == AiPersonality.Wanderer ? Tuning.wandererTopSpeedScale : 1);
         bool IAiArena.CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) => CanHarm(attacker, victim);
 
         private void ConstrainToArena(ArcadeVehicle car)
@@ -206,9 +236,9 @@ namespace TNDA.Prototype
                 {
                     prop.broken = true;
                     prop.respawn = 6;
-                    car.score += prop.points;
                     car.speed *= .75f;
                     events.Add(new PropSmashed(car, prop.points, false));
+                    AddScore(car, prop.points);
                     car.RecordCollision();
                 }
                 else
@@ -247,6 +277,67 @@ namespace TNDA.Prototype
             if (rocket == null) return false;
             rocket.Spawn(car.position + car.Forward * .62f, car.Forward * 6, car.index);
             return true;
+        }
+
+        bool IItemArena.DropOil(ArcadeVehicle car)
+        {
+            var slot = Rockets.FirstOrDefault(r => !r.active);
+            if (slot == null) return false;
+            slot.Drop(car.position - car.Forward * .55f, car.index);
+            return true;
+        }
+
+        // The lava pool: one prop slot is consumed for good and the pool appears at a random spot clear of cars, crates,
+        // props and respawn corners (the arena centre if none turns up).
+        private void FormLava()
+        {
+            var slot = Props.FirstOrDefault(p => p.broken) ?? Props.FirstOrDefault();
+            if (slot != null) { slot.molten = slot.broken = true; slot.respawn = 0; }
+            float half = Tuning.lavaHalfSize;
+            Vector2 min = Tuning.arenaMin + Vector2.one * (half + .4f), max = Tuning.arenaMax - Vector2.one * (half + .4f);
+            Vector2 spot = new Vector2((min.x + max.x) / 2, (min.y + max.y) / 2);
+            for (int attempt = 0; attempt < 60; attempt++)
+            {
+                var candidate = new Vector2(Random.Range(min.x, max.x), Random.Range(min.y, max.y));
+                if (Cars.All(c => !c.alive || Vector2.Distance(c.position, candidate) > half + 1.1f)
+                    && Pickups.All(p => Vector2.Distance(p.point, candidate) > half + .8f)
+                    && Props.All(p => p.broken || Vector2.Distance(p.point, candidate) > half + .8f)
+                    && RespawnCorners.All(c => Vector2.Distance(c, candidate) > half + 1))
+                {
+                    spot = candidate;
+                    break;
+                }
+            }
+            LavaPoint = spot;
+            LavaActive = true;
+            events.Add(new LavaFormed(spot));
+        }
+
+        private bool TouchesLava(ArcadeVehicle car)
+        {
+            if (!LavaActive || !car.alive) return false;
+            float reach = Tuning.lavaHalfSize + .22f;
+            return Mathf.Abs(car.position.x - LavaPoint.x) < reach && Mathf.Abs(car.position.y - LavaPoint.y) < reach;
+        }
+
+        // Oil slicks: the first car onto one spins out (its dropper is immune for a second) and the slick is gone.
+        private void UpdateSlicks(float dt)
+        {
+            foreach (var slick in Rockets)
+            {
+                if (!slick.active || !slick.slick) continue;
+                slick.age += dt;
+                if (slick.age > Tuning.oilLifeSeconds) { slick.Hide(); continue; }
+                var dropper = slick.owner >= 0 && slick.owner < Cars.Length ? Cars[slick.owner] : null;
+                var victim = Cars.FirstOrDefault(c => c.alive && !c.IsSlipping && !(c == dropper && slick.age < 1)
+                    && Vector2.Distance(c.position, slick.position) < .4f);
+                if (victim == null) continue;
+                victim.Slip(Tuning.oilSlipSeconds);
+                victim.RecordCollision();
+                slick.Hide();
+                events.Add(new CarSlipped(victim, dropper));
+                if (dropper != null && dropper != victim && !dropper.eliminated) AddScore(dropper, Tuning.oilBonus);
+            }
         }
 
         private void CherryWreck(ArcadeVehicle attacker, ArcadeVehicle victim)
@@ -316,7 +407,7 @@ namespace TNDA.Prototype
             bool damaged = ApplyDamage(victim, damage);
             if (damaged)
             {
-                attacker.score += Mathf.RoundToInt(impact * 30 * multiplier);
+                AddScore(attacker, Mathf.RoundToInt(impact * 30 * multiplier));
                 if (!victim.alive) AwardWreck(attacker);
             }
             ApplyDamage(attacker, damage * .15f);
@@ -334,7 +425,7 @@ namespace TNDA.Prototype
         {
             foreach (var rocket in Rockets)
             {
-                if (!rocket.active) continue;
+                if (!rocket.active || rocket.slick) continue;
                 var owner = Cars[rocket.owner];
                 if (owner.eliminated) { rocket.Hide(); continue; }
                 Vector2 from = rocket.position;
@@ -348,7 +439,7 @@ namespace TNDA.Prototype
                 {
                     if (ApplyDamage(victim, victim.HasCherry ? 1 : .38f))
                     {
-                        owner.score += 120;
+                        AddScore(owner, 120);
                         if (!victim.alive) AwardWreck(owner);
                         if (victim.alive)
                         {
@@ -365,9 +456,9 @@ namespace TNDA.Prototype
                 {
                     prop.broken = true;
                     prop.respawn = 6;
-                    owner.score += prop.points;
                     rocket.Hide();
                     events.Add(new PropSmashed(owner, prop.points, true));
+                    AddScore(owner, prop.points);
                     continue;
                 }
                 if (rocket.age > 1.6f || rocket.position.x < Tuning.arenaMin.x || rocket.position.x > Tuning.arenaMax.x
@@ -382,10 +473,11 @@ namespace TNDA.Prototype
             return Vector2.Distance(point, from + segment * t);
         }
 
-        public bool ApplyDamage(ArcadeVehicle car, float damage)
+        public bool ApplyDamage(ArcadeVehicle car, float damage, bool unblockable = false)
         {
             float previousScore = car.score;
-            if (!car.TakeDamage(damage, LifecycleRules))
+            Vector2 point = car.position;
+            if (!car.TakeDamage(damage, LifecycleRules, unblockable))
             {
                 if (car.alive && damage > 0 && car.shieldSeconds > 0) events.Add(new ShieldBlocked(car));
                 return false;
@@ -393,21 +485,29 @@ namespace TNDA.Prototype
             if (!car.alive)
             {
                 Wrecks++;
-                events.Add(new VehicleWrecked(car, Mathf.FloorToInt(previousScore - car.score)));
+                int deducted = Mathf.FloorToInt(previousScore - car.score);
+                events.Add(new VehicleWrecked(car, deducted));
+                if (deducted > 0) events.Add(new ScoreChanged(car, -deducted, point));
             }
             return true;
         }
 
         private void AwardWreck(ArcadeVehicle attacker)
         {
-            attacker.score += Tuning.wreckBonus;
             events.Add(new WreckBonus(attacker, Tuning.wreckBonus));
+            AddScore(attacker, Tuning.wreckBonus);
+        }
+
+        private void AddScore(ArcadeVehicle car, int points)
+        {
+            if (points == 0) return;
+            car.score += points;
+            events.Add(new ScoreChanged(car, points, car.position));
         }
 
         private void RespawnVehicle(ArcadeVehicle car)
         {
-            Vector2[] corners = { new Vector2(-3.5f, 1.1f), new Vector2(3.5f, 1.1f), new Vector2(3.5f, -3.2f), new Vector2(-3.5f, -3.2f) };
-            Vector2 spawn = corners.OrderByDescending(p => Cars.Where(c => c.alive)
+            Vector2 spawn = RespawnCorners.OrderByDescending(p => Cars.Where(c => c.alive)
                 .Select(c => Vector2.Distance(p, c.position)).DefaultIfEmpty(10).Min()).First();
             car.Respawn(spawn, spawn.x > 0 ? 180 : 0);
         }
@@ -423,6 +523,18 @@ namespace TNDA.Prototype
             EliminationStage++;
             events.Add(new VehicleEliminated(loser, count));
             if (Contenders == 1) EndRound();
+        }
+
+        // A continue: an eliminated car rejoins (not after the match is over) with the lowest surviving score, so it
+        // must beat at least one car to survive the next elimination, and respawns in the emptiest corner.
+        public bool Revive(ArcadeVehicle car)
+        {
+            if (Finished || !car.eliminated) return false;
+            float lowest = Cars.Where(c => !c.eliminated).Select(c => c.score).DefaultIfEmpty(0).Min();
+            car.Rejoin(lowest);
+            RespawnVehicle(car);
+            events.Add(new VehicleRevived(car));
+            return true;
         }
 
         private void EndRound()

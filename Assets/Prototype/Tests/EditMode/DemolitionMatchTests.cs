@@ -75,7 +75,7 @@ namespace TNDA.Prototype.Tests
             var target = FireP1RocketAtCar3(car => { car.score = 400; car.GiveCherry(8); });
             Assert.IsFalse(target.alive);
 
-            var events = match.Events.ToArray();
+            var events = match.Events.Where(e => !(e is ScoreChanged)).ToArray();
             Assert.AreEqual(3, events.Length);
             var wreck = (VehicleWrecked)events[0];
             Assert.AreSame(target, wreck.Car);
@@ -129,6 +129,33 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
+        public void EveryScoreChangeIsReportedWithItsAmountAndPlace()
+        {
+            var target = FireP1RocketAtCar3(car => { car.score = 400; car.GiveCherry(8); });
+
+            var changes = match.Events.OfType<ScoreChanged>().ToArray();
+            Assert.AreEqual(3, changes.Length);
+            Assert.AreSame(target, changes[0].Car);
+            Assert.AreEqual(-250, changes[0].Amount);
+            Assert.That(Vector2.Distance(changes[0].Point, new Vector2(1, -1)), Is.LessThan(.001f));
+            Assert.AreSame(cars[0], changes[1].Car);
+            Assert.AreEqual(120, changes[1].Amount);
+            Assert.AreSame(cars[0], changes[2].Car);
+            Assert.AreEqual(300, changes[2].Amount);
+            Assert.AreEqual(cars[0].score, changes.Where(c => c.Car == cars[0]).Sum(c => c.Amount));
+        }
+
+        [Test]
+        public void ARamReportsTheRammersPointsAndAZeroScoreWreckReportsNoLoss()
+        {
+            P1RamsCar3(0);
+
+            var changes = match.Events.OfType<ScoreChanged>().ToArray();
+            Assert.IsTrue(changes.All(c => c.Car == cars[0] && c.Amount > 0));
+            Assert.AreEqual(cars[0].score, changes.Sum(c => c.Amount));
+        }
+
+        [Test]
         public void TheWreckPenaltyNeverTakesTheScoreBelowZero()
         {
             P1RamsCar3(100);
@@ -170,6 +197,7 @@ namespace TNDA.Prototype.Tests
             Assert.AreEqual(100, smash.Points);
             Assert.IsFalse(smash.ByRocket);
             Assert.AreEqual(100, cars[0].score);
+            Assert.AreEqual(100, match.Events.OfType<ScoreChanged>().Single().Amount);
         }
 
         [Test]
@@ -187,6 +215,81 @@ namespace TNDA.Prototype.Tests
         }
 
         private static readonly ArcadeInput ItemButton = new ArcadeInput { action = true, actionPressed = true };
+
+        [Test]
+        public void CratesGiveShieldRocketOrOilAThirdEach()
+        {
+            System.Func<float, System.Func<float>> fixedRoll = r => () => r;
+            Assert.AreEqual(ArenaItem.Shield, ArenaItems.Roll(false, .5f, fixedRoll(.2f)));
+            Assert.AreEqual(ArenaItem.Rocket, ArenaItems.Roll(false, .5f, fixedRoll(.5f)));
+            Assert.AreEqual(ArenaItem.Oil, ArenaItems.Roll(false, .5f, fixedRoll(.8f)));
+            Assert.AreEqual(ArenaItem.Cherry, ArenaItems.Roll(true, .5f, fixedRoll(.2f)));
+        }
+
+        [Test]
+        public void LavaFormsOnTimeAndWrecksACarThroughItsShield()
+        {
+            ResetWithHumansOnly();
+            match.Tuning.lavaSeconds = .5f;
+            while (!match.LavaActive) match.Tick(Dt, Idle, Idle);
+            Assert.AreEqual(match.LavaPoint, match.Events.OfType<LavaFormed>().Single().Point);
+            Assert.That(match.Elapsed, Is.EqualTo(.5f).Within(Dt));
+            Assert.IsTrue(match.Props.Count(p => p.molten) == 1);
+
+            var car = cars[0];
+            car.score = 400; car.shieldSeconds = 6; car.spawnProtection = 2;
+            car.position = match.LavaPoint;
+            match.Tick(Dt, Idle, Idle);
+            Assert.IsFalse(car.alive);
+            Assert.AreEqual(150, car.score);
+            Assert.IsEmpty(match.Events.OfType<WreckBonus>());
+        }
+
+        [Test]
+        public void TheTitleDemoFormsLavaEarly()
+        {
+            match.Reset(0, true);
+            match.Tuning.demoLavaSeconds = .5f;
+            for (int f = 0; f < 40; f++) match.Tick(Dt, Idle, Idle);
+            Assert.IsTrue(match.LavaActive);
+        }
+
+        [Test]
+        public void AnOilSlickSpinsTheNextCarAndRewardsItsDropper()
+        {
+            ResetWithHumansOnly();
+            var dropper = cars[0]; var victim = cars[1];
+            dropper.position = new Vector2(0, -1); dropper.heading = 0; dropper.item = ArenaItem.Oil;
+            match.Tick(Dt, ItemButton, Idle);
+            var slick = rockets.Single(r => r.active);
+            Assert.IsTrue(slick.slick);
+            Assert.AreEqual(ArenaItem.Oil, match.Events.OfType<ItemUsed>().Single().Item);
+            // The dropper sits on its own slick for its first second without slipping.
+            dropper.position = slick.position;
+            match.Tick(Dt, Idle, Idle);
+            Assert.IsFalse(dropper.IsSlipping);
+            dropper.position = new Vector2(3, 1);
+
+            victim.position = slick.position; victim.speed = 2;
+            match.Tick(Dt, Idle, Idle);
+            Assert.IsTrue(victim.IsSlipping);
+            Assert.AreEqual(0, victim.speed);
+            Assert.AreEqual(1, victim.health);
+            Assert.IsFalse(slick.active);
+            Assert.AreSame(dropper, match.Events.OfType<CarSlipped>().Single().Dropper);
+            Assert.AreEqual(50, dropper.score);
+        }
+
+        [Test]
+        public void OilAndRocketsShareTheTwoSlots()
+        {
+            ResetWithHumansOnly();
+            rockets[0].Spawn(new Vector2(-3, 1), new Vector2(0, -6), 1);
+            rockets[1].Drop(new Vector2(3, 1), 1);
+            cars[0].item = ArenaItem.Oil;
+            match.Tick(Dt, ItemButton, Idle);
+            Assert.AreEqual(ArenaItem.Oil, cars[0].item);
+        }
 
         [Test]
         public void DrivingOverACrateReportsTheItemPickedUp()
@@ -323,15 +426,15 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
-        public void TheClockEliminatesTheLowestAt60And90SecondsNotBefore()
+        public void TheClockEliminatesTheLowestAt45And80SecondsNotBefore()
         {
             ResetWithHumansOnly();
             float[] scores = { 400, 300, 200, 100 };
             for (int i = 0; i < cars.Length; i++) cars[i].score = scores[i];
-            while (match.Elapsed < 59.9f) match.Tick(Dt, Idle, Idle);
+            while (match.Elapsed < 44.9f) match.Tick(Dt, Idle, Idle);
             Assert.IsEmpty(match.Events.OfType<VehicleEliminated>());
 
-            while (match.Elapsed < 90.1f) match.Tick(Dt, Idle, Idle);
+            while (match.Elapsed < 80.1f) match.Tick(Dt, Idle, Idle);
             CollectionAssert.AreEqual(new[] { cars[3], cars[2] }, match.Events.OfType<VehicleEliminated>().Select(e => e.Car));
             Assert.IsFalse(match.Finished);
         }
@@ -344,6 +447,38 @@ namespace TNDA.Prototype.Tests
 
             Assert.IsEmpty(match.Events.OfType<VehicleEliminated>());
             Assert.IsFalse(match.Finished);
+        }
+
+        [Test]
+        public void AContinueRejoinsTiedWithTheLowestSurvivingScore()
+        {
+            match.Reset(1);
+            float[] scores = { 50, 300, 200, 400 };
+            for (int i = 0; i < cars.Length; i++) cars[i].score = scores[i];
+            match.EliminateLowest();
+            Assert.IsTrue(cars[0].eliminated);
+
+            Assert.IsTrue(match.Revive(cars[0]));
+            Assert.IsFalse(cars[0].eliminated);
+            Assert.IsTrue(cars[0].alive);
+            Assert.AreEqual(200, cars[0].score);
+            Assert.AreEqual(0, cars[0].FinalPlace);
+            Assert.AreEqual(1, cars[0].health);
+            Assert.That(cars[0].spawnProtection, Is.GreaterThan(0));
+            Assert.AreSame(cars[0], match.Events.OfType<VehicleRevived>().Single().Car);
+            Assert.AreEqual(4, match.Contenders);
+        }
+
+        [Test]
+        public void NoContinueAfterTheMatchIsOver()
+        {
+            match.Reset(1);
+            float[] scores = { 900, 300, 100, 600 };
+            for (int i = 0; i < cars.Length; i++) cars[i].score = scores[i];
+            for (int stage = 0; stage < 3; stage++) match.EliminateLowest();
+
+            Assert.IsFalse(match.Revive(cars[3]));
+            Assert.IsTrue(cars[3].eliminated);
         }
 
         [Test]
