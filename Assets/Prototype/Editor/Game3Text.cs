@@ -259,7 +259,7 @@ namespace TNDA.Prototype.Editor
         }
 
         // Full-screen victory picture (rebuilt each time): the 128px picture at exactly 2x in the middle and the final
-        // score below, on black (no winner title, 2026-10-19). Drawn last, over every HUD text; it is hidden before the results.
+        // score below, on black (no winner title, 2026-10-19), and 你活下來了 in the top-left corner (2026-10-20). Drawn last, over every HUD text; it is hidden before the results.
         public static void CreateVictoryScreen(DemolitionGame game)
         {
             var cabinet = game.header.transform.parent;
@@ -280,6 +280,8 @@ namespace TNDA.Prototype.Editor
             picture.raycastTarget = false;
             const int px = ArcadeFontSetup.PixelSize;
             Undo.RecordObject(game, "GAME3 victory screen");
+            game.victoryBanner = Label(root, "Survived", 24, 276, 200, 26, px * 2); // 24px in from the left, 18px down from the top
+            game.victoryBanner.alignment = TextAlignmentOptions.TopLeft;
             game.victoryScore = Label(root, "Score", 0, 10, 320, 13, px);
             game.victoryImage = picture;
             game.victorySprites = sprites;

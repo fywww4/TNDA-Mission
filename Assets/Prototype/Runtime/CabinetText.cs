@@ -40,6 +40,7 @@ namespace TNDA.Prototype
         public const string Revived = "{0} 投幣復活！";
         public const string GameOver = "GAME OVER";
         // Victory picture (2026-10-19), shown when a player wins, before the results.
+        public const string VictorySurvived = "你活下來了";
         public const string VictoryScore = "最終得分 {0}";
         public static readonly string[] StartMessages = { "活下來！", "盡量取得最高分！" };
         // English driver names (2026-10-16): players Player1/Player2; 碰碰 Zhima, 追王 SAN, 迷糊 Panda.

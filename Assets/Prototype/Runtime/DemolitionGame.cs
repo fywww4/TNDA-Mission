@@ -182,7 +182,8 @@ namespace TNDA.Prototype
         public float victorySeconds = 3;
         public GameObject victoryScreen;
         public UnityEngine.UI.Image victoryImage;
-        public TMP_Text victoryScore;
+        [Tooltip("Top-left line on the victory picture (你活下來了), in the winner's car colour.")]
+        public TMP_Text victoryBanner, victoryScore;
         [Tooltip("Index 0: Player1's cyan car; 1: the same picture with Player2's yellow car.")]
         public Sprite[] victorySprites;
         private float victoryLeft = -1;
@@ -376,6 +377,11 @@ namespace TNDA.Prototype
             victoryLeft = victorySeconds;
             if (victorySprites != null && victorySprites.Length > 0)
                 victoryImage.sprite = victorySprites[winner.index == 1 && victorySprites.Length > 1 ? 1 : 0];
+            if (victoryBanner != null)
+            {
+                victoryBanner.text = CabinetText.VictorySurvived;
+                victoryBanner.color = winner.body.color;
+            }
             victoryScore.text = string.Format(CabinetText.VictoryScore, Mathf.RoundToInt(winner.score).ToString("00000"));
             victoryScreen.SetActive(true);
         }

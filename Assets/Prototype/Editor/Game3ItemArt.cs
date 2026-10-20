@@ -52,8 +52,7 @@ namespace TNDA.Prototype.Editor
                 "#W########W#",
                 "#WWWWWWWWWW#",
                 "############" });
-            // Cherry: from the supplied picture with its white backdrop removed; keep the gap between the two fruits.
-            var cherry = MakeSprite("Cherry", 14, 1, .34f, new Rect(0, 0, 1, 1), 0);
+            var cherry = CherrySprite();
             Undo.RecordObject(game, "GAME3 crates and cherry");
             // Breakable obstacles are white (2026-10-15).
             foreach (var prop in game.props)
@@ -174,6 +173,31 @@ namespace TNDA.Prototype.Editor
             }
             EditorUtility.SetDirty(game);
             return new[] { crate, cherry, blast, rocket, shield, oil, slick, lava };
+        }
+
+        // Redraw the supplied cherry design at 16x18: reducing the source image erased the thin stems.
+        // Keep both stems connected, the leaf vein open, the fruits staggered, and a curved highlight on each fruit.
+        public static Sprite CherrySprite()
+        {
+            return DrawSprite("Cherry", new[] {
+                ".....C..........",
+                ".....C..........",
+                ".....CCCCCC.....",
+                ".....C..CCCCC...",
+                ".....CC.CCCCCC..",
+                "....C..C.CCCCCCC",
+                "....C...C..CCCC.",
+                "...C.....C......",
+                "...C......C.....",
+                "..CCC.CC.CCCCC..",
+                ".CCCCCCCC.CCCCCC",
+                "CCCCCWCCC.CCWCCC",
+                "CCCCCCWCC.CCCWCC",
+                "CCCCCCWCC.CCCWCC",
+                ".CCCCWCC.CCCWCC.",
+                ".CCCCCCC..CCCC..",
+                "..CCCCC.........",
+                "...CCC.........." });
         }
 
         // The supplied 128x128 victory picture (Art/Source/VictorySource.png) snapped to the four colours, plus a copy

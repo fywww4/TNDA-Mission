@@ -20,7 +20,7 @@ System.Action<int, int> play = (players, leader) =>
 try
 {
     play(1, 0);
-    checks["P1 win: picture, no title"] = g.victoryScreen.activeSelf + " \"" + g.victoryScore.text + "\" sprite=" + g.victoryImage.sprite.name + " phase=" + g.Phase;
+    checks["P1 win: picture, banner, no title"] = g.victoryScreen.activeSelf + " \"" + g.victoryBanner.text + "\" cyan=" + (g.victoryBanner.color == TNDA.Prototype.ArcadeGame.Cyan) + " \"" + g.victoryScore.text + "\" sprite=" + g.victoryImage.sprite.name + " phase=" + g.Phase;
     var before = g.cars[2].position;
     for (int f = 0; f < 60; f++) g.Advance(dt, none, none);
     checks["match stands still behind it"] = UnityEngine.Vector2.Distance(before, g.cars[2].position) < .001f;
