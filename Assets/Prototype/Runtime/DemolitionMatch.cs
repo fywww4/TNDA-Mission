@@ -294,7 +294,9 @@ namespace TNDA.Prototype
             var slot = Props.FirstOrDefault(p => p.broken) ?? Props.FirstOrDefault();
             if (slot != null) { slot.molten = slot.broken = true; slot.respawn = 0; }
             float half = Tuning.lavaHalfSize;
-            Vector2 min = Tuning.arenaMin + Vector2.one * (half + .4f), max = Tuning.arenaMax - Vector2.one * (half + .4f);
+            // At least 1.6 of open floor between the pool and every wall, so it never leaves a corridor a car gets
+            // trapped in (2026-10-20: a pool 1.3 from the wall caught Zhima).
+            Vector2 min = Tuning.arenaMin + Vector2.one * (half + 1.6f), max = Tuning.arenaMax - Vector2.one * (half + 1.6f);
             Vector2 spot = new Vector2((min.x + max.x) / 2, (min.y + max.y) / 2);
             for (int attempt = 0; attempt < 60; attempt++)
             {
