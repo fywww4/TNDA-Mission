@@ -42,9 +42,8 @@ namespace TNDA.Prototype
         private Vector2 spinDirection;
         private const float ProtectionSeconds = 2;
 
-        public string DriverName => !computer ? (index == 0 ? CabinetText.PlayerOneName : CabinetText.PlayerTwoName)
-            : Ai.Personality == AiPersonality.Hunter ? CabinetText.HunterName
-            : Ai.Personality == AiPersonality.Wanderer ? CabinetText.WandererName : CabinetText.BumperName;
+        // P1 to P4 by seat, for players and computer cars alike.
+        public string DriverName => string.Format(CabinetText.DriverName, index + 1);
         public Vector2 Forward => new Vector2(Mathf.Cos(heading * Mathf.Deg2Rad), Mathf.Sin(heading * Mathf.Deg2Rad));
 
         public void ResetVehicle(Vector2 start, float angle, int playerCount)

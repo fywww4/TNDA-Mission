@@ -29,7 +29,7 @@ namespace TNDA.Prototype.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             var result = new { scene = scenePath, crate = Size(sprites[0]), cherry = Size(sprites[1]), explosion = Size(sprites[2]), rocket = Size(sprites[3]), shield = Size(sprites[4]), oil = Size(sprites[5]),
-                slick = Size(sprites[6]), lava = Size(sprites[7]), saved = !scene.isDirty };
+                slick = Size(sprites[6]), lava = Size(sprites[7]), crown = Size(sprites[8]), saved = !scene.isDirty };
             if (newlyOpened) EditorSceneManager.CloseScene(scene, true);
             return result;
         }
@@ -155,6 +155,8 @@ namespace TNDA.Prototype.Editor
             }
             // Floor hazards draw under the cars (order 3): the lava pool and one oil slick per rocket/oil pool slot.
             game.lavaView = EffectView("Lava pool", lava, 3);
+            var crown = CrownSprite();
+            game.crownView = EffectView("Leader crown", crown, 25);
             for (int i = 0; i < game.rockets.Length; i++) game.rockets[i].slickView = EffectView("Oil slick " + i, slick, 3);
             game.explosions = new SpriteRenderer[game.rockets.Length];
             for (int i = 0; i < game.explosions.Length; i++)
@@ -172,7 +174,43 @@ namespace TNDA.Prototype.Editor
                 game.explosions[i] = view;
             }
             EditorUtility.SetDirty(game);
-            return new[] { crate, cherry, blast, rocket, shield, oil, slick, lava };
+            return new[] { crate, cherry, blast, rocket, shield, oil, slick, lava, crown };
+        }
+
+        // Keep the 15x8 crown on an opaque black inset so white floor markings cannot appear as stray crown pixels.
+        // The padded 19x12 sprite still needs a whole-pixel pivot when snapped to the cabinet's pixel grid.
+        public static Sprite CrownSprite()
+        {
+            var design = new[] {
+                "W..W...W...W..W",
+                "Y..Y...Y...Y..Y",
+                "Y..Y..YYY..Y..Y",
+                "YY.YY.YYY.YY.YY",
+                "YYYYYYYYYYYYYYY",
+                "YY.YYY.W.YYY.YY",
+                "YYYYYYYYYYYYYYY",
+                ".YYYYYYYYYYYYY." };
+            const int padding = 2;
+            string inset = new string('#', padding);
+            string border = new string('#', design[0].Length + padding * 2);
+            var rows = Enumerable.Repeat(border, padding)
+                .Concat(design.Select(row => inset + row.Replace('.', '#') + inset))
+                .Concat(Enumerable.Repeat(border, padding)).ToArray();
+            var crown = DrawSprite("Crown", rows);
+            string path = AssetDatabase.GetAssetPath(crown);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            var settings = new TextureImporterSettings();
+            importer.ReadTextureSettings(settings);
+            var pivot = new Vector2(Mathf.Floor(crown.rect.width / 2) / crown.rect.width,
+                Mathf.Floor(crown.rect.height / 2) / crown.rect.height);
+            if (settings.spriteAlignment != (int)SpriteAlignment.Custom || settings.spritePivot != pivot)
+            {
+                settings.spriteAlignment = (int)SpriteAlignment.Custom;
+                settings.spritePivot = pivot;
+                importer.SetTextureSettings(settings);
+                importer.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
         // Redraw the supplied cherry design at 16x18: reducing the source image erased the thin stems.
@@ -309,9 +347,19 @@ namespace TNDA.Prototype.Editor
             small.SetPixels32(result);
             small.Apply();
             var png = small.EncodeToPNG();
-            // Repeated scene patches produce identical art; avoid rewriting a loaded, memory-mapped asset.
+            // Skip identical art. Replace changed files atomically: an Inspector preview may still map the old PNG.
             if (!File.Exists(output) || !File.ReadAllBytes(output).SequenceEqual(png))
-                File.WriteAllBytes(output, png);
+            {
+                string temporary = output + ".tmp";
+                try
+                {
+                    File.WriteAllBytes(temporary, png);
+                    AssetDatabase.ReleaseCachedFileHandles();
+                    if (File.Exists(output)) File.Replace(temporary, output, null);
+                    else File.Move(temporary, output);
+                }
+                finally { if (File.Exists(temporary)) File.Delete(temporary); }
+            }
             UnityEngine.Object.DestroyImmediate(small);
             AssetDatabase.ImportAsset(output, ImportAssetOptions.ForceSynchronousImport);
             var importer = (TextureImporter)AssetImporter.GetAtPath(output);

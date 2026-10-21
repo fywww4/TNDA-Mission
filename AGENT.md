@@ -43,6 +43,15 @@
 - 開局也有 2 秒保護。
 - 上述重生、扣分、傷害與道具數值屬於原型預設，可在 DemolitionGame Inspector 調整。
 
+### 車輛辨識（2026-10-21 業師建議：不看排行榜就不知道誰第一、英文名不好對照名次與車輛；要考慮俯視角的資訊呈現）
+
+- **車名改回依座位 P1～P4**（`CabinetText.DriverName` "P{0}"），取代 Player1／Player2／Panda／SAN／Zhima：P1＝玩家一，P2＝玩家二（單人時是 Panda／迷糊），P3＝SAN／追王，P4＝Zhima／碰碰。排行榜車名欄寬 3 字元。
+- **車色依座位**：P1 青、P2 黃（單色）；P3 青白相間條紋、P4 黑白相間條紋（`p3StripeA/B`、`p4StripeA/B`，用 `CarPalette.shader` 的條紋模式，橫跨車身每條 3 像素）。吃櫻桃時一律改成青黃條紋（最後 2 秒閃回原本樣子）。黑白條紋的黑色部分與黑色地板同色，P4 看起來像白色虛線車，仍與其他車分得開。
+- **皇冠**：目前第一名（未淘汰者中分數最高，同分取座位小的）的車頂上方浮著一頂皇冠（`crownView`，`crownHeight` 1.5，在車名上方並留空隙）；全部 0 分時、或第一名撞毀等待重生時不顯示。圖依使用者提供的皇冠圖重畫為 15×8（五個高尖角、頂端白色圓珠，冠帶上三個鏤空寶石、中央白色；原圖縮小後糊成一團，第一版 13×8 又太小、貼著車名，2026-10-21 使用者回報後放大並抬高），來源 `Art/Source/CrownSource.png`，由 `Game3ItemArt.Apply` 建立 `Effects/Leader crown`。
+- **皇冠像素對齊修正（2026-10-21）**：15×8 圖的預設中心為 (7.5, 4)，在整數像素位置渲染時最右側一列會被裁掉。`Game3ItemArt.CrownSprite()` 保留原圖設計，將匯入 Pivot 固定為整數 (7, 4)；`Apply` 也改用此入口，重新修補場景不會還原錯誤設定。320×320 實際畫面與原圖比對由 7 個像素不一致降為 0，五個尖角完整，皇冠與車名字形間距約 9.5px。
+- **皇冠上方白點修正（2026-10-21）**：白點實際來自背景 `Floor marking`，剛好落在皇冠上方。皇冠的 15×8 圖案補上四周 2px 黑色邊距，圖內鏤空也填黑，以遮住背景裝飾線；資產為 19×12、整數 Pivot (9, 6)，原圖案大小與位置不變。已在同一位置擷取確認多餘白線消失，五個尖角與亮點保留，圖案與車名仍相距約 9.5px（含黑色邊距的 Sprite 邊界距車名 7.5px）。圖片儲存改用原子替換，避免 Inspector 預覽鎖住 PNG 而無法更新。
+- 驗證：`tmp/g3crownshot.cs` 截圖確認皇冠在分數最高的車上（位置誤差 0.01）、開局 0 分時不顯示、車名 P1～P4；`g3cues`（提示改回 P1）、`g3cherry`、`g3victory`、`g3continue` 與 EditMode 35 個全部通過。
+
 ### AI
 
 - **難度調整（2026-10-12 使用者要求）**：開局 GO 後前 10 秒（`aiGraceSeconds`）為緩衝期：AI 只把其他 AI 當衝撞目標、會轉向避開玩家，且 AI 的衝撞、火箭、櫻桃都不會傷害玩家。
@@ -110,7 +119,7 @@
 - GAME2 的車輛原始圖片已先複製至 `Assets/Prototype/Game3/Art/Source/`，才移除舊案資料夾。
 - **總音量（2026-10-16 使用者要求，聲音太大）**：`DemolitionGame` Inspector 的 Volume 區有 `Master Volume` 滑桿（0～1，預設 0.5），一次控制全部聲音（倒數、碰撞、合成音、引擎循環），以 `AudioListener.volume` 套用，Play Mode 中拖動即時生效；Play Mode 中的修改離開後會還原，要保留請在停止狀態下調整。
 - 共用音效 `Assets/Prototype/Audio/` 保留。GAME3 使用倒數、引擎、碰撞，以及道具與結算合成音，共五類聲音（衝撞加速移除後，Speed 只作為循環引擎聲）。
-- 介面已改為繁體中文（2026-10-11）。**所有畫面文字只定義一次（2026-10-13，ticket 09）**：`Assets/Prototype/Runtime/CabinetText.cs` 收錄標題、投幣、P1／P2 操作、按鈕、提示、廣播與排行榜／結算文字；需代入數值的是 `string.Format` 模板（`{0}`）。Editor 場景修補（`Game3Text.PatchScene()`，含車名標籤轉換）與執行期 HUD 都讀它；比賽中底部提示 P1 為 `P1Controls`，P2 為 `P2Controls`，與標題畫面相同。新增畫面文字請加在 `CabinetText`，不要在程式內另寫中文字串；車名為英文（2026-10-16）：Player1、Player2、Zhima（碰碰）、SAN（追王）、Panda（迷糊）；排行榜車名欄寬 7 字元，持有的道具改以車尾圖示顯示。
+- 介面已改為繁體中文（2026-10-11）。**所有畫面文字只定義一次（2026-10-13，ticket 09）**：`Assets/Prototype/Runtime/CabinetText.cs` 收錄標題、投幣、P1／P2 操作、按鈕、提示、廣播與排行榜／結算文字；需代入數值的是 `string.Format` 模板（`{0}`）。Editor 場景修補（`Game3Text.PatchScene()`，含車名標籤轉換）與執行期 HUD 都讀它；比賽中底部提示 P1 為 `P1Controls`，P2 為 `P2Controls`，與標題畫面相同。新增畫面文字請加在 `CabinetText`，不要在程式內另寫中文字串；車名依座位為 P1～P4（2026-10-21 起；10-16～10-20 曾用英文名），持有的道具改以車尾圖示顯示。
 - **輸出解析度規定為實際 320×320 像素（使用者 2026-10-12 確認）**。Editor Game 視窗使用內建的 320×320 固定解析度；曾暫時設為 960×960 屬錯誤，已移除該自訂尺寸。不可用放大視窗來改善字體。
 - **字型（2026-10-12）**：在 320×320 下唯一能清楚的做法是像素字型 1:1 繪製。使用俐方體 11 號 Cubic 11（`Assets/Prototype/Fonts/Cubic_11.ttf`，OFL），TMP 字型 `Cubic_11 Pixel 11px.asset`：RASTER_HINTED 點陣、取樣 11px、Point 濾鏡、Bitmap shader、512 圖集；預先產生所有畫面字元（`ArcadeFontSetup.UsedCharacters`：ASCII、常用全形標點、`CabinetText.All`，再加上場景中的標題、說明、`startMessages` 與現有 TMP 文字），建置不清除。行高與基線取整數（行高 13、ascent 9），Canvas 開啟 pixelPerfect。之前糊掉的原因是 Cubic 被以 7～8.5px 的 SDF 繪製；Noto Sans TC（`Fonts/NotoSansTC/`）不再使用。
 - 文字大小只用 11 或其整數倍（標題 22、倒數 44）。版面由 `Game3Text.PixelLayout` 設定（整數像素座標）：頂部標題＋淘汰倒數、四車排行榜（左）、玩家狀態（右），提示列在場地上框內，底部操作提示一行（雙人時每 3 秒切換 P1／P2）。修改文字長度時注意 11px 中文每字 11px 寬，說明面板一行最多約 24 字。

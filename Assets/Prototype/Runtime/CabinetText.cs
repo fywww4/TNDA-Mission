@@ -43,12 +43,8 @@ namespace TNDA.Prototype
         public const string VictorySurvived = "你活下來了";
         public const string VictoryScore = "最終得分 {0}";
         public static readonly string[] StartMessages = { "活下來！", "盡量取得最高分！" };
-        // English driver names (2026-10-16): players Player1/Player2; 碰碰 Zhima, 追王 SAN, 迷糊 Panda.
-        public const string PlayerOneName = "Player1";
-        public const string PlayerTwoName = "Player2";
-        public const string BumperName = "Zhima";
-        public const string HunterName = "SAN";
-        public const string WandererName = "Panda";
+        // Driver names by seat (2026-10-21, replacing Player1/Player2/Panda/SAN/Zhima): P1 to P4.
+        public const string DriverName = "P{0}";
 
         public const string NoItem = "無道具";
         public const string Shield = "防護罩";

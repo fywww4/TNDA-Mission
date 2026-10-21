@@ -83,6 +83,15 @@ namespace TNDA.Prototype
         [Tooltip("While the cherry power lasts the car shows cyan and yellow stripes (not plain yellow, which is P2).")]
         public Color cherryStripeA = Cyan, cherryStripeB = Yellow;
 
+        [Header("Car colours and the leader's crown")]
+        [Tooltip("P1 cyan and P2 yellow are solid; P3 (SAN) and P4 (Zhima) are striped so every car reads apart from above.")]
+        public Color p3StripeA = Cyan, p3StripeB = White;
+        public Color p4StripeA = Color.black, p4StripeB = White;
+        [Tooltip("Floats over the car currently in first place (hidden while every score is 0).")]
+        public SpriteRenderer crownView;
+        [Tooltip("Height of the crown's centre above the car, clear of the name tag below it.")]
+        public float crownHeight = 1.5f;
+
         [Header("Lava and oil")]
         [Tooltip("The lava pool forms at this time (title demo: demoLavaSeconds) and stays; touching it wrecks a car, shield or not.")]
         public float lavaSeconds = Defaults.lavaSeconds, demoLavaSeconds = Defaults.demoLavaSeconds;
@@ -253,7 +262,8 @@ namespace TNDA.Prototype
             victor = null;
             if (victoryScreen != null) victoryScreen.SetActive(false);
             Match.Reset(demo ? 0 : PlayerCount, demo);
-            foreach (var car in cars) car.body.color = car.index == 0 ? Cyan : car.index == 1 && !car.computer ? Yellow : White;
+            // P1 cyan, P2 yellow (Player2, or Panda in 1P); P3 and P4 are white bodies drawn striped (see RefreshHud).
+            foreach (var car in cars) car.body.color = car.index == 0 ? Cyan : car.index == 1 ? Yellow : White;
             for (int i = 0; i < cars.Length; i++)
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].GetComponentInChildren<SpriteRenderer>().color = cars[i].body.color;
@@ -631,14 +641,17 @@ namespace TNDA.Prototype
                     }
                 }
                 // Cherry power: the car turns cyan-and-yellow striped, blinking in the last two seconds as a warning.
+                // Otherwise P3 and P4 wear their own stripes and P1/P2 stay solid.
                 bool cherryOn = HasCherry(car) && (car.CherrySeconds > 2 || Mathf.FloorToInt(Elapsed * 8) % 2 == 0);
+                bool seatStripes = car.index >= 2;
                 if (solidBlock == null) solidBlock = new MaterialPropertyBlock();
                 car.body.GetPropertyBlock(solidBlock);
-                solidBlock.SetFloat("_Solid", cherryOn ? 1 : 0);
-                solidBlock.SetColor("_SolidColor", cherryStripeA);
-                solidBlock.SetColor("_StripeColor", cherryStripeB);
+                solidBlock.SetFloat("_Solid", cherryOn || seatStripes ? 1 : 0);
+                solidBlock.SetColor("_SolidColor", cherryOn ? cherryStripeA : car.index == 2 ? p3StripeA : p4StripeA);
+                solidBlock.SetColor("_StripeColor", cherryOn ? cherryStripeB : car.index == 2 ? p3StripeB : p4StripeB);
                 car.body.SetPropertyBlock(solidBlock);
             }
+            ShowCrown();
             header.text = CabinetText.Title;
             arenaBoard.text = Phase == ArcadePhase.Results ? string.Format(CabinetText.Champion, cars[Champion].DriverName)
                 : string.Format(CabinetText.NextElimination, Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)), Contenders);
@@ -646,7 +659,7 @@ namespace TNDA.Prototype
                 : cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? c.FinalPlace : -c.score);
             if (leaderboard != null)
                 leaderboard.text = string.Join("\n", order.Select((c, rank) =>
-                    "<color=#" + ColorUtility.ToHtmlStringRGB(c.body.color) + ">" + (rank + 1) + " " + c.DriverName.PadRight(7)
+                    "<color=#" + ColorUtility.ToHtmlStringRGB(c.body.color) + ">" + (rank + 1) + " " + c.DriverName.PadRight(3)
                     + " " + Mathf.RoundToInt(c.score).ToString("00000") + "  " + DriverStatus(c) + "</color>"));
             hud.text = string.Format(CabinetText.PlayerStatus, cars[0].DriverName, ActionStatus(cars[0]))
                 + (PlayerCount == 2 ? "\n" + string.Format(CabinetText.PlayerStatus, cars[1].DriverName, ActionStatus(cars[1])) : "")
@@ -658,6 +671,17 @@ namespace TNDA.Prototype
             if (Phase == ArcadePhase.Attract) overlayHint.text = CabinetText.AttractHint;
             ShowStartMessages();
             ShowContinue();
+        }
+
+        // The crown rides above the car in first place: highest score among cars still in, ties to the lower seat. Nobody
+        // wears it while every score is 0, or while the leader is wrecked and waiting to respawn.
+        private void ShowCrown()
+        {
+            if (crownView == null) return;
+            var leader = cars.Where(c => !c.eliminated).OrderByDescending(c => c.score).ThenBy(c => c.index).FirstOrDefault();
+            bool show = leader != null && leader.score > 0 && leader.alive && leader.gameObject.activeInHierarchy;
+            crownView.gameObject.SetActive(show);
+            if (show) crownView.transform.position = PixelPosition(leader.position + Vector2.up * crownHeight);
         }
 
         // After 出發！ (shown for 0.7s by ArcadeGame), the start messages follow in the centre at half the countdown size.
