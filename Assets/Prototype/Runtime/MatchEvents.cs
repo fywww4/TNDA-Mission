@@ -121,13 +121,6 @@ namespace TNDA.Prototype
         public VehicleRevived(ArcadeVehicle car) { Car = car; }
     }
 
-    // The lava pool formed at Point (it stays for the rest of the match).
-    public sealed class LavaFormed : MatchEvent
-    {
-        public readonly Vector2 Point;
-        public LavaFormed(Vector2 point) { Point = point; }
-    }
-
     // Car drove onto Dropper's oil slick and spun out.
     public sealed class CarSlipped : MatchEvent
     {

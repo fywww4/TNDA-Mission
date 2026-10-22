@@ -29,7 +29,7 @@ namespace TNDA.Prototype.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             var result = new { scene = scenePath, crate = Size(sprites[0]), cherry = Size(sprites[1]), explosion = Size(sprites[2]), rocket = Size(sprites[3]), shield = Size(sprites[4]), oil = Size(sprites[5]),
-                slick = Size(sprites[6]), lava = Size(sprites[7]), crown = Size(sprites[8]), saved = !scene.isDirty };
+                slick = Size(sprites[6]), crown = Size(sprites[7]), saved = !scene.isDirty };
             if (newlyOpened) EditorSceneManager.CloseScene(scene, true);
             return result;
         }
@@ -110,9 +110,6 @@ namespace TNDA.Prototype.Editor
                 ".W#W####W.",
                 "..WWWWWW.." });
             var slick = MakeSprite("OilSlick", 12, 1, .5f, new Rect(0, 0, 1, 1), 0, c => 3);
-            // Lava: the supplied lava picture in the four colours (red-orange black, orange yellow, bright yellow white),
-            // 32px = 1 world unit, the pool's size.
-            var lava = MakeSprite("Lava", 32, 1, .5f, new Rect(0, 0, 1, 1), 0, LavaColour);
             game.itemSprites = new[] { shield, rocket, cherry, oil };
             game.itemViews = new SpriteRenderer[game.cars.Length];
             for (int i = 0; i < game.cars.Length; i++)
@@ -145,7 +142,7 @@ namespace TNDA.Prototype.Editor
                 if (view == null)
                 {
                     view = new GameObject(name, typeof(SpriteRenderer)).GetComponent<SpriteRenderer>();
-                    Undo.RegisterCreatedObjectUndo(view.gameObject, "GAME3 lava and oil");
+                    Undo.RegisterCreatedObjectUndo(view.gameObject, "GAME3 item effects");
                     view.transform.SetParent(effects, false);
                 }
                 view.sprite = sprite;
@@ -153,10 +150,12 @@ namespace TNDA.Prototype.Editor
                 view.gameObject.SetActive(false);
                 return view;
             }
-            // Floor hazards draw under the cars (order 3): the lava pool and one oil slick per rocket/oil pool slot.
-            game.lavaView = EffectView("Lava pool", lava, 3);
+            // The lava pool was removed (2026-10-22); drop its view from older scenes.
+            var oldLava = effects.Find("Lava pool");
+            if (oldLava != null) Undo.DestroyObjectImmediate(oldLava.gameObject);
             var crown = CrownSprite();
             game.crownView = EffectView("Leader crown", crown, 25);
+            // Oil slicks draw under the cars (order 3), one per rocket/oil pool slot.
             for (int i = 0; i < game.rockets.Length; i++) game.rockets[i].slickView = EffectView("Oil slick " + i, slick, 3);
             game.explosions = new SpriteRenderer[game.rockets.Length];
             for (int i = 0; i < game.explosions.Length; i++)
@@ -174,7 +173,7 @@ namespace TNDA.Prototype.Editor
                 game.explosions[i] = view;
             }
             EditorUtility.SetDirty(game);
-            return new[] { crate, cherry, blast, rocket, shield, oil, slick, lava, crown };
+            return new[] { crate, cherry, blast, rocket, shield, oil, slick, crown };
         }
 
         // Keep the 15x8 crown on an opaque black inset so white floor markings cannot appear as stray crown pixels.
@@ -383,16 +382,6 @@ namespace TNDA.Prototype.Editor
             if (val < .3f) return 0;
             if (sat < .2f || degrees >= 48) return 1;
             if (degrees >= 30 && degrees < 40 && val < .93f) return 0;
-            return 3;
-        }
-
-        // Lava: dark red-orange black, orange and amber yellow, bright yellow and pale yellow white.
-        private static int LavaColour(Color32 c)
-        {
-            Color.RGBToHSV(c, out float hue, out float sat, out float val);
-            float degrees = hue * 360;
-            if (degrees >= 42 && val > .85f) return 1;
-            if (degrees < 16) return 0;
             return 3;
         }
 

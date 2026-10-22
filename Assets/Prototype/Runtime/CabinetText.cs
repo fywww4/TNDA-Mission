@@ -62,7 +62,6 @@ namespace TNDA.Prototype
         public const string RocketBusy = "火箭還在飛，道具先保留";
         public const string RocketFired = "{0} 發射火箭！";
         public const string OilDropped = "{0} 丟下油！";
-        public const string LavaFormed = "岩漿出現！碰到就撞毀";
         public const string CherryEaten = "{0} 吃下櫻桃！{1} 秒內碰到就撞毀";
         public const string ShieldBlocked = "{0} 防護罩擋下！";
         public const string Eliminated = "最後一名 {0} 淘汰！";

@@ -24,10 +24,6 @@ namespace TNDA.Prototype
         IReadOnlyList<BreakableProp> Props { get; }
         IReadOnlyList<ArenaPickup> Pickups { get; }
         float Elapsed { get; }
-        // The lava pool, once it has formed (a square of LavaHalfSize either side of LavaPoint).
-        bool LavaActive { get; }
-        Vector2 LavaPoint { get; }
-        float LavaHalfSize { get; }
         Vector2 ArenaMin { get; }
         Vector2 ArenaMax { get; }
         // How much high scores outweigh distance when a cherry car picks its prey (0 = nearest only).
@@ -98,8 +94,6 @@ namespace TNDA.Prototype
                 if (flee.sqrMagnitude < .01f) flee = Vector2.right;
                 desired = Mathf.Atan2(flee.y, flee.x) * Mathf.Rad2Deg;
             }
-            // Lava is steered around, except by a cherry car: faster and careless, it can be lured in.
-            if (arena.LavaActive && !car.HasCherry) desired = AroundLava(arena, desired);
             // Players are steered around unless they are this AI's target after the grace period.
             foreach (var human in arena.Cars.Where(c => !c.computer && c.alive && !(c == target && arena.CanHarm(car, c))))
             {
@@ -118,40 +112,6 @@ namespace TNDA.Prototype
                 throttle = Mathf.Abs(error) > 65 ? .35f : 1,
                 action = WantsItem(arena, delta, error, dt)
             };
-        }
-
-        // Only lava actually in the way matters: when the straight line toward the wanted heading passes over the pool,
-        // the car aims past the pool's nearer edge on the side away from it, and takes the other side if that would run
-        // into a wall. Right next to the pool it simply drives away from it. (2026-10-20: the old rule always swerved
-        // 100 degrees, which in a gap beside a wall bounced a car between wall and lava for good.)
-        private float AroundLava(IAiArena arena, float desired)
-        {
-            Vector2 toLava = arena.LavaPoint - car.position;
-            // The pool is square: its corners reach half * 1.41 from the centre, plus a car's half width.
-            float reach = arena.LavaHalfSize * 1.42f + .45f, distance = toLava.magnitude;
-            if (distance < reach)
-            {
-                Vector2 away = distance > .01f ? -toLava : -car.Forward;
-                return Mathf.Atan2(away.y, away.x) * Mathf.Rad2Deg;
-            }
-            Vector2 want = new Vector2(Mathf.Cos(desired * Mathf.Deg2Rad), Mathf.Sin(desired * Mathf.Deg2Rad));
-            float along = Vector2.Dot(toLava, want);
-            float across = want.x * toLava.y - want.y * toLava.x; // > 0: the pool lies to the left of the wanted line
-            if (along <= 0 || along > reach + 1.7f || Mathf.Abs(across) > reach + .2f) return desired;
-            // Clear the pool's corners with room to spare: the angle grows as the car gets closer.
-            float clear = Mathf.Asin(Mathf.Clamp01((reach + .15f) / distance)) * Mathf.Rad2Deg;
-            float lavaAngle = Mathf.Atan2(toLava.y, toLava.x) * Mathf.Rad2Deg;
-            float side = across >= 0 ? -1 : 1; // pass on the side away from the pool
-            float pass = lavaAngle + side * (clear + 8);
-            if (RunsIntoWall(arena, pass)) pass = lavaAngle - side * (clear + 8);
-            return pass;
-        }
-
-        private bool RunsIntoWall(IAiArena arena, float heading)
-        {
-            Vector2 ahead = car.position + new Vector2(Mathf.Cos(heading * Mathf.Deg2Rad), Mathf.Sin(heading * Mathf.Deg2Rad)) * 1.1f;
-            return ahead.x < arena.ArenaMin.x + .3f || ahead.x > arena.ArenaMax.x - .3f
-                || ahead.y < arena.ArenaMin.y + .3f || ahead.y > arena.ArenaMax.y - .3f;
         }
 
         // Bumps, a respawn or an elimination since the last frame make the current plan stale. A bump into the car
@@ -198,7 +158,7 @@ namespace TNDA.Prototype
         }
 
         // A car that has moved less than 0.3 in the last second (not while spinning on oil or stunned) turns toward the
-        // arena centre, away from lava, and drives out for 0.8 s before replanning.
+        // arena centre and drives out for 0.8 s before replanning.
         private bool Escaping(IAiArena arena, float dt, out ArcadeInput input)
         {
             input = default;
@@ -219,12 +179,6 @@ namespace TNDA.Prototype
             Vector2 open = (arena.ArenaMin + arena.ArenaMax) / 2 - car.position;
             if (open.sqrMagnitude < .01f) open = -car.Forward;
             float heading = Mathf.Atan2(open.y, open.x) * Mathf.Rad2Deg + Random.Range(-45f, 45f);
-            if (arena.LavaActive)
-            {
-                Vector2 toLava = arena.LavaPoint - car.position;
-                float off = Mathf.DeltaAngle(heading, Mathf.Atan2(toLava.y, toLava.x) * Mathf.Rad2Deg);
-                if (toLava.magnitude < 2.5f && Mathf.Abs(off) < 50) heading -= Mathf.Sign(off == 0 ? 1 : off) * 90;
-            }
             escapeHeading = heading;
             escapeLeft = .8f;
             target = null;

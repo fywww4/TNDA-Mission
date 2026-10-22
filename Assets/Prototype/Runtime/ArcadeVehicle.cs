@@ -74,11 +74,10 @@ namespace TNDA.Prototype
             SlideVelocity = spinDirection = Vector2.zero;
         }
 
-        // Damage and both exit paths own their cleanup; callers only handle match-wide effects. Unblockable damage
-        // (lava) ignores the shield and spawn protection.
-        public bool TakeDamage(float damage, VehicleLifecycleRules rules, bool unblockable = false)
+        // Damage and both exit paths own their cleanup; callers only handle match-wide effects.
+        public bool TakeDamage(float damage, VehicleLifecycleRules rules)
         {
-            if (!alive || eliminated || damage <= 0 || !unblockable && (shieldSeconds > 0 || spawnProtection > 0)) return false;
+            if (!alive || eliminated || damage <= 0 || shieldSeconds > 0 || spawnProtection > 0) return false;
             health = Mathf.Max(0, health - damage);
             if (health <= 0)
             {

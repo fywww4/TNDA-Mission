@@ -14,8 +14,6 @@ namespace TNDA.Prototype
         public int points = 100;
         public float respawn;
         public bool broken;
-        // This prop's slot became the lava pool: it stays broken for the rest of the match.
-        [NonSerialized] public bool molten;
     }
 
     [Serializable]
@@ -92,11 +90,7 @@ namespace TNDA.Prototype
         [Tooltip("Height of the crown's centre above the car, clear of the name tag below it.")]
         public float crownHeight = 1.5f;
 
-        [Header("Lava and oil")]
-        [Tooltip("The lava pool forms at this time (title demo: demoLavaSeconds) and stays; touching it wrecks a car, shield or not.")]
-        public float lavaSeconds = Defaults.lavaSeconds, demoLavaSeconds = Defaults.demoLavaSeconds;
-        public SpriteRenderer lavaView;
-        private bool lavaJustFormed;
+        [Header("Oil")]
         [Tooltip("A car on an oil slick spins this long; the dropper scores oilBonus; an untouched slick dries after oilLifeSeconds.")]
         public float oilSlipSeconds = Defaults.oilSlipSeconds, oilLifeSeconds = Defaults.oilLifeSeconds;
         public int oilBonus = Defaults.oilBonus;
@@ -158,7 +152,6 @@ namespace TNDA.Prototype
                 t.shieldDuration = shieldDuration; t.pickupRespawnSeconds = pickupRespawnSeconds;
                 t.aiGraceSeconds = aiGraceSeconds; t.leaderBias = leaderBias;
                 t.aiTopSpeed = aiTopSpeed; t.aiLateTopSpeed = aiLateTopSpeed; t.wandererTopSpeedScale = wandererTopSpeedScale;
-                t.lavaSeconds = lavaSeconds; t.demoLavaSeconds = demoLavaSeconds;
                 t.oilSlipSeconds = oilSlipSeconds; t.oilLifeSeconds = oilLifeSeconds; t.oilBonus = oilBonus;
                 t.hunterChaseSeconds = hunterChaseSeconds; t.hunterScatterSeconds = hunterScatterSeconds; t.hunterLeaderChance = hunterLeaderChance;
                 t.cherryDuration = cherryDuration; t.cherrySpeedMultiplier = cherrySpeedMultiplier; t.trailingCherryChance = trailingCherryChance;
@@ -314,7 +307,6 @@ namespace TNDA.Prototype
                 if (!quiet) Cue(e);
             }
             Match.ClearEvents();
-            lavaJustFormed = false;
             SyncViews();
         }
 
@@ -343,12 +335,8 @@ namespace TNDA.Prototype
                     if (!picked.Car.computer) Announce(ArenaItems.PickupMessage(picked.Car, picked.Item), picked.Car.body.color, 2);
                     break;
                 case ItemUsed used:
-                    if (used.Item != ArenaItem.Oil) Sound(2); // lava and oil stay silent (2026-10-16)
+                    if (used.Item != ArenaItem.Oil) Sound(2); // oil stays silent (2026-10-16)
                     AnnounceItemUsed(used.Car, used.Item);
-                    break;
-                case LavaFormed _:
-                    Announce(CabinetText.LavaFormed, Yellow, 2.5f);
-                    lavaJustFormed = true;
                     break;
                 case RocketsBusy busy:
                     if (!busy.Car.computer) Announce(CabinetText.RocketBusy, Yellow, 1);
@@ -362,9 +350,7 @@ namespace TNDA.Prototype
                     break;
                 case VehicleEliminated eliminated:
                     PlayHit(1);
-                    // At 80 s the lava and the second elimination arrive together; keep both on the feedback line.
-                    Announce(string.Format(CabinetText.Eliminated, eliminated.Car.DriverName)
-                        + (lavaJustFormed ? "　" + CabinetText.LavaFormed : ""), Yellow, 4);
+                    Announce(string.Format(CabinetText.Eliminated, eliminated.Car.DriverName), Yellow, 4);
                     Sound(3);
                     break;
             }
@@ -421,18 +407,6 @@ namespace TNDA.Prototype
                 if (!prop.broken) prop.view.position = PixelPosition(prop.point);
             }
             foreach (var pickup in pickups) pickup.view.gameObject.SetActive(pickup.available);
-            if (lavaView != null)
-            {
-                lavaView.gameObject.SetActive(Match.LavaActive);
-                if (Match.LavaActive)
-                {
-                    lavaView.transform.position = PixelPosition(Match.LavaPoint);
-                    // Mirrored back and forth so the pool seems to bubble (and never reads as a still oil slick).
-                    int bubble = Mathf.FloorToInt(Match.Elapsed * 3) % 4;
-                    lavaView.flipX = bubble == 1 || bubble == 2;
-                    lavaView.flipY = bubble >= 2;
-                }
-            }
             foreach (var rocket in rockets)
             {
                 if (rocket.slickView != null)

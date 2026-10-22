@@ -227,34 +227,6 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
-        public void LavaFormsOnTimeAndWrecksACarThroughItsShield()
-        {
-            ResetWithHumansOnly();
-            match.Tuning.lavaSeconds = .5f;
-            while (!match.LavaActive) match.Tick(Dt, Idle, Idle);
-            Assert.AreEqual(match.LavaPoint, match.Events.OfType<LavaFormed>().Single().Point);
-            Assert.That(match.Elapsed, Is.EqualTo(.5f).Within(Dt));
-            Assert.IsTrue(match.Props.Count(p => p.molten) == 1);
-
-            var car = cars[0];
-            car.score = 400; car.shieldSeconds = 6; car.spawnProtection = 2;
-            car.position = match.LavaPoint;
-            match.Tick(Dt, Idle, Idle);
-            Assert.IsFalse(car.alive);
-            Assert.AreEqual(150, car.score);
-            Assert.IsEmpty(match.Events.OfType<WreckBonus>());
-        }
-
-        [Test]
-        public void TheTitleDemoFormsLavaEarly()
-        {
-            match.Reset(0, true);
-            match.Tuning.demoLavaSeconds = .5f;
-            for (int f = 0; f < 40; f++) match.Tick(Dt, Idle, Idle);
-            Assert.IsTrue(match.LavaActive);
-        }
-
-        [Test]
         public void AnOilSlickSpinsTheNextCarAndRewardsItsDropper()
         {
             ResetWithHumansOnly();
