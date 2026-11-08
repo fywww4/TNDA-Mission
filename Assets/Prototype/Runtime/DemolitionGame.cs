@@ -519,6 +519,13 @@ namespace TNDA.Prototype
             text.gameObject.SetActive(true);
         }
 
+        // Optional hook for a tilted presentation (IsoStage): maps a world point on the arena floor to cabinet units
+        // (centre origin, 1 unit = 1 screen pixel at 320px). Null = the flat top-down mapping.
+        public static System.Func<Vector2, Vector2> CabinetProjector;
+
+        private Vector2 CabinetPoint(Vector2 world) => CabinetProjector != null ? CabinetProjector(world)
+            : (world - (Vector2)sceneCamera.transform.position) * 32;
+
         private void UpdateScorePopups(float dt)
         {
             placedPopups.Clear();
@@ -533,7 +540,7 @@ namespace TNDA.Prototype
                 // Pops in at double size (still a whole multiple of the 11px pixel font), then floats up 16px and
                 // blinks out. Whole-pixel positions keep the pixel font sharp.
                 text.fontSize = popupAge[i] < .12f ? popupBaseSize * 2 : popupBaseSize;
-                Vector2 screen = (popupOrigin[i] + Vector2.up * .88f - (Vector2)sceneCamera.transform.position) * 32;
+                Vector2 screen = CabinetPoint(popupOrigin[i] + Vector2.up * .88f);
                 var spot = new Vector2(Mathf.Round(screen.x), Mathf.Round(screen.y + 6 + 16 * t));
                 // Cars that touch score together; stack their pop-ups a line apart instead of overlapping.
                 while (placedPopups.Any(p => Mathf.Abs(p.x - spot.x) < 44 && Mathf.Abs(p.y - spot.y) < 13)) spot.y += 13;
@@ -588,7 +595,7 @@ namespace TNDA.Prototype
                     {
                         // Screen-space tag on the 320px cabinet: 1 world unit = 32 cabinet units, origin at centre.
                         // Sits just above the roof health bar.
-                        Vector2 screen = (tag + Vector2.up * .2f - (Vector2)sceneCamera.transform.position) * 32;
+                        Vector2 screen = CabinetPoint(tag + Vector2.up * .2f);
                         // Whole pixels keep the 11px pixel font sharp.
                         screenTag.rectTransform.anchoredPosition = new Vector2(Mathf.Round(screen.x), Mathf.Round(screen.y));
                         screenTag.gameObject.SetActive(!attract && car.alive && car.gameObject.activeInHierarchy);

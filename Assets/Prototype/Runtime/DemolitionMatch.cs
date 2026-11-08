@@ -60,7 +60,17 @@ namespace TNDA.Prototype
         public float NextElimination => EliminationStage == 0 ? Tuning.firstElimination : EliminationStage == 1 ? Tuning.secondElimination : Tuning.roundSeconds;
         public int Contenders => Cars.Count(c => !c.eliminated);
 
-        private static readonly Vector2[] RespawnCorners = { new Vector2(-3.5f, 1.1f), new Vector2(3.5f, 1.1f), new Vector2(3.5f, -3.2f), new Vector2(-3.5f, -3.2f) };
+        // Respawn corners and starting spots sit a fixed distance in from the arena edges, so a bigger arena (the Mode 7
+        // scene) keeps them in its corners. With the default arena they are (±3.5, 1.1)/(±3.5, -3.2) and (±3.3, -3.1)/(±3.3, 1.1).
+        private Vector2[] RespawnCorners
+        {
+            get
+            {
+                Vector2 min = Tuning.arenaMin, max = Tuning.arenaMax;
+                return new[] { new Vector2(min.x + .85f, max.y - .55f), new Vector2(max.x - .85f, max.y - .55f),
+                    new Vector2(max.x - .85f, min.y + .65f), new Vector2(min.x + .85f, min.y + .65f) };
+            }
+        }
 
         private VehicleLifecycleRules LifecycleRules => new VehicleLifecycleRules {
             wreckPenalty = Tuning.wreckPenalty, respawnSeconds = Tuning.respawnSeconds,
@@ -77,7 +87,9 @@ namespace TNDA.Prototype
             Wrecks = EliminationStage = 0;
             Champion = -1;
             events.Clear();
-            Vector2[] starts = { new Vector2(-3.3f, -3.1f), new Vector2(3.3f, -3.1f), new Vector2(3.3f, 1.1f), new Vector2(-3.3f, 1.1f) };
+            Vector2 min = Tuning.arenaMin, max = Tuning.arenaMax;
+            Vector2[] starts = { new Vector2(min.x + 1.05f, min.y + .75f), new Vector2(max.x - 1.05f, min.y + .75f),
+                new Vector2(max.x - 1.05f, max.y - .55f), new Vector2(min.x + 1.05f, max.y - .55f) };
             for (int i = 0; i < Cars.Length; i++)
             {
                 Cars[i].ResetVehicle(starts[i], i < 2 ? 90 : -90, humans);

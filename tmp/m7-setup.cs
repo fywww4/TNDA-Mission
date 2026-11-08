@@ -1,0 +1,10 @@
+var src = "Assets/Scenes/GAME3.unity"; var dst = "Assets/Scenes/GAME3_Mode7.unity";
+if (UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEditor.SceneAsset>(dst) == null) UnityEditor.AssetDatabase.CopyAsset(src, dst);
+var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(dst, UnityEditor.SceneManagement.OpenSceneMode.Single);
+var game = UnityEngine.Object.FindFirstObjectByType<TNDA.Prototype.DemolitionGame>();
+var stage = game.GetComponent<TNDA.Prototype.Mode7Stage>();
+if (stage == null) stage = game.gameObject.AddComponent<TNDA.Prototype.Mode7Stage>();
+stage.game = game;
+UnityEditor.EditorUtility.SetDirty(stage);
+UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
+return "ok on " + game.name;

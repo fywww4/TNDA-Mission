@@ -1,0 +1,11 @@
+var src = "Assets/Scenes/GAME3.unity"; var dst = "Assets/Scenes/GAME3_Iso.unity";
+if (UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEditor.SceneAsset>(dst) == null) UnityEditor.AssetDatabase.CopyAsset(src, dst);
+var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(dst, UnityEditor.SceneManagement.OpenSceneMode.Single);
+var game = UnityEngine.Object.FindFirstObjectByType<TNDA.Prototype.DemolitionGame>();
+var cam = game.sceneCamera;
+var stage = cam.GetComponent<TNDA.Prototype.IsoStage>();
+if (stage == null) stage = cam.gameObject.AddComponent<TNDA.Prototype.IsoStage>();
+stage.game = game; stage.view = cam;
+UnityEditor.EditorUtility.SetDirty(stage);
+UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
+return "ok " + cam.name + " order:" + string.Join(",", System.Linq.Enumerable.Select(game.cars, c => c.body.sortingOrder.ToString())) + " props:" + game.props.Length + " pickups:" + game.pickups.Length;

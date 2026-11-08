@@ -100,6 +100,16 @@
 - 畫面只顯示：標題「廢車場大亂鬥」、「單人 1 枚　雙人 2 枚」、閃爍的投幣提示（0 枚「按 5 投幣」、1 枚「已投 1 枚　按 1 單人」、2 枚以上「已投 N 枚　按 1 單人　按 2 雙人」），以及底部 P1／P2 操作提示（規則說明已依使用者要求簡化，只留操作）。文字定義在執行期文字表 `CabinetText`（`P1Controls`、`P2Controls`、`CoinRule`、`CoinPrompt`），介面由 `Game3Text.CreateAttractScreen` 建立（場景物件 `Attract screen`，每次修補會重建）。
 - 開始方式：投幣後按 1／左 Ctrl 單人，2／數字鍵 Enter 雙人；開始後恢復正常 HUD 與 3-2-1 倒數。
 
+## 假 3D 原型（2026-11-08，不在 Build Settings）
+
+使用者想參考 SFC 做假 3D 版本，選定 **Mode 7 追尾視角**。原型只換呈現，比賽規則與 `GAME3` 共用。
+
+- `Assets/Scenes/GAME3_Mode7.unity`＋`Runtime/Mode7Stage.cs`（掛在 `GAME3 Prototype`）：透視追尾相機（1P 全畫面、2P 上下分割、示範追電腦車、淘汰後追第一名），場內黑地板＋場外格子地到地平線，車／破壞物／木箱／道具圖示／皇冠／爆炸對各相機立起來（`Camera.onPreCull`），原俯視相機變左下小地圖。車名與加分文字經 `DemolitionGame.CabinetProjector` 投影到 P1 畫面。
+- 此場景**場地放大兩倍**（以場地中心 (0,-1.1) 放大：arena (-8.7,-6.6)～(8.7,4.4)，`Scrapyard (static)` 縮放 2、小地圖 ortho 10），**破壞物 5 個（箱子 3、油桶 2）、道具木箱 4 個**。超過原本「活動實體上限 10」的規格，屬使用者在此原型的要求。修補腳本 `tmp/m7-bigmap.cs`（只能跑一次）。
+- `DemolitionMatch` 的開局位置與重生角落改由場地邊界推算（預設場地數值不變，EditMode 33 個通過）。
+- `GAME3_Iso.unity`＋`IsoStage.cs`：先前的 Rock N' Roll Racing 式固定斜視角原型，保留供比較。
+- 待辦：車子仍是俯視圖立起來的占位圖（已給使用者 GPT 用的 16 方向、仰角 15° 的 768×48 sprite sheet 提示詞，車身烤漆固定 4 個紅色供換色）；2P 時 HUD 遮住上半畫面；P2 畫面無車名；sprite 前後遮擋仍依排序值；地面用 `Unlit/Texture`，出 Build 前需確保不被剔除。
+
 ## 建置輸出
 
 - **Windows**：`C:\Users\a0900\Downloads\1016\`（`TNDA Mission.exe`），並用 WinRAR 壓成 `Downloads\1016.zip`（zip 格式，排除 `TNDA Mission_BackUpThisFolder_ButDontShipItWithYourGame`）。每次重壓前舊 zip 移到資源回收筒。
