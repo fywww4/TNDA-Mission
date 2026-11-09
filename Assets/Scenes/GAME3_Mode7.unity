@@ -4268,6 +4268,7 @@ GameObject:
   - component: {fileID: 530138699}
   - component: {fileID: 530138698}
   - component: {fileID: 530138701}
+  - component: {fileID: 530138702}
   m_Layer: 0
   m_Name: GAME3 Prototype
   m_TagString: Untagged
@@ -4637,6 +4638,25 @@ MonoBehaviour:
   itemLift: 0.3
   crownLift: 1.1
   explosionLift: 0.35
+--- !u!114 &530138702
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 530138697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95d21f22c7f4a8747bb1020d5f57ae39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TNDA.Prototype::TNDA.Prototype.Mode7Audience
+  stage: {fileID: 530138701}
+  fenceMaterial: {fileID: 2100000, guid: dbb9d42ee87d1e948ab93c44ecfa389e, type: 2}
+  crowdMaterial: {fileID: 2100000, guid: 301a7f897e6edac4889ae7d292b771de, type: 2}
+  fenceHeight: 1.2
+  crowdHeight: 2
+  crowdSetback: 0.45
+  cheerSeconds: 1
 --- !u!1 &535094528
 GameObject:
   m_ObjectHideFlags: 0
