@@ -29,6 +29,13 @@ namespace TNDA.Prototype
         public const string ResultsHint = "按 5 投幣　按 1／2 再玩";
         public const string ReturnToTitle = "{0} 秒後回標題　按 5 投幣再玩";
 
+        // Saved reward currency; inserted cabinet coins are a separate balance.
+        public const string GoldEarned = "+{0} 金幣";
+        public const string GoldTotal = "累計 {0} 金幣";
+        public const string ResetSaveHint = "長按 Delete 3 秒清除存檔";
+        public const string ResetSaveConfirm = "清除存檔？繼續按住 Delete {0} 秒";
+        public const string SaveCleared = "存檔已清除，請放開 Delete";
+
         public const string Go = "出發！";
 
         // Continue after a timed elimination (4th or 3rd place): 10-second countdown, one coin.

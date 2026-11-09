@@ -236,3 +236,9 @@
 `Mode7Audience` 在追尾視角建立四邊直立的透明網眼圍欄與外側觀眾席，一般以兩格輕跳，任意車輛撞毀（含待機示範）後整排激烈歡呼 1 秒。僅新增呈現通知 `DemolitionGame.WreckPresented`，不改規則、AI 或碰撞；小地圖排除此裝飾。相機越界時剔除近側牆背面，避免遮住視野。使用者兩張原圖保留為 `Art/Source/Mode7CrowdSource.png`、`Mode7FenceSource.png`，產出三格 128×64 觀眾與 32×48 圍欄。`Editor/Mode7AudienceArt.Apply()` 可重跑接線，保留既有 Inspector 值。
 
 已檢視 1P／2P／待機與四個方向；四車及示範撞毀皆有歡呼，1.2 秒內恢復一般動畫。獨立驗證副本完整 EditMode 54 項通過，主專案重新編譯／網域重新載入完成，Console 即時零錯誤、零警告。雙軸審查 Standards 0 項、Spec 0 項。截圖、效能取樣與詳細驗證見 `Docs/Game3/mode7-audience-verification.md`。
+
+## Mode 7 票單 09：金幣與存檔（2026-11-09 完成）
+
+`GoldWallet` 將名次獎勵與分數除以 100 捨去後的獎勵存入本機 `TNDA.Gold`；雙人共用錢包，電腦與待機示範不領獎。冠軍決定或真人全部淘汰未繼續的 GAME OVER 開始時只發一次，分別在結算或 GAME OVER 面板顯示本局及累計金幣。標題長按 Delete 3 秒清除金幣與既有最高分，按住顯示確認倒數、放開取消；硬幣不受影響。新文字集中於 `CabinetText`，`GAME3` 與 `GAME3_Mode7` 均已接線，重跑文字／版面修補工具仍會保留功能。
+
+使用者確認公開錢包介面為 TDD 測試邊界；14 項金幣測試、完整 EditMode 78 項及公開介面 Play Mode 流程 20 項皆通過。512×448 標題、雙人結算與長按確認畫面已檢視。雙軸審查 Standards 0 項、Spec 0 項，固定點 `8c4c0da`。詳細驗證見 `Docs/Game3/gold-and-save-verification.md`。

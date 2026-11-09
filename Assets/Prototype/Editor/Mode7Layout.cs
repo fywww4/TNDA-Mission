@@ -80,6 +80,9 @@ namespace TNDA.Prototype.Editor
                 Place(Child(root, "Coin rule"), 0, H - 62, W, line);
                 Place(Child(root, "Prompt backing"), (W - 220) / 2, H - 131, 220, 19);
                 Place(Child(root, "Coin prompt"), 0, H - 128, W, line);
+                Place(Child(root, "Gold backing"), (W - 320) / 2, H - 168, 320, 32);
+                Place(Child(root, "Gold total"), 0, H - 150, W, line);
+                Place(Child(root, "Reset save hint"), 0, H - 165, W, line);
                 Place(Child(root, "Controls backing"), 0, 0, W, 34);
                 Place(Child(root, "P1 controls"), 0, 18, W, line);
                 Place(Child(root, "P2 controls"), 0, 3, W, line);

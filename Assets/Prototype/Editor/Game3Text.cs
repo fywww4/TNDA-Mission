@@ -105,7 +105,7 @@ namespace TNDA.Prototype.Editor
             Place(game.footer.rectTransform, 4, 3, 312, 13); Style(game.footer, px);
             // Title / result panel.
             Place(game.overlayTitle.rectTransform, 10, 164, 256, 28); Style(game.overlayTitle, px * 2);
-            Place(game.overlayBody.rectTransform, 4, 60, 268, 102); Style(game.overlayBody, px);
+            Place(game.overlayBody.rectTransform, 4, 55, 268, 107); Style(game.overlayBody, px);
             Place(game.overlayHint.rectTransform, 6, 6, 264, 13); Style(game.overlayHint, px);
             foreach (var button in new[] { game.onePlayerButton, game.twoPlayerButton })
                 Style(button.GetComponentInChildren<TMP_Text>(true), px);
@@ -131,12 +131,17 @@ namespace TNDA.Prototype.Editor
             Label(root, "Coin rule", CabinetText.CoinRule, 0, 258, 320, 13, px, ArcadeGame.White);
             Backing(root, "Prompt backing", 50, 193, 220, 19); // fits 已投 N 枚　按 1 單人　按 2 雙人
             var prompt = Label(root, "Coin prompt", CabinetText.CoinPrompt, 0, 196, 320, 13, px, ArcadeGame.Yellow);
+            Backing(root, "Gold backing", 0, 156, 320, 32);
+            var gold = Label(root, "Gold total", CabinetText.GoldTotal, 0, 174, 320, 13, px, ArcadeGame.Yellow);
+            var reset = Label(root, "Reset save hint", CabinetText.ResetSaveHint, 0, 159, 320, 13, px, ArcadeGame.White);
             Backing(root, "Controls backing", 0, 0, 320, 34);
             Label(root, "P1 controls", CabinetText.P1Controls, 0, 18, 320, 13, px, ArcadeGame.Cyan);
             Label(root, "P2 controls", CabinetText.P2Controls, 0, 3, 320, 13, px, ArcadeGame.Yellow);
             Undo.RecordObject(game, "GAME3 attract screen");
             game.attractScreen = root.gameObject;
             game.attractPrompt = prompt;
+            game.attractGold = gold;
+            game.resetSaveHint = reset;
             EditorUtility.SetDirty(game);
 
             void Backing(UnityEngine.RectTransform parent, string name, float x, float y, float w, float h)

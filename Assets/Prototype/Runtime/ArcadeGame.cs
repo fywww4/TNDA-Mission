@@ -11,6 +11,7 @@ namespace TNDA.Prototype
     {
         public float steer, throttle;
         public bool action, actionPressed;
+        public bool resetSaveHeld;
     }
 
     // The cabinet around GAME3: title (attract) -> 3-2-1 countdown -> match -> results -> back to title, coin and
@@ -239,6 +240,7 @@ namespace TNDA.Prototype
                 input.throttle = k[gas].isPressed ? 1 : 0;
                 input.action = k[button].isPressed;
                 input.actionPressed = k[button].wasPressedThisFrame;
+                input.resetSaveHeld = index == 0 && k.deleteKey.isPressed;
             }
             if (Gamepad.all.Count > index)
             {

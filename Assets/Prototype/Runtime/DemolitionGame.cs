@@ -211,8 +211,18 @@ namespace TNDA.Prototype
         public float demoEliminationSeconds = 20, demoLoopSeconds = 30;
         private bool demo, startingDemo;
 
+        [Header("Saved gold")]
+        public TMP_Text attractGold, resetSaveHint;
+        private GoldWallet wallet;
+        private GoldWallet Wallet => wallet ?? (wallet = new GoldWallet());
+        public int Gold => Wallet.Total;
+        public int RoundGold { get; private set; }
+        private bool goldAwarded, resetSaveLatched;
+        private float resetSaveHeldSeconds;
+
         protected override void Tick(float dt, ArcadePhase startPhase, ArcadeInput p1, ArcadeInput p2)
         {
+            UpdateSaveReset(dt, p1.resetSaveHeld);
             if (startPhase == ArcadePhase.Playing && victoryLeft >= 0)
             {
                 // The match stands still behind the victory picture, then the results take over.
@@ -263,6 +273,8 @@ namespace TNDA.Prototype
         protected override void ResetMatch()
         {
             demo = startingDemo;
+            goldAwarded = false;
+            RoundGold = 0;
             continueLeft[0] = continueLeft[1] = gameOverLeft = -1;
             victoryLeft = -1;
             victor = null;
@@ -319,6 +331,7 @@ namespace TNDA.Prototype
                     && knockedOut.Car.index < continueLeft.Length) continueLeft[knockedOut.Car.index] = continueSeconds;
                 else if (e is MatchEnded end)
                 {
+                    AwardGold();
                     if (!end.Winner.computer && victoryScreen != null && victorySeconds > 0) ShowVictory(end.Winner);
                     else ShowResults(end.Winner);
                 }
@@ -407,7 +420,36 @@ namespace TNDA.Prototype
             string standings = string.Join("\n", cars.OrderBy(c => c.FinalPlace)
                 .Select(c => string.Format(CabinetText.Standing, c.FinalPlace, c.DriverName, Mathf.RoundToInt(c.score).ToString("00000"))));
             Finish(string.Format(CabinetText.Winner, winner.DriverName), standings
-                + "\n\n" + string.Format(CabinetText.ResultsSummary, best, Wrecks) + "\n\n" + CabinetText.EliminationRule);
+                + "\n" + string.Format(CabinetText.ResultsSummary, best, Wrecks) + "\n" + CabinetText.EliminationRule
+                + "\n" + GoldSummary);
+        }
+
+        private string GoldSummary => string.Format(CabinetText.GoldEarned, RoundGold)
+            + "\n" + string.Format(CabinetText.GoldTotal, Gold);
+
+        // Called once at the actual end, before the victory picture or GAME OVER. A continue never settles a round.
+        private void AwardGold()
+        {
+            if (goldAwarded || demo || Phase != ArcadePhase.Playing) return;
+            RoundGold = Wallet.AwardRound(cars.Where(c => !c.computer).Select(c => (c.FinalPlace, c.score)).ToArray());
+            goldAwarded = true;
+        }
+
+        private void UpdateSaveReset(float dt, bool held)
+        {
+            if (Phase != ArcadePhase.Attract || !held)
+            {
+                resetSaveHeldSeconds = 0;
+                resetSaveLatched = held; // Holding during play cannot pre-charge a title-screen reset.
+                return;
+            }
+            if (resetSaveLatched) return;
+            resetSaveHeldSeconds += dt;
+            if (resetSaveHeldSeconds < 3) return;
+            Wallet.Clear();
+            PlayerPrefs.DeleteKey("WreckBest");
+            PlayerPrefs.Save();
+            resetSaveLatched = true;
         }
 
         // Mirrors match state onto the scene: cars placed and shown or hidden, props and crates shown or hidden, rockets
@@ -497,7 +539,11 @@ namespace TNDA.Prototype
                 else if (Mathf.CeilToInt(continueLeft[seat]) != shown) Sound(0);
             }
             bool waiting = continueLeft[0] >= 0 || continueLeft[1] >= 0;
-            if (gameOverLeft < 0 && !waiting && cars.Where(c => !c.computer).All(c => c.eliminated)) gameOverLeft = gameOverSeconds;
+            if (gameOverLeft < 0 && !waiting && cars.Where(c => !c.computer).All(c => c.eliminated))
+            {
+                AwardGold();
+                gameOverLeft = gameOverSeconds;
+            }
             if (gameOverLeft >= 0 && (gameOverLeft -= dt) <= 0) PreparePreview();
         }
 
@@ -517,7 +563,8 @@ namespace TNDA.Prototype
             else if (over)
             {
                 continueTitle.text = CabinetText.GameOver;
-                continueCount.text = continueHint.text = "";
+                continueCount.text = "";
+                continueHint.text = GoldSummary;
             }
         }
 
@@ -639,6 +686,10 @@ namespace TNDA.Prototype
                         : string.Format(Credits == 1 ? CabinetText.CoinPromptOne : CabinetText.CoinPromptTwo, Credits);
                     attractPrompt.enabled = Mathf.FloorToInt(Time.unscaledTime * 2) % 2 == 0;
                 }
+                if (attractGold != null) attractGold.text = string.Format(CabinetText.GoldTotal, Gold);
+                if (resetSaveHint != null) resetSaveHint.text = resetSaveLatched && resetSaveHeldSeconds >= 3 ? CabinetText.SaveCleared
+                    : resetSaveHeldSeconds > 0 ? string.Format(CabinetText.ResetSaveConfirm, Mathf.CeilToInt(3 - resetSaveHeldSeconds))
+                    : CabinetText.ResetSaveHint;
             }
             for (int i = 0; i < cars.Length; i++)
             {
