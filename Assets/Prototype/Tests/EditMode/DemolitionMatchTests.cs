@@ -101,14 +101,17 @@ namespace TNDA.Prototype.Tests
         }
 
         // P1 drives side-on into car 3, which has almost no durability left.
-        private void P1RamsCar3(float victimScore, float victimHealth = .01f)
+        private void P1RamsCar3(float victimScore, float victimHealth = .01f, float speed = 2.8f, bool rammerIsComputer = false,
+            System.Action<ArcadeVehicle> prepareVictim = null)
         {
             match.Reset(1);
             foreach (var car in cars) { car.computer = false; car.spawnProtection = 0; }
-            cars[0].position = new Vector2(0, -1); cars[0].heading = 0; cars[0].speed = 2.8f;
+            cars[0].computer = rammerIsComputer;
+            cars[0].position = new Vector2(0, -1); cars[0].heading = 0; cars[0].speed = speed;
             cars[3].position = new Vector2(.55f, -1); cars[3].heading = 90;
             cars[3].health = victimHealth;
             cars[3].score = victimScore;
+            prepareVictim?.Invoke(cars[3]);
             match.Tick(Dt, Idle, Idle);
         }
 
@@ -325,6 +328,82 @@ namespace TNDA.Prototype.Tests
             P1RamsCar3(0);
 
             Assert.IsFalse(match.Events.OfType<CarRammed>().Single().VictimHurt);
+        }
+
+        [Test]
+        public void APlayerWreckingACarSplashesItsDebris()
+        {
+            // Too slow to smash a prop, but the victim was nearly done for.
+            P1RamsCar3(0, victimHealth: .01f, speed: 1.6f);
+
+            Assert.IsFalse(cars[3].alive);
+            var splash = match.Events.OfType<DebrisSplashed>().Single();
+            Assert.AreSame(cars[0], splash.Rammer);
+            Assert.AreSame(cars[3], splash.Victim);
+        }
+
+        [Test]
+        public void APlayerRammingAtSmashSpeedSplashesDebrisWithoutAWreck()
+        {
+            P1RamsCar3(0, victimHealth: 1, speed: 2.5f);
+
+            Assert.IsTrue(cars[3].alive);
+            var splash = match.Events.OfType<DebrisSplashed>().Single();
+            Assert.AreSame(cars[0], splash.Rammer);
+            Assert.AreSame(cars[3], splash.Victim);
+        }
+
+        [Test]
+        public void ASlowRamThatOnlyDentsSplashesNothing()
+        {
+            P1RamsCar3(0, victimHealth: 1, speed: 1.6f);
+
+            Assert.IsTrue(match.Events.OfType<CarRammed>().Single().VictimHurt);
+            Assert.IsEmpty(match.Events.OfType<DebrisSplashed>());
+        }
+
+        [Test]
+        public void AComputerRammerSplashesNothing()
+        {
+            // Computer against computer: the harm rules shield players from AI early in the match.
+            P1RamsCar3(0, victimHealth: .01f, speed: 2.8f, rammerIsComputer: true, prepareVictim: car => car.computer = true);
+
+            Assert.IsFalse(cars[3].alive);
+            Assert.IsEmpty(match.Events.OfType<DebrisSplashed>());
+        }
+
+        [Test]
+        public void AComputerTouchingThePlayersCherryCarSplashesNothing()
+        {
+            // The player's cherry car is parked; a computer car creeps into it and is wrecked, but the player rammed nothing.
+            match.Reset(1);
+            foreach (var car in cars) { car.computer = false; car.spawnProtection = 0; }
+            cars[3].computer = true;
+            cars[0].position = new Vector2(0, -1); cars[0].heading = 90; cars[0].speed = 0;
+            cars[0].GiveCherry(8);
+            cars[3].position = new Vector2(.55f, -1); cars[3].heading = 180; cars[3].speed = .5f;
+            match.Tick(Dt, Idle, Idle);
+
+            Assert.IsTrue(match.Events.OfType<CherryStrike>().Single().Wrecked);
+            Assert.IsEmpty(match.Events.OfType<DebrisSplashed>());
+        }
+
+        [Test]
+        public void AShieldedVictimShedsNoDebris()
+        {
+            P1RamsCar3(0, victimHealth: 1, speed: 2.8f, prepareVictim: car => car.shieldSeconds = 6);
+
+            Assert.IsNotEmpty(match.Events.OfType<ShieldBlocked>());
+            Assert.IsEmpty(match.Events.OfType<DebrisSplashed>());
+        }
+
+        [Test]
+        public void ACherryCarThePlayerWrecksSplashesItsDebris()
+        {
+            P1RamsCar3(0, victimHealth: 1, speed: 1.6f, prepareVictim: car => car.GiveCherry(8));
+
+            Assert.IsTrue(match.Events.OfType<CherryStrike>().Single().Wrecked);
+            Assert.AreSame(cars[3], match.Events.OfType<DebrisSplashed>().Single().Victim);
         }
 
         [Test]

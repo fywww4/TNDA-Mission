@@ -242,3 +242,7 @@
 `GoldWallet` 將名次獎勵與分數除以 100 捨去後的獎勵存入本機 `TNDA.Gold`；雙人共用錢包，電腦與待機示範不領獎。冠軍決定或真人全部淘汰未繼續的 GAME OVER 開始時只發一次，分別在結算或 GAME OVER 面板顯示本局及累計金幣。標題長按 Delete 3 秒清除金幣與既有最高分，按住顯示確認倒數、放開取消；硬幣不受影響。新文字集中於 `CabinetText`，`GAME3` 與 `GAME3_Mode7` 均已接線，重跑文字／版面修補工具仍會保留功能。
 
 使用者確認公開錢包介面為 TDD 測試邊界；14 項金幣測試、完整 EditMode 78 項及公開介面 Play Mode 流程 20 項皆通過。512×448 標題、雙人結算與長按確認畫面已檢視。雙軸審查 Standards 0 項、Spec 0 項，固定點 `8c4c0da`。詳細驗證見 `Docs/Game3/gold-and-save-verification.md`。
+
+## Mode 7 票單 04：碎片噴濺（2026-11-09 完成）
+
+真人把敵車撞毀、或以 ≥ 2.1（`MatchTuning.smashSpeed`，與撞碎破壞物同一門檻）撞到敵車時，規則回報 `DebrisSplashed`，`Mode7Debris` 把被撞車的碎片（車殼換成其座位色）噴在撞人者自己的畫面（2P 只在其半邊），約遮 1/3，3 秒內滑落消失；AI 撞車、防護罩擋下、待機示範都沒有。美術 `Game3/Art/Debris.png` 為使用者提供的 4 格 64×64；接線 `Editor/Mode7DebrisArt.Apply()`。細節與驗證見 `.scratch/mode7-expansion/issues/04-debris-splash.md`。

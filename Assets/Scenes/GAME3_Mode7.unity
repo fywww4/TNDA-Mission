@@ -4888,6 +4888,7 @@ GameObject:
   - component: {fileID: 530138698}
   - component: {fileID: 530138701}
   - component: {fileID: 530138702}
+  - component: {fileID: 530138703}
   m_Layer: 0
   m_Name: GAME3 Prototype
   m_TagString: Untagged
@@ -5305,6 +5306,24 @@ MonoBehaviour:
   crowdHeight: 2
   crowdSetback: 0.45
   cheerSeconds: 1
+--- !u!114 &530138703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 530138697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8be28c891e5630543a665b6155282b10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TNDA.Prototype::TNDA.Prototype.Mode7Debris
+  stage: {fileID: 530138701}
+  sheet: {fileID: 2800000, guid: 59a9f0fa5a98c294684facecb98c5da4, type: 3}
+  splashSeconds: 3
+  coverage: 0.33333334
+  holdSeconds: 0.35
+  fadeSeconds: 0.5
 --- !u!1 &535094528
 GameObject:
   m_ObjectHideFlags: 0

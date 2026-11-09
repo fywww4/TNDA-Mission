@@ -315,6 +315,8 @@ namespace TNDA.Prototype
 
         // Presentation-only listeners also receive wrecks in the silent attract demo.
         public event System.Action WreckPresented;
+        // A player's ram threw debris onto that player's screen (Mode7Debris). Never in the attract demo.
+        public event System.Action<DebrisSplashed> DebrisPresented;
 
         // Shows what the match reported, in order, then forgets it. The attract demo plays the picture and the score
         // pop-ups (so passers-by see what scores) but no notice text and no sound, like a cabinet waiting for a coin.
@@ -324,6 +326,7 @@ namespace TNDA.Prototype
             foreach (var e in Match.Events)
             {
                 if (e is VehicleWrecked) WreckPresented?.Invoke();
+                if (e is DebrisSplashed debris && !quiet && !demo) DebrisPresented?.Invoke(debris);
                 if (e is RocketHit hit) Explode(hit.Point);
                 else if (e is ScoreChanged score) PopScore(score);
                 // A player knocked out before the final (45 or 80 s with four cars) may pay to continue; the final elimination ends the match.

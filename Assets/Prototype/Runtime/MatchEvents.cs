@@ -59,6 +59,14 @@ namespace TNDA.Prototype
         }
     }
 
+    // A player wrecked a car by driving into it, or rammed it at prop-smashing speed: pieces of Victim fly onto the
+    // Rammer's own screen. Computer rammers and shielded victims shed nothing.
+    public sealed class DebrisSplashed : MatchEvent
+    {
+        public readonly ArcadeVehicle Rammer, Victim;
+        public DebrisSplashed(ArcadeVehicle rammer, ArcadeVehicle victim) { Rammer = rammer; Victim = victim; }
+    }
+
     // A cherry car touched another car (or rammed it while the other held the cherry). Wrecked is false when the harm
     // rules protected the victim.
     public sealed class CherryStrike : MatchEvent

@@ -35,6 +35,8 @@ namespace TNDA.Prototype
         public float cherryDuration = 8, cherrySpeedMultiplier = 1.35f, trailingCherryChance = .5f;
         public float spinOutTurnsPerSecond = 4, spinOutStartSpeed = 4, spinOutAcceleration = 14;
         public float contactBump = 1.4f, ramBump = 2.4f, bumpFriction = 4.5f;
+        // Driving into a prop at least this fast smashes it; a player ramming a car this fast splashes its debris.
+        public float smashSpeed = 2.1f;
         public Vector2 arenaMin = new Vector2(-4.35f, -3.85f), arenaMax = new Vector2(4.35f, 1.65f);
         public bool randomPropSpots = true;
         // Oil: the slick spins a car out for oilSlipSeconds, earns its dropper oilBonus, and dries after oilLifeSeconds.
@@ -274,7 +276,7 @@ namespace TNDA.Prototype
             foreach (var prop in Props)
             {
                 if (prop.broken || Vector2.Distance(car.position, prop.point) > .6f) continue;
-                if (Mathf.Abs(car.speed) >= 2.1f)
+                if (Mathf.Abs(car.speed) >= Tuning.smashSpeed)
                 {
                     prop.broken = true;
                     prop.respawn = 6;
@@ -349,7 +351,9 @@ namespace TNDA.Prototype
             }
         }
 
-        private void CherryWreck(ArcadeVehicle attacker, ArcadeVehicle victim)
+        // ram: how fast the attacker was driving into the victim. A cherry car that was only touched still wrecks the
+        // other car, but throws no debris: only a real ram (1 or more, as for an ordinary ram) does.
+        private void CherryWreck(ArcadeVehicle attacker, ArcadeVehicle victim, float ram)
         {
             if (!CanHarm(attacker, victim))
             {
@@ -360,6 +364,7 @@ namespace TNDA.Prototype
             bool wrecked = ApplyDamage(victim, 1) && !victim.alive;
             if (wrecked) AwardWreck(attacker);
             events.Add(new CherryStrike(attacker, victim, wrecked));
+            if (wrecked && ram >= 1) SplashDebris(attacker, victim);
         }
 
         private void ResolveContacts(float dt)
@@ -400,8 +405,8 @@ namespace TNDA.Prototype
                 var cherry = a.HasCherry ? a : b;
                 var other = cherry == a ? b : a;
                 float otherRam = cherry == a ? approachB : approachA, cherryRam = cherry == a ? approachA : approachB;
-                if (otherRam >= 1 && otherRam > cherryRam) CherryWreck(other, cherry);
-                else CherryWreck(cherry, other);
+                if (otherRam >= 1 && otherRam > cherryRam) CherryWreck(other, cherry, otherRam);
+                else CherryWreck(cherry, other, cherryRam);
                 return;
             }
             var attacker = approachA >= approachB ? a : b;
@@ -428,6 +433,13 @@ namespace TNDA.Prototype
             attacker.ApplySlide(-push * Tuning.ramBump * .35f);
             victim.heading += Random.Range(15f, 30f) * (Random.value < .5f ? -1 : 1);
             events.Add(new CarRammed(attacker, victim, impact, multiplier, damaged && victim.alive));
+            if (damaged && (!victim.alive || impact >= Tuning.smashSpeed)) SplashDebris(attacker, victim);
+        }
+
+        // Only a player's own rams throw debris, onto that player's screen; computer rams never do.
+        private void SplashDebris(ArcadeVehicle rammer, ArcadeVehicle victim)
+        {
+            if (!rammer.computer) events.Add(new DebrisSplashed(rammer, victim));
         }
 
         private void MoveRockets(float dt)
