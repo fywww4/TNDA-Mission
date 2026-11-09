@@ -132,6 +132,7 @@
 - **Windows（票單 03）**：`C:\Users\a0900\Downloads\TNDA Mode7\Windows\TNDA Mission.exe`。舊的 `Downloads\1016\` 與 `1016.zip` 是俯視版歷史輸出，未覆蓋。
 - **Web（票單 03）**：`C:\Users\a0900\Downloads\TNDA Mode7\Web\`（`index.html` + `Build/` + `TemplateData/`）。沿用 Gzip 與 Decompression Fallback，網頁畫布改為 1024×896；需透過靜態伺服器開啟，不能直接雙擊 HTML。舊的 `Downloads\TNDA web\` 是 640×640 俯視版歷史輸出，未覆蓋。
 - 建置與完整流程驗證詳見 `Docs/Game3/mode7-main-scene-verification.md`。驗證用自動操作只存在於獨立副本的測試建置，不包含在正式輸出與專案執行期程式中。
+- 票單 03 結案驗證：完整 EditMode 86／86、實際渲染整合 1／1、Windows／Web 測試建置各 21 項流程通過；正式 WebGL 已以鍵盤驗證投幣、1P／2P。主 Editor 重新編譯及網域載入完成，Console 即時零錯誤、零警告，停止 Play Mode。Standards 0 項、Spec 初審 1 項（白線穿車）已修正、0 項未解。
 
 ## 建置前清理（2026-10-16）
 
