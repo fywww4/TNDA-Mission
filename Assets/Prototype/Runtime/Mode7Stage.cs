@@ -33,6 +33,8 @@ namespace TNDA.Prototype
         public Color groundB = new Color32(0x48, 0x48, 0x48, 0xFF);
         [Tooltip("World units per checker square.")]
         public float checkerSize = 1;
+        [Tooltip("Scene-referenced ground shader, included in Windows and Web builds. Runtime textures are applied to copies.")]
+        public Material groundMaterial;
         [Tooltip("The arena floor inside the fence (the top-down game draws it as the black camera background).")]
         public Color arenaFloor = Color.black;
         [Tooltip("How far the arena floor reaches past the drivable area, out to the fence.")]
@@ -80,9 +82,11 @@ namespace TNDA.Prototype
         private Texture2D blipTexture;
         private GameObject ground, floor;
         private readonly List<Standing> standing = new List<Standing>();
+        private readonly Dictionary<Transform, UnityEngine.Rendering.SortingGroup> standingGroups =
+            new Dictionary<Transform, UnityEngine.Rendering.SortingGroup>();
         private Vector2 crownShifted = new Vector2(1e6f, 1e6f);
 
-        private struct Standing { public Transform t; public float lift; public ArcadeVehicle car; }
+        private struct Standing { public Transform t; public Vector2 position; public float lift; public ArcadeVehicle car; }
         // Each car's own top-down sprite and material, put back for the minimap.
         private readonly Dictionary<ArcadeVehicle, (Sprite sprite, Material material)> topDown =
             new Dictionary<ArcadeVehicle, (Sprite, Material)>();
@@ -121,8 +125,8 @@ namespace TNDA.Prototype
             if (ReferenceEquals(DemolitionGame.CabinetProjection, this)) DemolitionGame.CabinetProjection = null;
             for (int i = 0; i < chase.Length; i++) if (chase[i] != null) Destroy(chase[i].gameObject);
             if (backdrop != null) Destroy(backdrop.gameObject);
-            if (ground != null) Destroy(ground);
-            if (floor != null) Destroy(floor);
+            DestroyGround(ground);
+            DestroyGround(floor);
             foreach (var blip in blips) if (blip.view != null) Destroy(blip.view.gameObject);
             blips.Clear();
             if (blipTexture != null) Destroy(blipTexture);
@@ -142,6 +146,8 @@ namespace TNDA.Prototype
             }
             if (art != null) { art.Release(); Destroy(art); }
             LayFlat();
+            foreach (var group in standingGroups.Values) if (group != null) Destroy(group);
+            standingGroups.Clear();
         }
 
         private void LateUpdate()
@@ -311,6 +317,28 @@ namespace TNDA.Prototype
                 }
                 standing.Add(new Standing { t = crown, lift = crownLift });
             }
+            for (int i = 0; i < standing.Count; i++)
+            {
+                var s = standing[i];
+                // A held item is a car child: capture its floor position before turning the parent for either
+                // camera. Otherwise the parent's billboard rotation moves it differently in P1, P2 and the map.
+                s.position = s.t.position;
+                standing[i] = s;
+                if (!standingGroups.ContainsKey(s.t))
+                {
+                    // Keep each object's own sprite layers (body, shield, crate details) together. All objects
+                    // share the outer layer/order, so Perspective sorting uses this camera's distance to them.
+                    var group = s.t.gameObject.AddComponent<UnityEngine.Rendering.SortingGroup>();
+                    group.hideFlags = HideFlags.DontSave;
+                    // Above flat floor markings (1) and oil slicks (3), while all standing groups still share one
+                    // outer order and sort against one another by camera distance.
+                    group.sortingOrder = 10;
+                    // Held items are children of cars, but have their own position and must sort independently.
+                    group.sortAtRoot = true;
+                    group.enabled = false;
+                    standingGroups.Add(s.t, group);
+                }
+            }
         }
 
         // Before each camera draws: stand sprites up facing a chase camera, or lay them flat for the minimap.
@@ -319,11 +347,12 @@ namespace TNDA.Prototype
             if (cam == map) { LayFlat(); return; }
             int seat = cam == chase[0] ? 0 : cam == chase[1] ? 1 : -1;
             if (seat < 0) return;
+            foreach (var group in standingGroups.Values) group.enabled = true;
             var rot = cam.transform.rotation;
             foreach (var s in standing)
             {
                 if (s.t == null) continue;
-                var p = s.t.position;
+                var p = s.position;
                 float lift = game.crownView != null && s.t == game.crownView.transform ? CrownLift(cam, p) : s.lift;
                 s.t.position = new Vector3(p.x, p.y, -lift);
                 if (s.car != null && UseFrames)
@@ -343,6 +372,7 @@ namespace TNDA.Prototype
                     // screen when the car drives straight away from this camera.
                     s.t.rotation = s.car != null ? rot * Quaternion.Euler(0, 0, 90 - chaseYaw[seat]) : rot;
             }
+            UnityEngine.Rendering.SortingGroup.UpdateAllSortingGroups();
         }
 
         // The crown floats clear above the leader's name tag. The tag is cabinet text, the same height in pixels at
@@ -361,10 +391,11 @@ namespace TNDA.Prototype
 
         private void LayFlat()
         {
+            foreach (var group in standingGroups.Values) if (group != null) group.enabled = false;
             foreach (var s in standing)
             {
                 if (s.t == null) continue;
-                var p = s.t.position;
+                var p = s.position;
                 s.t.SetPositionAndRotation(new Vector3(p.x, p.y, 0), Quaternion.identity);
                 if (s.car != null && topDown.TryGetValue(s.car, out var top))
                 {
@@ -374,6 +405,7 @@ namespace TNDA.Prototype
                     s.car.body.transform.localRotation = Quaternion.Euler(0, 0, s.car.heading - 90);
                 }
             }
+            UnityEngine.Rendering.SortingGroup.UpdateAllSortingGroups();
         }
 
         // Name tags and score pop-ups get a set per chase view: one in 1P and attract, two in a 2P split.
@@ -432,17 +464,33 @@ namespace TNDA.Prototype
             var tex = new Texture2D(side, side, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat, hideFlags = HideFlags.DontSave };
             tex.SetPixels(pixels);
             tex.Apply();
-            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            go.name = name;
+            // CreatePrimitive also tries to add a MeshCollider. This is decorative geometry; WebGL strips the
+            // unused collider class, so even destroying that collider immediately would log a player error.
+            var mesh = new Mesh { name = name + " mesh", hideFlags = HideFlags.DontSave };
+            mesh.vertices = new[] { new Vector3(-.5f, -.5f), new Vector3(.5f, -.5f), new Vector3(.5f, .5f), new Vector3(-.5f, .5f) };
+            mesh.uv = new[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up };
+            mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            mesh.RecalculateBounds();
+            var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.hideFlags = HideFlags.DontSave;
             go.layer = chaseOnlyLayer;
-            Destroy(go.GetComponent<Collider>());
             go.transform.SetPositionAndRotation(new Vector3(centre.x, centre.y, depth), Quaternion.identity);
             go.transform.localScale = new Vector3(size.x, size.y, 1);
             var renderer = go.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = new Material(Shader.Find("Unlit/Texture")) { mainTexture = tex, hideFlags = HideFlags.DontSave };
+            renderer.sharedMaterial = new Material(groundMaterial) { mainTexture = tex, hideFlags = HideFlags.DontSave };
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             return go;
+        }
+
+        private void DestroyGround(GameObject quad)
+        {
+            if (quad == null) return;
+            var material = quad.GetComponent<MeshRenderer>().sharedMaterial;
+            Destroy(quad.GetComponent<MeshFilter>().sharedMesh);
+            Destroy(material.mainTexture);
+            Destroy(material);
+            Destroy(quad);
         }
     }
 }

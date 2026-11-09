@@ -1,0 +1,10 @@
+{
+    "name": "TNDA.Prototype.Tests.PlayMode",
+    "rootNamespace": "TNDA.Prototype.Tests",
+    "references": ["TNDA.Prototype", "UnityEngine.TestRunner"],
+    "overrideReferences": true,
+    "precompiledReferences": ["nunit.framework.dll"],
+    "autoReferenced": false,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+    "optionalUnityReferences": []
+}

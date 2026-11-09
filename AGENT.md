@@ -7,7 +7,7 @@
 使用者要求刪除 GAME1、GAME2，把 GAME2 的最後一名死亡／淘汰規則加入 GAME3；AI 不追撞玩家，會互撞、破壞得分，被撞毀扣分，加入防護罩與火箭。
 
 - 已透過 Unity CLI／AssetDatabase 移除兩個舊場景、兩案專用玩法與建置程式、Game1／Game2 素材資料夾。
-- Build Settings 現在只啟用 `Assets/Scenes/GAME3.unity`，為第一個且唯一的遊戲場景。
+- Build Settings 現在只啟用 `Assets/Scenes/GAME3_Mode7.unity`，為第一個且唯一的遊戲場景（2026-11-09，票單 03）。俯視版 `GAME3` 留在專案供參考，不再新增功能。
 - GAME3 的既有相機、車圖、車輛、介面保留並直接修補；未整個重建場景。
 - 舊分工（Codex GAME1／GAME3、Claude GAME2）已結束，後續工作集中在 GAME3。
 - 原三案交接記錄封存於 `Docs/Archive/AGENT-three-games-2026-10-04.md`，供查閱歷史；目前製作規格以本文件為準。
@@ -100,7 +100,7 @@
 - 畫面只顯示：標題「廢車場大亂鬥」、「單人 1 枚　雙人 2 枚」、閃爍的投幣提示（0 枚「按 5 投幣」、1 枚「已投 1 枚　按 1 單人」、2 枚以上「已投 N 枚　按 1 單人　按 2 雙人」），以及底部 P1／P2 操作提示（規則說明已依使用者要求簡化，只留操作）。文字定義在執行期文字表 `CabinetText`（`P1Controls`、`P2Controls`、`CoinRule`、`CoinPrompt`），介面由 `Game3Text.CreateAttractScreen` 建立（場景物件 `Attract screen`，每次修補會重建）。
 - 開始方式：投幣後按 1／左 Ctrl 單人，2／數字鍵 Enter 雙人；開始後恢復正常 HUD 與 3-2-1 倒數。
 
-## 假 3D 原型（2026-11-08，不在 Build Settings）
+## Mode 7 正式主場景（原型始於 2026-11-08；票單 03 升為正式版）
 
 使用者想參考 SFC 做假 3D 版本，選定 **Mode 7 追尾視角**。原型只換呈現，比賽規則與 `GAME3` 共用。
 
@@ -109,7 +109,8 @@
 - `DemolitionMatch` 的開局位置與重生角落改由場地邊界推算（預設場地數值不變，EditMode 33 個通過）。
 - `GAME3_Iso.unity`＋`IsoStage.cs`：先前的 Rock N' Roll Racing 式固定斜視角原型，保留供比較。
 - **車圖（16 方向）**：追尾視角的車改用使用者以 GPT 產生的 `Game3/Art/CarSheet.png`（768×48，16 格、每格 22.5°，第 0 格為從正後方看、順時針），`CarSheetPalette.shader`／`.mat` 把圖上 4 個鍵紅色換成座位顏色。`Mode7Stage.carFrames`／`carSheetMaterial` 依「相機看車的方位 − 車頭方向」選格；小地圖仍畫原本的俯視車圖。切圖與接線腳本 `tmp/m7-carsheet.cs`，截圖 `tmp/m7-carshot.cs`。
-- 待辦：sprite 前後遮擋仍依排序值；地面用 `Unlit/Texture`，出 Build 前需確保不被剔除。
+- 站立物件各有執行期 SortingGroup，保留車身、防護罩與木箱細節的內部排序，各組使用相同外層圖層／順序，由各追尾相機的 Perspective 距離排序。車尾道具獨立排序；每次渲染前使用同一份地面位置，避免父車轉向影響 P2 與小地圖的位置。小地圖渲染時關閉分組，還原俯視圖與排序。
+- 地面與場地地板改由場景參照 `Art/Mode7Ground.mat` 與 `Mode7Ground.shader`，執行期只建立材質副本並套用棋盤／黑色紋理，不再用 `Shader.Find("Unlit/Texture")`。選單 **TNDA / Mode 7 / Promote to main scene**（`Editor/Mode7Build.cs`）可重跑接線與唯一建置場景設定，不重建 HUD、不更動 Inspector 調整值，場景有未儲存變更時拒絕覆蓋。
 
 ### 512×448 混合解析度（票單 01，2026-11-09 完成）
 
@@ -118,7 +119,7 @@
 - **分割**：1P 全畫面；2P 上下各 512×224（RenderTexture 上各 256×112）。
 - **HUD 排版**（`Editor/Mode7Layout.cs`，`Mode7Layout.PatchScene()` 會先跑共用的 `Game3Text.PatchScene` 再改成 512×448，可重複執行，並把舊場景的小地圖範圍換成 `Mode7Stage.DefaultMinimapRect`）：追尾視角地平線以上約占每個畫面的上 1/3 天空，HUD 放在天空：頂端一行標題＋淘汰倒數，下面左側排行榜 4 行、右側玩家狀態；拿掉原本黑色頂條。提示列 1P 在 HUD 下方（y 360），2P 移到 P2 半邊的天空（y 206，`Mode7Stage.noticeAt1P/2P`）。底部一行操作提示。倒數、投幣繼續、結算面板置中；勝利圖 256×256 置中。
 - **小地圖**：256×224 上的 (4, 18, 72×48)（畫面 144×96），依場地含圍欄自動算 ortho 套進去，外加白色（`ArcadeGame.White`）1 美術像素外框；每台車加一個只在小地圖顯示的車色方塊（`Minimap blip`，layer 30，`blipSize` 1.6，比木箱大，白色的 P3／P4 也分得出是車）。2P 時小地圖在 P2 半邊左下角。
-- **Editor 與建置**：Game 視窗固定 512×448（自訂尺寸「Mode 7 512x448」）。Player Settings：Windows 預設 1024×896（仍是全螢幕視窗模式）、網頁畫布 1024×896。注意：目前 Build Settings 仍是俯視版 `GAME3`（320×320 版面），在 1024×896 會非整數放大；票單 03 換主場景後解決。
+- **Editor 與建置**：Game 視窗固定 512×448（自訂尺寸「Mode 7 512x448」）。Player Settings：Windows 預設 1024×896（仍是全螢幕視窗模式）、網頁畫布 1024×896。票單 03 已將唯一建置場景換成 Mode 7，使用 512×448 畫布及 256×224 美術層。
 - 驗證：`tmp/m7-01-shot.cs`（Play Mode，同一狀態跑兩次：先設定、再隔幾幀擷取）擷取待機示範、倒數、1P、2P、投幣繼續、勝利、結算 7 張 `tmp/m7-01-*.png`，逐一檢查排版；場景區 2×2 方塊一致（只有文字處不同）。EditMode 54 個通過，Console 零錯誤、零警告。
 
 ## Mode 7 擴充規劃（2026-11-09，尚未實作）
@@ -127,9 +128,10 @@
 
 ## 建置輸出
 
-- **Windows**：`C:\Users\a0900\Downloads\1016\`（`TNDA Mission.exe`），並用 WinRAR 壓成 `Downloads\1016.zip`（zip 格式，排除 `TNDA Mission_BackUpThisFolder_ButDontShipItWithYourGame`）。每次重壓前舊 zip 移到資源回收筒。
-- **Web（2026-10-22 使用者要求）**：`C:\Users\a0900\Downloads\TNDA web\`（`index.html` + `Build/` + `TemplateData/`，約 13MB）。WebGL 設定：Gzip 壓縮並開啟 Decompression Fallback（不需伺服器特殊 header，任何靜態網站或 itch.io 都能載入）、畫布 640×640（320×320 的整數 2 倍）。不能直接雙擊 `index.html` 開啟，需用網頁伺服器（本機測試可在該資料夾執行 `python -m http.server`）。已在瀏覽器實測：標題示範正常、按 5 投幣與按 1 開局有反應、Console 無錯誤。建完 WebGL 後 Editor 已切回 Windows 平台。
-- 建置警告（Windows 2 個、WebGL 6 個）均為無害訊息：未設定 Pipeline 套件的 RuntimePipelineConfig、TextMesh Pro 內建 LiberationSans 字型 meta 版本舊、TMP shader 舊 pragma、IL2CPP 大型方法提示。
+- **正式場景**：Windows 與 Web 都只建置 `Assets/Scenes/GAME3_Mode7.unity`。畫布 512×448、場景美術 256×224；預設輸出 1024×896，文字 2 倍、美術 4 倍；較大視窗保持整數倍率並置中黑邊。
+- **Windows（票單 03）**：`C:\Users\a0900\Downloads\TNDA Mode7\Windows\TNDA Mission.exe`。舊的 `Downloads\1016\` 與 `1016.zip` 是俯視版歷史輸出，未覆蓋。
+- **Web（票單 03）**：`C:\Users\a0900\Downloads\TNDA Mode7\Web\`（`index.html` + `Build/` + `TemplateData/`）。沿用 Gzip 與 Decompression Fallback，網頁畫布改為 1024×896；需透過靜態伺服器開啟，不能直接雙擊 HTML。舊的 `Downloads\TNDA web\` 是 640×640 俯視版歷史輸出，未覆蓋。
+- 建置與完整流程驗證詳見 `Docs/Game3/mode7-main-scene-verification.md`。驗證用自動操作只存在於獨立副本的測試建置，不包含在正式輸出與專案執行期程式中。
 
 ## 建置前清理（2026-10-16）
 
@@ -242,6 +244,7 @@
 `GoldWallet` 將名次獎勵與分數除以 100 捨去後的獎勵存入本機 `TNDA.Gold`；雙人共用錢包，電腦與待機示範不領獎。冠軍決定或真人全部淘汰未繼續的 GAME OVER 開始時只發一次，分別在結算或 GAME OVER 面板顯示本局及累計金幣。標題長按 Delete 3 秒清除金幣與既有最高分，按住顯示確認倒數、放開取消；硬幣不受影響。新文字集中於 `CabinetText`，`GAME3` 與 `GAME3_Mode7` 均已接線，重跑文字／版面修補工具仍會保留功能。
 
 使用者確認公開錢包介面為 TDD 測試邊界；14 項金幣測試、完整 EditMode 78 項及公開介面 Play Mode 流程 20 項皆通過。512×448 標題、雙人結算與長按確認畫面已檢視。雙軸審查 Standards 0 項、Spec 0 項，固定點 `8c4c0da`。詳細驗證見 `Docs/Game3/gold-and-save-verification.md`。
+
 
 ## Mode 7 票單 04：碎片噴濺（2026-11-09 完成）
 

@@ -5249,6 +5249,7 @@ MonoBehaviour:
   groundA: {r: 0.1882353, g: 0.1882353, b: 0.1882353, a: 1}
   groundB: {r: 0.28235295, g: 0.28235295, b: 0.28235295, a: 1}
   checkerSize: 1
+  groundMaterial: {fileID: 2100000, guid: 4e67b0f6ea999bc42a6627ce46e8f942, type: 2}
   arenaFloor: {r: 0, g: 0, b: 0, a: 1}
   arenaMargin: 0.55
   chaseOnlyLayer: 31
