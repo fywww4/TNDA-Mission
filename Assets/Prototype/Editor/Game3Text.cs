@@ -128,12 +128,19 @@ namespace TNDA.Prototype.Editor
             const int px = ArcadeFontSetup.PixelSize;
             Backing(root, "Top backing", 0, 244, 320, 76);
             Label(root, "Title", CabinetText.Title, 0, 284, 320, 26, px * 2, ArcadeGame.Yellow);
-            Label(root, "Coin rule", CabinetText.CoinRule, 0, 258, 320, 13, px, ArcadeGame.White);
+            var rule = Label(root, "Coin rule", CabinetText.CoinRule, 0, 258, 320, 13, px, ArcadeGame.White);
+            var modes = Label(root, "Mode tabs", CabinetText.ModeTabs, 0, 228, 320, 13, px, ArcadeGame.White);
             Backing(root, "Prompt backing", 50, 193, 220, 19); // fits 已投 N 枚　按 1 單人　按 2 雙人
             var prompt = Label(root, "Coin prompt", CabinetText.CoinPrompt, 0, 196, 320, 13, px, ArcadeGame.Yellow);
             Backing(root, "Gold backing", 0, 156, 320, 32);
             var gold = Label(root, "Gold total", CabinetText.GoldTotal, 0, 174, 320, 13, px, ArcadeGame.Yellow);
             var reset = Label(root, "Reset save hint", CabinetText.ResetSaveHint, 0, 159, 320, 13, px, ArcadeGame.White);
+            // Challenge list (only while the title is on challenge mode): a black panel with name/state/best and the condition.
+            var panel = Rect(root, "Challenge list", 0, 44, 320, 110);
+            Backing(panel, "Backing", 0, 0, 320, 110);
+            var list = Label(panel, "Entries", "", 0, 3, 320, 104, px, ArcadeGame.White);
+            list.alignment = TextAlignmentOptions.Top;
+            panel.gameObject.SetActive(false);
             Backing(root, "Controls backing", 0, 0, 320, 34);
             Label(root, "P1 controls", CabinetText.P1Controls, 0, 18, 320, 13, px, ArcadeGame.Cyan);
             Label(root, "P2 controls", CabinetText.P2Controls, 0, 3, 320, 13, px, ArcadeGame.Yellow);
@@ -141,6 +148,10 @@ namespace TNDA.Prototype.Editor
             game.attractScreen = root.gameObject;
             game.attractPrompt = prompt;
             game.attractGold = gold;
+            game.attractRule = rule;
+            game.attractModes = modes;
+            game.attractChallenges = list;
+            game.attractChallengePanel = panel.gameObject;
             game.resetSaveHint = reset;
             EditorUtility.SetDirty(game);
 

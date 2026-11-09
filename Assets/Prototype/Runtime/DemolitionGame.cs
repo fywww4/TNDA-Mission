@@ -160,6 +160,8 @@ namespace TNDA.Prototype
                 var t = match.Tuning;
                 if (eliminationSchedule == null || eliminationSchedule.Length == 0) eliminationSchedule = MatchTuning.DefaultEliminations();
                 t.eliminations = eliminationSchedule;
+                t.rocketCratesOnly = false; t.ramsScore = true;
+                ActiveChallenge?.ApplyRules(t); // a challenge being played changes the rules; the title demo never does
                 t.driveSpeed = driveSpeed; t.accelerationPerSecond = accelerationPerSecond; t.coastDownPerSecond = coastDownPerSecond;
                 t.respawnSeconds = enemyRespawnSeconds; t.wreckPenalty = wreckPenalty; t.wreckBonus = wreckBonus;
                 t.shieldDuration = shieldDuration; t.pickupRespawnSeconds = pickupRespawnSeconds;
@@ -210,6 +212,11 @@ namespace TNDA.Prototype
         [Tooltip("The demo eliminates last place at this time (to show the spin-out) and restarts at demoLoopSeconds.")]
         public float demoEliminationSeconds = 20, demoLoopSeconds = 30;
         private bool demo, startingDemo;
+
+        [Header("Title: mode tabs and the challenge list")]
+        public TMP_Text attractRule, attractModes, attractChallenges;
+        [Tooltip("Backing and list shown only while the title is on challenge mode.")]
+        public GameObject attractChallengePanel;
 
         [Header("Saved gold")]
         public TMP_Text attractGold, resetSaveHint;
@@ -335,7 +342,8 @@ namespace TNDA.Prototype
                 else if (e is MatchEnded end)
                 {
                     AwardGold();
-                    if (!end.Winner.computer && victoryScreen != null && victorySeconds > 0) ShowVictory(end.Winner);
+                    if (ActiveChallenge != null) ShowChallengeResults();
+                    else if (!end.Winner.computer && victoryScreen != null && victorySeconds > 0) ShowVictory(end.Winner);
                     else ShowResults(end.Winner);
                 }
                 if (!quiet) Cue(e);
@@ -427,6 +435,25 @@ namespace TNDA.Prototype
                 + "\n" + GoldSummary);
         }
 
+        // A challenge counts only the player's score, whoever wins the final; the best record is saved first so the
+        // panel can say whether it was beaten.
+        private void ShowChallengeResults()
+        {
+            var challenge = ActiveChallenge;
+            int score = Mathf.RoundToInt(cars[0].score);
+            bool newBest = Records.Submit(challenge, score);
+            string best = string.Format(CabinetText.ChallengeBestLine, Records.Best(challenge).ToString("00000"))
+                + (newBest ? "　" + CabinetText.ChallengeNewBest : "");
+            Finish(challenge.Name, string.Format(CabinetText.ChallengeScoreLine, score.ToString("00000")) + "\n" + best
+                + "\n" + GoldSummary, CabinetText.ChallengeResultsHint);
+            // The coin-start buttons belong to the arcade; a challenge restarts with 1 and leaves with Esc.
+            onePlayerButton.gameObject.SetActive(false);
+            twoPlayerButton.gameObject.SetActive(false);
+        }
+
+        protected override string ReturnHint(int secondsLeft) => ActiveChallenge != null
+            ? string.Format(CabinetText.ChallengeReturn, secondsLeft) : base.ReturnHint(secondsLeft);
+
         private string GoldSummary => string.Format(CabinetText.GoldEarned, RoundGold)
             + "\n" + string.Format(CabinetText.GoldTotal, Gold);
 
@@ -450,6 +477,7 @@ namespace TNDA.Prototype
             resetSaveHeldSeconds += dt;
             if (resetSaveHeldSeconds < 3) return;
             Wallet.Clear();
+            Records.Clear();
             PlayerPrefs.DeleteKey("WreckBest");
             PlayerPrefs.Save();
             resetSaveLatched = true;
@@ -683,7 +711,22 @@ namespace TNDA.Prototype
                 if (attract) overlay.SetActive(false);
                 foreach (var text in new[] { header, arenaBoard, leaderboard, hud, footer, notice })
                     if (text != null) text.gameObject.SetActive(!attract);
-                if (attractPrompt != null)
+                if (attractRule != null) attractRule.text = Mode == CabinetMode.Challenge ? CabinetText.ChallengeRule : CabinetText.CoinRule;
+                if (attractModes != null)
+                    attractModes.text = string.Format(CabinetText.ModeTabs, ModeTab(CabinetMode.Arcade, CabinetText.ModeArcade),
+                        ModeTab(CabinetMode.Challenge, CabinetText.ModeChallenge));
+                if (attractChallengePanel != null)
+                {
+                    attractChallengePanel.SetActive(Mode == CabinetMode.Challenge);
+                    if (attractChallenges != null) attractChallenges.text = ChallengeListText();
+                }
+                if (attractPrompt != null && Mode == CabinetMode.Challenge)
+                {
+                    attractPrompt.text = Records.IsUnlocked(SelectedChallenge) ? CabinetText.ChallengePrompt
+                        : string.Format(CabinetText.ChallengeLocked, SelectedChallenge.UnlockPrice);
+                    attractPrompt.enabled = Mathf.FloorToInt(Time.unscaledTime * 2) % 2 == 0;
+                }
+                else if (attractPrompt != null)
                 {
                     attractPrompt.text = Credits == 0 ? CabinetText.CoinPrompt
                         : string.Format(Credits == 1 ? CabinetText.CoinPromptOne : CabinetText.CoinPromptTwo, Credits);
@@ -759,14 +802,15 @@ namespace TNDA.Prototype
             }
             ShowCrown();
             header.text = CabinetText.Title;
-            arenaBoard.text = Phase == ArcadePhase.Results ? string.Format(CabinetText.Champion, cars[Champion].DriverName)
+            arenaBoard.text = ActiveChallenge != null ? string.Format(CabinetText.ChallengeBoard, ActiveChallenge.Name)
+                : Phase == ArcadePhase.Results ? string.Format(CabinetText.Champion, cars[Champion].DriverName)
                 : string.Format(CabinetText.NextElimination, Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)), Contenders);
             var order = Phase == ArcadePhase.Results ? cars.OrderBy(c => c.FinalPlace)
                 : cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? c.FinalPlace : -c.score);
             if (leaderboard != null)
                 leaderboard.text = string.Join("\n", order.Select((c, rank) =>
-                    "<color=#" + ColorUtility.ToHtmlStringRGB(c.body.color) + ">" + (rank + 1) + " " + c.DriverName.PadRight(3)
-                    + " " + Mathf.RoundToInt(c.score).ToString("00000") + "  " + DriverStatus(c) + "</color>"));
+                    Tinted(c.body.color, (rank + 1) + " " + c.DriverName.PadRight(3)
+                    + " " + Mathf.RoundToInt(c.score).ToString("00000") + "  " + DriverStatus(c))));
             hud.text = string.Format(CabinetText.PlayerStatus, cars[0].DriverName, ActionStatus(cars[0]))
                 + (PlayerCount == 2 ? "\n" + string.Format(CabinetText.PlayerStatus, cars[1].DriverName, ActionStatus(cars[1])) : "")
                 + "\n" + string.Format(CabinetText.TimeAndWrecks, Mathf.CeilToInt(Remaining), Wrecks)
@@ -777,6 +821,28 @@ namespace TNDA.Prototype
             if (Phase == ArcadePhase.Attract) overlayHint.text = CabinetText.AttractHint;
             ShowStartMessages();
             ShowContinue();
+        }
+
+        private static string Tinted(Color color, string text) => "<color=#" + ColorUtility.ToHtmlStringRGB(color) + ">" + text + "</color>";
+
+        private string ModeTab(CabinetMode mode, string name) => Tinted(Mode == mode ? Yellow : White, name);
+
+        // Name, state and best score of every challenge, each followed by its condition; the chosen one is yellow.
+        private string ChallengeListText()
+        {
+            var lines = new List<string>();
+            for (int i = 0; i < Challenges.All.Count; i++)
+            {
+                var challenge = Challenges.All[i];
+                bool open = Records.IsUnlocked(challenge), selected = i == ChallengeCursor;
+                string state = open ? CabinetText.ChallengeUnlocked + "　" + string.Format(CabinetText.ChallengeBestShort, Records.Best(challenge))
+                    : string.Format(CabinetText.ChallengeLockedShort, challenge.UnlockPrice);
+                var color = selected ? Yellow : White;
+                lines.Add(Tinted(color, string.Format(CabinetText.ChallengeRow, selected ? ">" : " ", challenge.Name, state)));
+                lines.Add(Tinted(color, challenge.Condition));
+                if (i < Challenges.All.Count - 1) lines.Add("");
+            }
+            return string.Join("\n", lines);
         }
 
         // A seat's colours: P1 cyan and P2 yellow (Player2, or Panda in 1P) are solid (their stripe colours are unused

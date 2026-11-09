@@ -36,6 +36,30 @@ namespace TNDA.Prototype
         public const string ResetSaveConfirm = "清除存檔？繼續按住 Delete {0} 秒";
         public const string SaveCleared = "存檔已清除，請放開 Delete";
 
+        // Challenge mode (title list, play and result).
+        public const string ModeArcade = "街機模式";
+        public const string ModeChallenge = "挑戰模式";
+        public const string ModeTabs = "←　{0}　{1}　→";
+        public const string ChallengeRule = "不用投幣　只限單人";
+        public const string ChallengePrompt = "↑↓選擇　按 1 開始";
+        public const string ChallengeLocked = "未解鎖，需 {0} 金幣";
+        public const string ChallengeRow = "{0} {1}　{2}";
+        public const string ChallengeBestShort = "最佳 {0}";
+        public const string ChallengeUnlocked = "已解鎖";
+        public const string ChallengeLockedShort = "未解鎖 {0} 金幣";
+        public const string ChallengeRocketOnly = "只能用火箭";
+        public const string ChallengeRocketOnlyRule = "木箱只開火箭，衝撞不計分，比 120 秒最高分";
+        public const string ChallengeScore90 = "90 秒最高分";
+        public const string ChallengeScore90Rule = "8 台車不淘汰，比 90 秒內的總分";
+        public const string ChallengeNoWreck = "不被撞毀";
+        public const string ChallengeNoWreckRule = "3 台追王追你，撐過 120 秒不被撞毀";
+        public const string ChallengeBoard = "挑戰　{0}";
+        public const string ChallengeScoreLine = "本次成績 {0}";
+        public const string ChallengeBestLine = "最佳紀錄 {0}";
+        public const string ChallengeNewBest = "新紀錄！";
+        public const string ChallengeResultsHint = "按 1 重試　按 Esc 回列表";
+        public const string ChallengeReturn = "{0} 秒後回列表　按 1 重試";
+
         public const string Go = "出發！";
 
         // Continue after a timed elimination (4th or 3rd place): 10-second countdown, one coin.

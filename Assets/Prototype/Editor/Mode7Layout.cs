@@ -75,7 +75,12 @@ namespace TNDA.Prototype.Editor
             void LayOutAttract(RectTransform root)
             {
                 Place(root, 0, 0, W, H);
-                Place(Child(root, "Top backing"), 0, H - 76, W, 76);
+                Place(Child(root, "Top backing"), 0, H - 108, W, 108);
+                Place(Child(root, "Mode tabs"), 0, H - 98, W, line);
+                var list = Child(root, "Challenge list");
+                Place(list, 0, H - 288, W, 112);
+                Place(Child(list, "Backing"), 0, 0, W, 112);
+                Place(Child(list, "Entries"), 0, 3, W, 106);
                 Place(Child(root, "Title"), 0, H - 36, W, 26);
                 Place(Child(root, "Coin rule"), 0, H - 62, W, line);
                 Place(Child(root, "Prompt backing"), (W - 220) / 2, H - 131, 220, 19);

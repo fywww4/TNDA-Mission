@@ -126,6 +126,16 @@
 
 使用者確認以 `GAME3_Mode7` 為主線，新增功能拆成票單 `.scratch/mode7-expansion/issues/01～15`（照編號與 Blocked by 開工）。用詞以根目錄 `GLOSSARY.md` 為準（「硬幣」＝投幣點數、「金幣」＝存檔的獎勵貨幣，兩者不同）。解析度改為 512×448 混合（美術 2 倍粗像素、文字原生），見 `Docs/adr/0001-hybrid-512x448-resolution.md`。內容：混合解析度與 HUD、P2 標籤、換主場景、碎片噴濺、觀眾席與鐵絲網、8 台車金字塔淘汰（40 秒淘汰 4、80 秒淘汰 2、120 秒決賽）、金幣存檔、挑戰模式三個挑戰。車庫待決定；手排與關卡模式依使用者指示保留不做。觀眾席、鐵絲網、碎片的 GPT 美術提示詞已交給使用者（`crowd.png`、`fence.png`、`debris.png`），到貨前用占位圖。
 
+## Mode 7 票單 10：挑戰模式與「只能用火箭」（2026-11-09 完成）
+
+標題畫面左右鍵（←→、A／D、Tab、手把方向鍵）切換「街機模式／挑戰模式」（`ArcadeGame.Mode`）。街機模式的投幣與開局流程不變。挑戰模式不用投幣、只限單人：↑↓選挑戰，按 1／左 Ctrl 開始（`TryStartChallenge`，未解鎖時不開始、提示列顯示「未解鎖，需 150 金幣」）。列表顯示名稱、條件、已解鎖／未解鎖價格與最佳紀錄（`Challenges.All`：只能用火箭 0 金幣；90 秒最高分、不被撞毀各 150 金幣，兩者規則與解鎖流程在票單 11／12）。
+
+「只能用火箭」：4 台車，`Challenge.ApplyRules` 只改 `MatchTuning`——`rocketCratesOnly`（木箱一律火箭，連最後一名也不開櫻桃）、`ramsScore=false`（衝撞不計分，也不給衝撞撞毀獎勵；火箭 +120、火箭撞毀獎勵、撞碎破壞物照常）、淘汰時間表只剩 120 秒決賽（中途不淘汰，因此沒有投幣繼續）。成績是玩家（P1）的分數，不論誰是冠軍；不顯示勝利圖。結束時照票單 09 發金幣，結算顯示本次成績、最佳紀錄（破紀錄顯示「新紀錄！」）、本局與累計金幣；按 1 立即重試同一挑戰，Esc 或 20 秒後回挑戰列表（模式維持挑戰）；待機示範一律使用街機規則。
+
+最佳紀錄存在 `ChallengeRecords`（`TNDA.Challenge.<id>.Best`），標題長按 Delete 3 秒清存檔時一併歸零。文字都在 `CabinetText`；標題新增物件 `Mode tabs`、`Challenge list` 由 `Game3Text.CreateAttractScreen` 建立、`Mode7Layout` 排版。
+
+驗證：`ChallengeTests`（EditMode 9 項：木箱只給火箭、衝撞不計分、火箭與破壞物照常、120 秒前不淘汰、名錄與解鎖、最佳紀錄保存與清除）與完整 EditMode 95 項通過；Play Mode `tmp/ticket10-verify.cs` 27 項通過（切換模式、鎖定、免費開局、結算、新紀錄、重試、回列表、街機規則還原；測試後還原金幣與紀錄存檔）；512×448 截圖 `tmp/ticket10-list.png`／`ticket10-results.png` 已檢視。Console 零錯誤、零警告。
+
 ## 建置輸出
 
 - **正式場景**：Windows 與 Web 都只建置 `Assets/Scenes/GAME3_Mode7.unity`。畫布 512×448、場景美術 256×224；預設輸出 1024×896，文字 2 倍、美術 4 倍；較大視窗保持整數倍率並置中黑邊。

@@ -39,6 +39,8 @@ namespace TNDA.Prototype
         public float smashSpeed = 2.1f;
         public Vector2 arenaMin = new Vector2(-4.35f, -3.85f), arenaMax = new Vector2(4.35f, 1.65f);
         public bool randomPropSpots = true;
+        // Challenge switches (default = the arcade match): crates give only rockets; rams earn no points or wreck bonus.
+        public bool rocketCratesOnly = false, ramsScore = true;
         // Oil: the slick spins a car out for oilSlipSeconds, earns its dropper oilBonus, and dries after oilLifeSeconds.
         public float oilSlipSeconds = .8f, oilLifeSeconds = 12;
         public int oilBonus = 50;
@@ -304,6 +306,7 @@ namespace TNDA.Prototype
             {
                 if (!pickup.available || Vector2.Distance(car.position, pickup.point) > .58f) continue;
                 car.item = pickup.item != ArenaItem.None ? pickup.item
+                    : Tuning.rocketCratesOnly ? ArenaItem.Rocket
                     : ArenaItems.Roll(ArenaItems.IsTrailing(car, Cars), Tuning.trailingCherryChance, () => Random.value);
                 pickup.available = false;
                 pickup.respawn = Tuning.pickupRespawnSeconds;
@@ -419,7 +422,7 @@ namespace TNDA.Prototype
             float damage = (.035f + impact * .035f) * multiplier;
             if (!CanHarm(attacker, victim)) damage = 0;
             bool damaged = ApplyDamage(victim, damage);
-            if (damaged)
+            if (damaged && Tuning.ramsScore)
             {
                 AddScore(attacker, Mathf.RoundToInt(impact * 30 * multiplier));
                 if (!victim.alive) AwardWreck(attacker);
