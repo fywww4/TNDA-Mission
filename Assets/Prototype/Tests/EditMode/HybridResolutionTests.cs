@@ -71,6 +71,15 @@ namespace TNDA.Prototype.Tests
             Assert.IsFalse(HybridResolution.TagOnView(new Vector3(260, 150, 4), P1Half, out _));
         }
 
+        // How tall one art pixel of a perspective view is in world units at a given depth (things at that distance).
+        [TestCase(3.2f, 60, 224, .016496f)]
+        [TestCase(3.2f, 60, 112, .032991f)]
+        [TestCase(12f, 60, 112, .123718f)]
+        public void Art_pixel_height_in_world_units_grows_with_depth(float depth, float fov, float viewPixels, float world)
+        {
+            Assert.AreEqual(world, HybridResolution.WorldPerArtPixel(depth, fov, viewPixels), 1e-5f);
+        }
+
         // The top-down minimap camera shows the whole area in a rect of the given width / height.
         [Test]
         public void Minimap_fits_a_wide_arena_by_its_width()

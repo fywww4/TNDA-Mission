@@ -55,6 +55,8 @@ namespace TNDA.Prototype
 
         [Header("Standing sprites: half height lifted off the floor, in world units")]
         public float carLift = .45f, propLift = .32f, pickupLift = .3f, itemLift = .3f, crownLift = 1.1f, explosionLift = .35f;
+        [Tooltip("Art pixels of clear space between the leader's name tag and the crown above it (crownLift is the lowest it goes).")]
+        public float crownGap = 1;
 
         [Header("Cars in the chase view: 16 directions, frame 0 seen from behind, then clockwise")]
         [Tooltip("CarSheet.png sliced into 16 frames, pivot on the wheels' ground line. Empty = stand the top-down sprite up.")]
@@ -89,6 +91,9 @@ namespace TNDA.Prototype
 
         // Score pop-ups and car name tags ask for a point this far north of the car (see DemolitionGame).
         private const float TagOffset = .88f;
+        // Name tags float this high above the floor in the chase view; a tag is 13 cabinet pixels tall (6.5 art).
+        private float TagLift => carLift * 2 + .15f;
+        private const float TagHalfHeight = 3.25f;
 
         private void OnEnable()
         {
@@ -319,7 +324,8 @@ namespace TNDA.Prototype
             {
                 if (s.t == null) continue;
                 var p = s.t.position;
-                s.t.position = new Vector3(p.x, p.y, -s.lift);
+                float lift = game.crownView != null && s.t == game.crownView.transform ? CrownLift(cam, p) : s.lift;
+                s.t.position = new Vector3(p.x, p.y, -lift);
                 if (s.car != null && UseFrames)
                 {
                     // Pick the sheet frame for the angle this camera sees the car from: its bearing from the camera
@@ -337,6 +343,20 @@ namespace TNDA.Prototype
                     // screen when the car drives straight away from this camera.
                     s.t.rotation = s.car != null ? rot * Quaternion.Euler(0, 0, 90 - chaseYaw[seat]) : rot;
             }
+        }
+
+        // The crown floats clear above the leader's name tag. The tag is cabinet text, the same height in pixels at
+        // any distance, so the crown's lift is worked out in this view's art pixels: tag point, half the tag, a gap,
+        // then half the crown. Never lower than crownLift.
+        private float CrownLift(Camera cam, Vector2 at)
+        {
+            var tag = new Vector3(at.x, at.y, -TagLift);
+            float depth = Vector3.Dot(tag - cam.transform.position, cam.transform.forward);
+            if (depth <= 0) return crownLift;
+            float perPixel = HybridResolution.WorldPerArtPixel(depth, cam.fieldOfView, cam.pixelHeight);
+            var crown = game.crownView;
+            float half = crown.sprite != null ? crown.sprite.bounds.extents.y * crown.transform.lossyScale.y : 0;
+            return Mathf.Max(crownLift, TagLift + (TagHalfHeight + crownGap) * perPixel + half);
         }
 
         private void LayFlat()
@@ -370,7 +390,7 @@ namespace TNDA.Prototype
             if (view < 0 || view >= chase.Length || chase[view] == null) return false;
             var cam = chase[view];
             var foot = world - new Vector2(0, TagOffset);
-            Vector3 s = cam.WorldToScreenPoint(new Vector3(foot.x, foot.y, -(carLift * 2 + .15f)));
+            Vector3 s = cam.WorldToScreenPoint(new Vector3(foot.x, foot.y, -TagLift));
             return HybridResolution.TagOnView(s, cam.pixelRect, out cabinet);
         }
 

@@ -229,7 +229,7 @@
 
 `DemolitionGame.CabinetProjector`（單一委派、只投影到 P1 相機）改為介面 `ICabinetProjection`：`Views`（目前有幾個畫面）與 `ToCabinet(world, view, out cabinet)`（點不在該畫面時回傳 false）。`Mode7Stage` 1P／待機為 1 個畫面、2P 為 2 個，各用自己的追尾相機投影；`IsoStage` 固定 1 個畫面。場景只有一組車名與加分文字（給第一個畫面）；第二個畫面由 `DemolitionGame` 第一次需要時複製一份（同畫布、排在原物件後面，名稱加「 (view 2)」），回到 1P 時隱藏。車在某畫面的相機後方或該半邊之外時，該畫面的標籤 `SetActive(false)`（原本是移到 (9999,9999)）。判斷集中在 `HybridResolution.TagOnView`（EditMode 4 個測試）。皇冠本來就是各相機都會畫的世界 Sprite，未改。
 
-驗證：`tmp/m7-02-labels.cs`（Play Mode，`setup 2|1|attract` 後 `check`）逐車、逐畫面比對相機投影：2P 兩半邊的車名與加分文字都跟著該相機、不跑到另一半邊、另一位玩家的車在自己半邊外時隱藏，皇冠在第一名；1P 第二組全隱藏；待機全隱藏。EditMode 82 個全部通過；重新編譯完成，Console 零錯誤、零警告。已知（修改前即存在）：追尾視角的皇冠高度與車名相同，第一名的車名會被皇冠蓋住（黃色 P2 最明顯）。
+驗證：`tmp/m7-02-labels.cs`（Play Mode，`setup 2|1|attract` 後 `check`）逐車、逐畫面比對相機投影：2P 兩半邊的車名與加分文字都跟著該相機、不跑到另一半邊、另一位玩家的車在自己半邊外時隱藏，皇冠在第一名；1P 第二組全隱藏；待機全隱藏。EditMode 82 個全部通過；重新編譯完成，Console 零錯誤、零警告。追尾視角的皇冠原本與車名同高、蓋住第一名的車名（黃色 P2 看不見）；2026-11-09 改為每台相機各自計算高度（`Mode7Stage.CrownLift`）：車名是固定像素大小的畫面文字，所以皇冠底邊放在車名頂端上方 `crownGap`（1）個美術像素，最低仍為 `crownLift`。換算用 `HybridResolution.WorldPerArtPixel`（EditMode 3 個測試）；`tmp/m7-crown-tag.cs` 驗證 2P 兩半邊與 1P 間距約 1.1 像素。皇冠圖四周的 2px 黑邊（為俯視版遮地面標線而加）在天空前會看到黑框，未改。
 
 ## Mode 7 票單 05：觀眾席與鐵絲網（2026-11-09 完成）
 

@@ -33,6 +33,11 @@ namespace TNDA.Prototype
             return screenPoint.z > 0 && viewPixels.Contains(art);
         }
 
+        // World units covered by one art pixel of a perspective view (vertical field of view in degrees, view height in
+        // art pixels) at the given depth in front of its camera.
+        public static float WorldPerArtPixel(float depth, float fieldOfView, float viewPixels) =>
+            2 * depth * Mathf.Tan(fieldOfView * .5f * Mathf.Deg2Rad) / viewPixels;
+
         // Orthographic size that shows the whole area (world units) in a view of the given width / height.
         public static float FitOrthographicSize(Vector2 area, float aspect) => Mathf.Max(area.y / 2, area.x / 2 / aspect);
     }
