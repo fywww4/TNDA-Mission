@@ -6,6 +6,16 @@ using TMPro;
 
 namespace TNDA.Prototype
 {
+    // A presentation that draws the arena through its own camera(s) (IsoStage, Mode7Stage) tells the arena where the
+    // screen-space name tags and score pop-ups go: a world point on the arena floor in cabinet units (centre origin)
+    // for one view. Views = how many views show the arena right now; each gets its own set of tags.
+    public interface ICabinetProjection
+    {
+        int Views { get; }
+        // False when the point is not on that view (behind its camera, or outside its share of the screen).
+        bool ToCabinet(Vector2 world, int view, out Vector2 cabinet);
+    }
+
     [Serializable]
     public class BreakableProp
     {
@@ -274,6 +284,8 @@ namespace TNDA.Prototype
                 popupAge[i] = -1;
                 if (scorePopups[i] != null) scorePopups[i].gameObject.SetActive(false);
             }
+            foreach (var copies in extraPopups)
+                foreach (var copy in copies) if (copy != null) copy.gameObject.SetActive(false);
             SyncViews();
         }
 
@@ -525,34 +537,73 @@ namespace TNDA.Prototype
             text.gameObject.SetActive(true);
         }
 
-        // Optional hook for a tilted presentation (IsoStage): maps a world point on the arena floor to cabinet units
-        // (centre origin, 1 unit = 1 screen pixel at 320px). Null = the flat top-down mapping.
-        public static System.Func<Vector2, Vector2> CabinetProjector;
+        // Optional hook for a tilted or chase presentation (IsoStage, Mode7Stage). Null = the flat top-down mapping.
+        public static ICabinetProjection CabinetProjection;
 
-        private Vector2 CabinetPoint(Vector2 world) => CabinetProjector != null ? CabinetProjector(world)
-            : (world - (Vector2)sceneCamera.transform.position) * 32;
+        private int CabinetViews => CabinetProjection != null ? Mathf.Max(1, CabinetProjection.Views) : 1;
+
+        private bool CabinetPoint(Vector2 world, int view, out Vector2 cabinet)
+        {
+            if (CabinetProjection != null) return CabinetProjection.ToCabinet(world, view, out cabinet);
+            cabinet = (world - (Vector2)sceneCamera.transform.position) * 32;
+            return true;
+        }
+
+        // The scene holds one name tag and one score pop-up per car, for the first view. Further views (P2's half in
+        // a Mode 7 2P split) get copies of them, made on first use. Index [view - 1][car].
+        private readonly List<TMP_Text[]> extraLabels = new List<TMP_Text[]>(), extraPopups = new List<TMP_Text[]>();
+
+        // How many views have tags: the views in use, plus any earlier views whose copies still need hiding.
+        private int TagViews(List<TMP_Text[]> extra) => Mathf.Max(CabinetViews, extra.Count + 1);
+
+        // One car's tag or pop-up in one view (view 0 is the scene's own), made for a view in use if missing. Null
+        // where the scene has none for that car, or a view not in use never had one.
+        private TMP_Text InView(TMP_Text[] own, List<TMP_Text[]> extra, int view, int car)
+        {
+            if (view == 0 || own[car] == null) return own[car];
+            while (extra.Count < view) extra.Add(new TMP_Text[own.Length]);
+            var copies = extra[view - 1];
+            if (copies[car] == null && view < CabinetViews)
+            {
+                copies[car] = Instantiate(own[car], own[car].transform.parent);
+                copies[car].name = own[car].name + " (view " + (view + 1) + ")";
+                // Same draw order as the scene's own, so HUD panels drawn later still cover it.
+                copies[car].transform.SetSiblingIndex(own[car].transform.GetSiblingIndex() + 1);
+            }
+            return copies[car];
+        }
 
         private void UpdateScorePopups(float dt)
         {
-            placedPopups.Clear();
             for (int i = 0; i < popupAge.Length; i++)
+                if (popupAge[i] >= 0 && (popupAge[i] += dt) >= popupSeconds) popupAge[i] = -1;
+            int views = CabinetViews;
+            for (int v = 0; v < TagViews(extraPopups); v++)
             {
-                var text = scorePopups[i];
-                if (popupAge[i] < 0 || text == null) continue;
-                popupAge[i] += dt;
-                float t = popupAge[i] / popupSeconds;
-                if (t >= 1) { popupAge[i] = -1; text.gameObject.SetActive(false); continue; }
-                if (popupBaseSize <= 0) popupBaseSize = text.fontSize;
-                // Pops in at double size (still a whole multiple of the 11px pixel font), then floats up 16px and
-                // blinks out. Whole-pixel positions keep the pixel font sharp.
-                text.fontSize = popupAge[i] < .12f ? popupBaseSize * 2 : popupBaseSize;
-                Vector2 screen = CabinetPoint(popupOrigin[i] + Vector2.up * .88f);
-                var spot = new Vector2(Mathf.Round(screen.x), Mathf.Round(screen.y + 6 + 16 * t));
-                // Cars that touch score together; stack their pop-ups a line apart instead of overlapping.
-                while (placedPopups.Any(p => Mathf.Abs(p.x - spot.x) < 44 && Mathf.Abs(p.y - spot.y) < 13)) spot.y += 13;
-                placedPopups.Add(spot);
-                text.rectTransform.anchoredPosition = spot;
-                text.enabled = t < .6f || Mathf.FloorToInt(popupAge[i] * 16) % 2 == 0;
+                placedPopups.Clear();
+                for (int i = 0; i < popupAge.Length; i++)
+                {
+                    var text = InView(scorePopups, extraPopups, v, i);
+                    if (text == null) continue;
+                    Vector2 screen = default;
+                    bool on = v < views && popupAge[i] >= 0 && CabinetPoint(popupOrigin[i] + Vector2.up * .88f, v, out screen);
+                    text.gameObject.SetActive(on);
+                    if (!on) continue;
+                    var own = scorePopups[i];
+                    if (popupBaseSize <= 0) popupBaseSize = own.fontSize;
+                    float t = popupAge[i] / popupSeconds;
+                    text.text = own.text;
+                    text.color = own.color;
+                    // Pops in at double size (still a whole multiple of the 11px pixel font), then floats up 16px and
+                    // blinks out. Whole-pixel positions keep the pixel font sharp.
+                    text.fontSize = popupAge[i] < .12f ? popupBaseSize * 2 : popupBaseSize;
+                    var spot = new Vector2(Mathf.Round(screen.x), Mathf.Round(screen.y + 6 + 16 * t));
+                    // Cars that touch score together; stack their pop-ups a line apart instead of overlapping.
+                    while (placedPopups.Any(p => Mathf.Abs(p.x - spot.x) < 44 && Mathf.Abs(p.y - spot.y) < 13)) spot.y += 13;
+                    placedPopups.Add(spot);
+                    text.rectTransform.anchoredPosition = spot;
+                    text.enabled = t < .6f || Mathf.FloorToInt(popupAge[i] * 16) % 2 == 0;
+                }
             }
         }
 
@@ -594,19 +645,33 @@ namespace TNDA.Prototype
                 var car = cars[i];
                 if (carLabels != null && i < carLabels.Length && carLabels[i] != null)
                 {
-                    carLabels[i].text = car.DriverName;
-                    carLabels[i].color = car.body.color;
                     Vector2 tag = car.position + Vector2.up * .68f;
-                    if (carLabels[i] is TextMeshProUGUI screenTag)
+                    if (carLabels[i] is TextMeshProUGUI)
                     {
-                        // Screen-space tag on the 320px cabinet: 1 world unit = 32 cabinet units, origin at centre.
-                        // Sits just above the roof health bar.
-                        Vector2 screen = CabinetPoint(tag + Vector2.up * .2f);
-                        // Whole pixels keep the 11px pixel font sharp.
-                        screenTag.rectTransform.anchoredPosition = new Vector2(Mathf.Round(screen.x), Mathf.Round(screen.y));
-                        screenTag.gameObject.SetActive(!attract && car.alive && car.gameObject.activeInHierarchy);
+                        // Screen-space tag, one per view, in cabinet units with the origin at the centre (top-down:
+                        // 1 world unit = 32 cabinet units). Sits just above the roof health bar.
+                        bool shown = !attract && car.alive && car.gameObject.activeInHierarchy;
+                        int views = CabinetViews;
+                        for (int v = 0; v < TagViews(extraLabels); v++)
+                        {
+                            var screenTag = InView(carLabels, extraLabels, v, i);
+                            if (screenTag == null) continue;
+                            Vector2 screen = default;
+                            bool on = shown && v < views && CabinetPoint(tag + Vector2.up * .2f, v, out screen);
+                            screenTag.gameObject.SetActive(on);
+                            if (!on) continue;
+                            screenTag.text = car.DriverName;
+                            screenTag.color = car.body.color;
+                            // Whole pixels keep the 11px pixel font sharp.
+                            screenTag.rectTransform.anchoredPosition = new Vector2(Mathf.Round(screen.x), Mathf.Round(screen.y));
+                        }
                     }
-                    else carLabels[i].transform.position = PixelPosition(tag);
+                    else
+                    {
+                        carLabels[i].text = car.DriverName;
+                        carLabels[i].color = car.body.color;
+                        carLabels[i].transform.position = PixelPosition(tag);
+                    }
                 }
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].localScale = new Vector3(Mathf.Clamp01(car.health), 1, 1);

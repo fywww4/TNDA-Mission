@@ -8,7 +8,7 @@ namespace TNDA.Prototype
     // slab, tall things (crates, barrels, held items, crown, explosions) stand up facing the camera, and flat ground
     // shadows tie everything to the floor. Remove the component and the scene is top-down again.
     [DefaultExecutionOrder(100)]
-    public sealed class IsoStage : MonoBehaviour
+    public sealed class IsoStage : MonoBehaviour, ICabinetProjection
     {
         public DemolitionGame game;
         public Camera view;
@@ -51,14 +51,14 @@ namespace TNDA.Prototype
             foreach (var behaviour in view.GetComponents<MonoBehaviour>())
                 if (behaviour != null && behaviour.GetType().Name.Contains("PixelPerfect")) behaviour.enabled = false;
             view.orthographic = true;
-            DemolitionGame.CabinetProjector = ToCabinet;
+            DemolitionGame.CabinetProjection = this;
             BuildShadows();
             Place();
         }
 
         private void OnDisable()
         {
-            if (DemolitionGame.CabinetProjector == (System.Func<Vector2, Vector2>)ToCabinet) DemolitionGame.CabinetProjector = null;
+            if (ReferenceEquals(DemolitionGame.CabinetProjection, this)) DemolitionGame.CabinetProjection = null;
             foreach (var shadow in shadows) if (shadow.renderer != null) Destroy(shadow.renderer.gameObject);
             shadows.Clear();
             written.Clear();
@@ -93,10 +93,14 @@ namespace TNDA.Prototype
             view.farClipPlane = cameraDistance * 3;
         }
 
-        private Vector2 ToCabinet(Vector2 world)
+        // One view, the 320px cabinet (centre origin, 1 unit = 1 screen pixel).
+        int ICabinetProjection.Views => 1;
+
+        bool ICabinetProjection.ToCabinet(Vector2 world, int viewIndex, out Vector2 cabinet)
         {
             Vector3 v = view.WorldToViewportPoint(new Vector3(world.x, world.y, 0));
-            return new Vector2(v.x - .5f, v.y - .5f) * 320;
+            cabinet = new Vector2(v.x - .5f, v.y - .5f) * 320;
+            return true;
         }
 
         // Stand a sprite up to face the camera with its foot on the floor point it was given. The arena code rewrites

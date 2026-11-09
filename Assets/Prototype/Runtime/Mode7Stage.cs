@@ -14,7 +14,7 @@ namespace TNDA.Prototype
     // pixels under the 512x448 cabinet HUD, so the art looks like SFC 256x224 while text stays native and sharp.
     // The cabinet is shown at a whole-number scale (2x = 1024x896 when the screen fits it, otherwise 1x).
     [DefaultExecutionOrder(100)]
-    public sealed class Mode7Stage : MonoBehaviour
+    public sealed class Mode7Stage : MonoBehaviour, ICabinetProjection
     {
         public DemolitionGame game;
 
@@ -106,14 +106,14 @@ namespace TNDA.Prototype
             MakeBlips();
             ground = MakeGround();
             floor = MakeArenaFloor();
-            DemolitionGame.CabinetProjector = ToCabinet;
+            DemolitionGame.CabinetProjection = this;
             Camera.onPreCull += OnAnyPreCull;
         }
 
         private void OnDisable()
         {
             Camera.onPreCull -= OnAnyPreCull;
-            if (DemolitionGame.CabinetProjector == (System.Func<Vector2, Vector2>)ToCabinet) DemolitionGame.CabinetProjector = null;
+            if (ReferenceEquals(DemolitionGame.CabinetProjection, this)) DemolitionGame.CabinetProjection = null;
             for (int i = 0; i < chase.Length; i++) if (chase[i] != null) Destroy(chase[i].gameObject);
             if (backdrop != null) Destroy(backdrop.gameObject);
             if (ground != null) Destroy(ground);
@@ -141,7 +141,7 @@ namespace TNDA.Prototype
 
         private void LateUpdate()
         {
-            bool two = game.PlayerCount == 2 && game.Phase != ArcadePhase.Attract;
+            bool two = TwoViews;
             for (int i = 0; i < chase.Length; i++)
             {
                 bool on = i == 0 || two;
@@ -356,16 +356,22 @@ namespace TNDA.Prototype
             }
         }
 
-        // Name tags and score pop-ups: the arena asks for a point TagOffset north of the car. Here the tag floats
-        // above the standing car in P1's view instead. Points behind the camera go off screen. The camera draws into
-        // the 256x224 art texture, so its screen points are art pixels; the cabinet is twice that.
-        private Vector2 ToCabinet(Vector2 world)
+        // Name tags and score pop-ups get a set per chase view: one in 1P and attract, two in a 2P split.
+        private bool TwoViews => game.PlayerCount == 2 && game.Phase != ArcadePhase.Attract;
+
+        int ICabinetProjection.Views => TwoViews ? 2 : 1;
+
+        // The arena asks for a point TagOffset north of the car. Here the tag floats above the standing car as that
+        // view's camera sees it; behind the camera or outside the view's half it is not shown. The cameras draw into
+        // the 256x224 art texture, so their screen points are art pixels; the cabinet is twice that.
+        bool ICabinetProjection.ToCabinet(Vector2 world, int view, out Vector2 cabinet)
         {
-            var cam = chase[0];
+            cabinet = default;
+            if (view < 0 || view >= chase.Length || chase[view] == null) return false;
+            var cam = chase[view];
             var foot = world - new Vector2(0, TagOffset);
             Vector3 s = cam.WorldToScreenPoint(new Vector3(foot.x, foot.y, -(carLift * 2 + .15f)));
-            if (s.z <= 0 || !cam.pixelRect.Contains(new Vector2(s.x, s.y))) return new Vector2(9999, 9999);
-            return HybridResolution.ArtToCabinet(new Vector2(s.x, s.y));
+            return HybridResolution.TagOnView(s, cam.pixelRect, out cabinet);
         }
 
         private Camera MakeChaseCamera(int seat)

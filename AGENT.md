@@ -104,16 +104,16 @@
 
 使用者想參考 SFC 做假 3D 版本，選定 **Mode 7 追尾視角**。原型只換呈現，比賽規則與 `GAME3` 共用。
 
-- `Assets/Scenes/GAME3_Mode7.unity`＋`Runtime/Mode7Stage.cs`（掛在 `GAME3 Prototype`）：透視追尾相機（1P 全畫面、2P 上下分割、示範追電腦車、淘汰後追第一名），場內黑地板＋場外格子地到地平線，車／破壞物／木箱／道具圖示／皇冠／爆炸對各相機立起來（`Camera.onPreCull`），原俯視相機變左下小地圖。車名與加分文字經 `DemolitionGame.CabinetProjector` 投影到 P1 畫面。
+- `Assets/Scenes/GAME3_Mode7.unity`＋`Runtime/Mode7Stage.cs`（掛在 `GAME3 Prototype`）：透視追尾相機（1P 全畫面、2P 上下分割、示範追電腦車、淘汰後追第一名），場內黑地板＋場外格子地到地平線，車／破壞物／木箱／道具圖示／皇冠／爆炸對各相機立起來（`Camera.onPreCull`），原俯視相機變左下小地圖。車名與加分文字經 `DemolitionGame.CabinetProjection`（`ICabinetProjection`）投影到每個追尾畫面（票單 02）。
 - 此場景**場地放大兩倍**（以場地中心 (0,-1.1) 放大：arena (-8.7,-6.6)～(8.7,4.4)，`Scrapyard (static)` 縮放 2、小地圖 ortho 10），**破壞物 5 個（箱子 3、油桶 2）、道具木箱 4 個**。超過原本「活動實體上限 10」的規格，屬使用者在此原型的要求。修補腳本 `tmp/m7-bigmap.cs`（只能跑一次）。
 - `DemolitionMatch` 的開局位置與重生角落改由場地邊界推算（預設場地數值不變，EditMode 33 個通過）。
 - `GAME3_Iso.unity`＋`IsoStage.cs`：先前的 Rock N' Roll Racing 式固定斜視角原型，保留供比較。
 - **車圖（16 方向）**：追尾視角的車改用使用者以 GPT 產生的 `Game3/Art/CarSheet.png`（768×48，16 格、每格 22.5°，第 0 格為從正後方看、順時針），`CarSheetPalette.shader`／`.mat` 把圖上 4 個鍵紅色換成座位顏色。`Mode7Stage.carFrames`／`carSheetMaterial` 依「相機看車的方位 − 車頭方向」選格；小地圖仍畫原本的俯視車圖。切圖與接線腳本 `tmp/m7-carsheet.cs`，截圖 `tmp/m7-carshot.cs`。
-- 待辦：P2 畫面無車名（票單 02）；sprite 前後遮擋仍依排序值；地面用 `Unlit/Texture`，出 Build 前需確保不被剔除。
+- 待辦：sprite 前後遮擋仍依排序值；地面用 `Unlit/Texture`，出 Build 前需確保不被剔除。
 
 ### 512×448 混合解析度（票單 01，2026-11-09 完成）
 
-- **畫面組成**：所有場景相機（追尾相機、小地圖）畫進一張 256×224 的 RenderTexture（Point 濾鏡），由 `Mode7Stage` 執行期在 HUD 畫布最底層放一個 512×448 的 RawImage 顯示，美術每個像素在畫面上是 2×2；文字與 HUD 直接畫在 512×448 畫布上（原生像素）。另有一台只清黑底的 `Mode7 backdrop` 相機處理視窗多出的邊。換算集中在 `Runtime/HybridResolution.cs`（EditMode `HybridResolutionTests` 14 個）。
+- **畫面組成**：所有場景相機（追尾相機、小地圖）畫進一張 256×224 的 RenderTexture（Point 濾鏡），由 `Mode7Stage` 執行期在 HUD 畫布最底層放一個 512×448 的 RawImage 顯示，美術每個像素在畫面上是 2×2；文字與 HUD 直接畫在 512×448 畫布上（原生像素）。另有一台只清黑底的 `Mode7 backdrop` 相機處理視窗多出的邊。換算集中在 `Runtime/HybridResolution.cs`（EditMode `HybridResolutionTests` 18 個）。
 - **整數倍顯示**：畫布改 `ConstantPixelSize`，倍率 = 視窗能放下 512×448 的最大整數倍（至少 1）：1024×896 以上 2 倍，1080p 全螢幕也是 2 倍、置中黑邊；剩餘邊寬為奇數時畫布往回移半像素，避免落在半像素上。已在 1100×960 與 1101×961 Game 視窗實測：畫面剛好 1024×896、美術為 4×4 方塊、無半像素。
 - **分割**：1P 全畫面；2P 上下各 512×224（RenderTexture 上各 256×112）。
 - **HUD 排版**（`Editor/Mode7Layout.cs`，`Mode7Layout.PatchScene()` 會先跑共用的 `Game3Text.PatchScene` 再改成 512×448，可重複執行，並把舊場景的小地圖範圍換成 `Mode7Stage.DefaultMinimapRect`）：追尾視角地平線以上約占每個畫面的上 1/3 天空，HUD 放在天空：頂端一行標題＋淘汰倒數，下面左側排行榜 4 行、右側玩家狀態；拿掉原本黑色頂條。提示列 1P 在 HUD 下方（y 360），2P 移到 P2 半邊的天空（y 206，`Mode7Stage.noticeAt1P/2P`）。底部一行操作提示。倒數、投幣繼續、結算面板置中；勝利圖 256×256 置中。
@@ -224,6 +224,12 @@
 - 2026-10-13 完成架構票單 06：比賽規則移到 `DemolitionMatch`，回傳 `MatchEvents` 事件，`DemolitionGame` 只當場景 adapter。火箭命中完全經由事件呈現（爆炸特效、命中音效、防護罩／撞毀提示）。新增 `TNDA.Prototype` 執行期組件與 EditMode 測試組件，4 個 EditMode 測試（火箭命中、致命火箭的撞毀與獎勵順序、防護罩格擋、整局淘汰到冠軍）以 Unity CLI 執行全部通過；`g3lifecycle`／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket`／`g3harm`／`g3items`／`g3driver` 164 項斷言通過。重新編譯與網域重新載入完成，Console 零錯誤、零警告。
 - 2026-10-13 完成架構票單 07：其餘提示文字、音效與車輛顯示隱藏全部改走事件，`DemolitionMatch`／`ArcadeVehicle`／`ArenaItems` 不再碰觸任何畫面或音效物件（EditMode 測試以沒有 sprite 的車輛跑完整局證明）。待機示範的靜音與不顯示提示集中在 `DemolitionGame.Present()`。`ArcadeGame.sounds` 標為 `[NonSerialized]`，避免 Editor 重新載入網域後變成空陣列而在 edit mode 驗證時越界。EditMode 測試 26 個全部通過（新增撞毀扣分與獎勵、扣分不低於 0、計時淘汰同分比耐久再比索引、60／90 秒依時間淘汰且示範不淘汰、冠軍與 Survived、各事件）。Play Mode `tmp/g3cues.cs` 17 項確認各路徑提示文字、顏色、停留時間與音效與修改前相同，待機示範 21 秒無音效、無提示；`tmp/g3attract.cs`（edit mode）6 項，停用 adapter 統一判斷時 2 項失敗。既有回歸 `g3lifecycle`（改讀 `car.Visible`）／`g3wreck`／`g3spin`／`g3bump`／`g3cherry`／`g3rocket`／`g3harm`／`g3items`／`g3driver`／`g3text` 全部通過，固定亂數 AI 軌跡與修改前完全相同。重新編譯與網域重新載入完成，Console 零錯誤、零警告。
 - 2026-10-14 完成架構票單 10：`ArcadeGame` 的掛點縮為 `ResetMatch`／`Tick`／`RefreshHud`，移除 `SupportsTwoPlayers`、`TickIdle`、`AfterTick` 與可覆寫的 `Awake`。`tmp/g3flow.cs` 逐幀記錄完整流程（待機示範、投幣、倒數、比賽、結算 20 秒返回、雙人、R、Esc），修改前後 11,701 幀完全相同；`tmp/g3tools.cs` 確認音效與字型設定工具仍可套用。EditMode 26 個測試與既有 Play Mode 回歸通過，Console 零錯誤、零警告。
+
+## Mode 7 票單 02：每個畫面各自的車名與加分文字（2026-11-09 完成）
+
+`DemolitionGame.CabinetProjector`（單一委派、只投影到 P1 相機）改為介面 `ICabinetProjection`：`Views`（目前有幾個畫面）與 `ToCabinet(world, view, out cabinet)`（點不在該畫面時回傳 false）。`Mode7Stage` 1P／待機為 1 個畫面、2P 為 2 個，各用自己的追尾相機投影；`IsoStage` 固定 1 個畫面。場景只有一組車名與加分文字（給第一個畫面）；第二個畫面由 `DemolitionGame` 第一次需要時複製一份（同畫布、排在原物件後面，名稱加「 (view 2)」），回到 1P 時隱藏。車在某畫面的相機後方或該半邊之外時，該畫面的標籤 `SetActive(false)`（原本是移到 (9999,9999)）。判斷集中在 `HybridResolution.TagOnView`（EditMode 4 個測試）。皇冠本來就是各相機都會畫的世界 Sprite，未改。
+
+驗證：`tmp/m7-02-labels.cs`（Play Mode，`setup 2|1|attract` 後 `check`）逐車、逐畫面比對相機投影：2P 兩半邊的車名與加分文字都跟著該相機、不跑到另一半邊、另一位玩家的車在自己半邊外時隱藏，皇冠在第一名；1P 第二組全隱藏；待機全隱藏。EditMode 82 個全部通過；重新編譯完成，Console 零錯誤、零警告。已知（修改前即存在）：追尾視角的皇冠高度與車名相同，第一名的車名會被皇冠蓋住（黃色 P2 最明顯）。
 
 ## Mode 7 票單 05：觀眾席與鐵絲網（2026-11-09 完成）
 

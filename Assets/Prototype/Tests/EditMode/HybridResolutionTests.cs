@@ -40,6 +40,37 @@ namespace TNDA.Prototype.Tests
             Assert.AreEqual(new Vector2(cx, cy), HybridResolution.ArtToCabinet(new Vector2(ax, ay)));
         }
 
+        // A name tag or score pop-up projected by one chase view (art pixels, z = depth in front of the camera) shows
+        // only inside that view's own share of the art texture.
+        private static readonly Rect P1Half = new Rect(0, 112, 256, 112), P2Half = new Rect(0, 0, 256, 112);
+
+        [Test]
+        public void Tag_inside_its_view_shows_at_the_cabinet_point()
+        {
+            Assert.IsTrue(HybridResolution.TagOnView(new Vector3(128, 50, 4), P2Half, out var cabinet));
+            Assert.AreEqual(new Vector2(0, -124), cabinet);
+        }
+
+        [Test]
+        public void Tag_behind_the_camera_is_hidden()
+        {
+            Assert.IsFalse(HybridResolution.TagOnView(new Vector3(128, 50, -4), P2Half, out _));
+        }
+
+        [Test]
+        public void Tag_that_falls_in_the_other_half_is_hidden()
+        {
+            Assert.IsFalse(HybridResolution.TagOnView(new Vector3(128, 150, 4), P2Half, out _), "P2's camera, P1's half");
+            Assert.IsFalse(HybridResolution.TagOnView(new Vector3(128, 100, 4), P1Half, out _), "P1's camera, P2's half");
+        }
+
+        [Test]
+        public void Tag_off_the_side_of_the_view_is_hidden()
+        {
+            Assert.IsFalse(HybridResolution.TagOnView(new Vector3(-3, 150, 4), P1Half, out _));
+            Assert.IsFalse(HybridResolution.TagOnView(new Vector3(260, 150, 4), P1Half, out _));
+        }
+
         // The top-down minimap camera shows the whole area in a rect of the given width / height.
         [Test]
         public void Minimap_fits_a_wide_arena_by_its_width()

@@ -24,6 +24,15 @@ namespace TNDA.Prototype
         public static Vector2 ArtToCabinet(Vector2 artPixel) =>
             artPixel * ArtScale - new Vector2(CabinetWidth, CabinetHeight) * .5f;
 
+        // A tag point as one chase camera sees it (art pixels, z = depth in front of the camera) shows only when it is
+        // in front of the camera and inside that camera's own view (in 2P, its own half of the art texture).
+        public static bool TagOnView(Vector3 screenPoint, Rect viewPixels, out Vector2 cabinet)
+        {
+            var art = new Vector2(screenPoint.x, screenPoint.y);
+            cabinet = ArtToCabinet(art);
+            return screenPoint.z > 0 && viewPixels.Contains(art);
+        }
+
         // Orthographic size that shows the whole area (world units) in a view of the given width / height.
         public static float FitOrthographicSize(Vector2 area, float aspect) => Mathf.Max(area.y / 2, area.x / 2 / aspect);
     }
