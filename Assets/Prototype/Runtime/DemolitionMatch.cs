@@ -4,11 +4,25 @@ using UnityEngine;
 
 namespace TNDA.Prototype
 {
+    // One timed elimination: at this many seconds, the lowest-scoring cars still in are knocked out, this many of them.
+    [System.Serializable]
+    public struct EliminationStep
+    {
+        public float at;
+        public int count;
+        public EliminationStep(float at, int count) { this.at = at; this.count = count; }
+    }
+
     // Gameplay values the match rules read. Defaults are the prototype values; DemolitionGame copies its Inspector
     // tuning in before every reset and tick.
     public sealed class MatchTuning
     {
-        public float firstElimination = 45, secondElimination = 80, roundSeconds = 120;
+        // The timed eliminations in order. The last step is the final: it ends the round, knocking out every car but
+        // the champion whatever its count says (more cars than that when continues brought some back). Four cars: 45 s, 80 s, then the final two at 120 s.
+        public EliminationStep[] eliminations = DefaultEliminations();
+        public static EliminationStep[] DefaultEliminations() =>
+            new[] { new EliminationStep(45, 1), new EliminationStep(80, 1), new EliminationStep(120, 1) };
+        public float RoundSeconds => eliminations[eliminations.Length - 1].at;
         public float driveSpeed = 2.8f, accelerationPerSecond = 1.4f, coastDownPerSecond = 2.2f;
         public float respawnSeconds = 3;
         public int wreckPenalty = 250, wreckBonus = 300;
@@ -52,25 +66,55 @@ namespace TNDA.Prototype
         public void ClearEvents() => events.Clear();
 
         public float Elapsed { get; private set; }
-        public int EliminationStage { get; private set; }
+        // Cars knocked out so far (by the clock or by the host).
+        public int CarsKnockedOut { get; private set; }
+        // Schedule steps already run.
+        private int stepsDone;
+        private EliminationStep CurrentStep => Tuning.eliminations[Mathf.Min(stepsDone, Tuning.eliminations.Length - 1)];
         public bool Finished { get; private set; }
         public bool Survived { get; private set; }
         public int Wrecks { get; private set; }
         public int Champion { get; private set; } = -1;
-        public float NextElimination => EliminationStage == 0 ? Tuning.firstElimination : EliminationStage == 1 ? Tuning.secondElimination : Tuning.roundSeconds;
+        public float NextElimination => CurrentStep.at;
         public int Contenders => Cars.Count(c => !c.eliminated);
 
-        // Respawn corners and starting spots sit a fixed distance in from the arena edges, so a bigger arena (the Mode 7
-        // scene) keeps them in its corners. With the default arena they are (±3.5, 1.1)/(±3.5, -3.2) and (±3.3, -3.1)/(±3.3, 1.1).
-        private Vector2[] RespawnCorners
+        // Respawn spots and starting spots sit a fixed distance in from the arena edges, so a bigger arena (the Mode 7
+        // scene) keeps them in its corners. Both are two rows spread evenly between the corners, one spot per car (and at
+        // least the four corners for respawns). Four cars with the default arena: respawns at (±3.5, 1.1)/(±3.5, -3.2),
+        // starts at (±3.3, -3.1) facing up and (±3.3, 1.1) facing down.
+        private Vector2[] RespawnSpots
         {
             get
             {
                 Vector2 min = Tuning.arenaMin, max = Tuning.arenaMax;
-                return new[] { new Vector2(min.x + .85f, max.y - .55f), new Vector2(max.x - .85f, max.y - .55f),
-                    new Vector2(max.x - .85f, min.y + .65f), new Vector2(min.x + .85f, min.y + .65f) };
+                // Top row left to right, then the bottom row right to left.
+                return TwoRows(Mathf.Max(4, Cars.Length), min.x + .85f, max.x - .85f, max.y - .55f, min.y + .65f);
             }
         }
+
+        // Bottom row left to right facing up, then the top row right to left facing down.
+        private (Vector2 spot, float heading)[] StartSpots()
+        {
+            Vector2 min = Tuning.arenaMin, max = Tuning.arenaMax;
+            var spots = TwoRows(Cars.Length, min.x + 1.05f, max.x - 1.05f, min.y + .75f, max.y - .55f);
+            int firstRow = (Cars.Length + 1) / 2;
+            return spots.Select((spot, i) => (spot, i < firstRow ? 90f : -90f)).ToArray();
+        }
+
+        // count spots: the first half (rounded up) on the first row from left to right, the rest on the second row from
+        // right to left, each row spread evenly from left to right edge.
+        private static Vector2[] TwoRows(int count, float left, float right, float firstY, float secondY)
+        {
+            int first = (count + 1) / 2, second = count - first;
+            var spots = new Vector2[count];
+            for (int i = 0; i < first; i++) spots[i] = new Vector2(Spread(left, right, i, first), firstY);
+            for (int i = 0; i < second; i++) spots[first + i] = new Vector2(Spread(right, left, i, second), secondY);
+            return spots;
+        }
+
+        // The row's ends land exactly on the edge offsets.
+        private static float Spread(float from, float to, int i, int count) =>
+            i == 0 || count <= 1 ? from : i == count - 1 ? to : Mathf.Lerp(from, to, i / (float)(count - 1));
 
         private VehicleLifecycleRules LifecycleRules => new VehicleLifecycleRules {
             wreckPenalty = Tuning.wreckPenalty, respawnSeconds = Tuning.respawnSeconds,
@@ -84,15 +128,13 @@ namespace TNDA.Prototype
             demo = demoMatch;
             Elapsed = 0;
             Finished = Survived = false;
-            Wrecks = EliminationStage = 0;
+            Wrecks = CarsKnockedOut = stepsDone = 0;
             Champion = -1;
             events.Clear();
-            Vector2 min = Tuning.arenaMin, max = Tuning.arenaMax;
-            Vector2[] starts = { new Vector2(min.x + 1.05f, min.y + .75f), new Vector2(max.x - 1.05f, min.y + .75f),
-                new Vector2(max.x - 1.05f, max.y - .55f), new Vector2(min.x + 1.05f, max.y - .55f) };
+            var starts = StartSpots();
             for (int i = 0; i < Cars.Length; i++)
             {
-                Cars[i].ResetVehicle(starts[i], i < 2 ? 90 : -90, humans);
+                Cars[i].ResetVehicle(starts[i].spot, starts[i].heading, humans);
                 Cars[i].Ai.BeginMatch();
             }
             foreach (var pickup in Pickups)
@@ -144,7 +186,7 @@ namespace TNDA.Prototype
             ResolveContacts(dt);
             MoveRockets(dt);
             UpdateSlicks(dt);
-            while (!demo && !Finished && Elapsed >= NextElimination) EliminateLowest();
+            while (!demo && !Finished && Elapsed >= NextElimination) EliminateNextStep();
         }
 
         // Wrecked and eliminated cars keep spinning off screen in every phase until they leave the view.
@@ -201,7 +243,7 @@ namespace TNDA.Prototype
         Vector2 IAiArena.ArenaMax => Tuning.arenaMax;
 
         // Late in the match (from the first elimination) the computer cars speed up; personalities stay the same.
-        public float AiTopSpeed(ArcadeVehicle car) => (EliminationStage > 0 ? Tuning.aiLateTopSpeed : Tuning.aiTopSpeed)
+        public float AiTopSpeed(ArcadeVehicle car) => (CarsKnockedOut > 0 ? Tuning.aiLateTopSpeed : Tuning.aiTopSpeed)
             * (car.Ai.Personality == AiPersonality.Wanderer ? Tuning.wandererTopSpeedScale : 1);
         bool IAiArena.CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) => CanHarm(attacker, victim);
 
@@ -474,9 +516,19 @@ namespace TNDA.Prototype
 
         private void RespawnVehicle(ArcadeVehicle car)
         {
-            Vector2 spawn = RespawnCorners.OrderByDescending(p => Cars.Where(c => c.alive)
+            Vector2 spawn = RespawnSpots.OrderByDescending(p => Cars.Where(c => c.alive)
                 .Select(c => Vector2.Distance(p, c.position)).DefaultIfEmpty(10).Min()).First();
             car.Respawn(spawn, spawn.x > 0 ? 180 : 0);
+        }
+
+        // Runs the next schedule step now: knocks out its count of cars, or everyone but the champion in the final. The
+        // clock calls it on time; a demo match's host calls it at its own pace.
+        public void EliminateNextStep()
+        {
+            bool final = stepsDone >= Tuning.eliminations.Length - 1;
+            int count = CurrentStep.count;
+            stepsDone++;
+            for (int i = 0; (final || i < count) && !Finished; i++) EliminateLowest();
         }
 
         // Ties: lower durability loses first, then the higher car index. Never random.
@@ -487,7 +539,7 @@ namespace TNDA.Prototype
             var loser = Cars.Where(c => !c.eliminated).OrderBy(c => c.score).ThenBy(c => c.health).ThenByDescending(c => c.index).First();
             loser.Eliminate(count, LifecycleRules);
             foreach (var rocket in Rockets.Where(r => r.active && r.owner == loser.index)) rocket.Hide();
-            EliminationStage++;
+            CarsKnockedOut++;
             events.Add(new VehicleEliminated(loser, count));
             if (Contenders == 1) EndRound();
         }

@@ -154,7 +154,7 @@ namespace TNDA.Prototype.Editor
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             return new { scene = ScenePath, saved = !scene.isDirty, cars = game.cars.Length, props = game.props.Length,
-                pickups = game.pickups.Length, rockets = game.rockets.Length, game.roundSeconds,
+                pickups = game.pickups.Length, rockets = game.rockets.Length, game.RoundSeconds,
                 activityCap = game.cars.Length + game.props.Length + game.pickups.Length + game.rockets.Length };
         }
 

@@ -61,9 +61,12 @@ namespace TNDA.Prototype
 
         public AiDriver(ArcadeVehicle car) { this.car = car; }
 
-        // Fixed by seat so a car keeps its personality in both modes: 1P has all three, 2P keeps 追王 and 碰碰, and the
-        // demo's fourth car (the P1 seat) is a second 碰碰.
-        public AiPersonality Personality => car.index == 1 ? AiPersonality.Wanderer : car.index == 2 ? AiPersonality.Hunter : AiPersonality.Bumper;
+        // Fixed by seat (P1 first) so a car keeps its personality in both modes: with four cars 1P has all three, 2P keeps
+        // 追王 and 碰碰, and the demo's fourth car (the P1 seat) is a second 碰碰. Seats past the table repeat it.
+        public static readonly IReadOnlyList<AiPersonality> SeatPersonalities = new[]
+            { AiPersonality.Bumper, AiPersonality.Wanderer, AiPersonality.Hunter, AiPersonality.Bumper };
+
+        public AiPersonality Personality => SeatPersonalities[car.index % SeatPersonalities.Count];
 
         // The car this AI is ramming right now; a wreck hunts nobody.
         public ArcadeVehicle Target => car.alive ? target : null;

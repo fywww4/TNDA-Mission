@@ -42,7 +42,9 @@ namespace TNDA.Prototype
         public Transform[] healthBars, shieldViews;
 
         [Header("Elimination arena tuning")]
-        public float firstElimination = Defaults.firstElimination, secondElimination = Defaults.secondElimination, roundSeconds = Defaults.roundSeconds;
+        [Tooltip("Timed eliminations in order: at this many seconds knock out this many of the lowest scores. The last step is the final and the end of the round: everyone but the champion is knocked out.")]
+        public EliminationStep[] eliminationSchedule = MatchTuning.DefaultEliminations();
+        public float RoundSeconds => Match.Tuning.RoundSeconds;
         public float driveSpeed = Defaults.driveSpeed;
         [Tooltip("Speed gained per second while gas is held (reaches top speed in about 2s).")]
         public float accelerationPerSecond = Defaults.accelerationPerSecond;
@@ -146,7 +148,8 @@ namespace TNDA.Prototype
                 if (match == null || match.Cars != cars || match.Props != props || match.Pickups != pickups || match.Rockets != rockets)
                     match = new DemolitionMatch(cars, props, pickups, rockets, new MatchTuning());
                 var t = match.Tuning;
-                t.firstElimination = firstElimination; t.secondElimination = secondElimination; t.roundSeconds = roundSeconds;
+                if (eliminationSchedule == null || eliminationSchedule.Length == 0) eliminationSchedule = MatchTuning.DefaultEliminations();
+                t.eliminations = eliminationSchedule;
                 t.driveSpeed = driveSpeed; t.accelerationPerSecond = accelerationPerSecond; t.coastDownPerSecond = coastDownPerSecond;
                 t.respawnSeconds = enemyRespawnSeconds; t.wreckPenalty = wreckPenalty; t.wreckBonus = wreckBonus;
                 t.shieldDuration = shieldDuration; t.pickupRespawnSeconds = pickupRespawnSeconds;
@@ -162,7 +165,7 @@ namespace TNDA.Prototype
             }
         }
 
-        public float Remaining => Mathf.Max(0, roundSeconds - Elapsed);
+        public float Remaining => Mathf.Max(0, RoundSeconds - Elapsed);
         public float NextElimination => Match.NextElimination;
         public int Contenders => Match.Contenders;
         public bool Survived => Match.Survived;
@@ -232,9 +235,9 @@ namespace TNDA.Prototype
             if (!demo || Elapsed >= demoLoopSeconds) StartDemo();
             Elapsed += dt;
             Simulate(dt, new ArcadeInput(), new ArcadeInput());
-            if (Match.EliminationStage == 0 && Elapsed >= demoEliminationSeconds)
+            if (Match.CarsKnockedOut == 0 && Elapsed >= demoEliminationSeconds)
             {
-                Match.EliminateLowest();
+                Match.EliminateNextStep();
                 Present();
             }
         }
@@ -255,8 +258,7 @@ namespace TNDA.Prototype
             victor = null;
             if (victoryScreen != null) victoryScreen.SetActive(false);
             Match.Reset(demo ? 0 : PlayerCount, demo);
-            // P1 cyan, P2 yellow (Player2, or Panda in 1P); P3 and P4 are white bodies drawn striped (see RefreshHud).
-            foreach (var car in cars) car.body.color = car.index == 0 ? Cyan : car.index == 1 ? Yellow : White;
+            foreach (var car in cars) car.body.color = Livery(car.index).body;
             for (int i = 0; i < cars.Length; i++)
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].GetComponentInChildren<SpriteRenderer>().color = cars[i].body.color;
@@ -296,7 +298,7 @@ namespace TNDA.Prototype
             {
                 if (e is RocketHit hit) Explode(hit.Point);
                 else if (e is ScoreChanged score) PopScore(score);
-                // A player knocked out at the first or second timed elimination (45 or 80 s) may pay to continue; the final elimination ends the match.
+                // A player knocked out before the final (45 or 80 s with four cars) may pay to continue; the final elimination ends the match.
                 else if (e is VehicleEliminated knockedOut && !quiet && !demo && !knockedOut.Car.computer && !Match.Finished
                     && knockedOut.Car.index < continueLeft.Length) continueLeft[knockedOut.Car.index] = continueSeconds;
                 else if (e is MatchEnded end)
@@ -624,12 +626,12 @@ namespace TNDA.Prototype
                 // Cherry power: the car turns cyan-and-yellow striped, blinking in the last two seconds as a warning.
                 // Otherwise P3 and P4 wear their own stripes and P1/P2 stay solid.
                 bool cherryOn = HasCherry(car) && (car.CherrySeconds > 2 || Mathf.FloorToInt(Elapsed * 8) % 2 == 0);
-                bool seatStripes = car.index >= 2;
+                var livery = Livery(car.index);
                 if (solidBlock == null) solidBlock = new MaterialPropertyBlock();
                 car.body.GetPropertyBlock(solidBlock);
-                solidBlock.SetFloat("_Solid", cherryOn || seatStripes ? 1 : 0);
-                solidBlock.SetColor("_SolidColor", cherryOn ? cherryStripeA : car.index == 2 ? p3StripeA : p4StripeA);
-                solidBlock.SetColor("_StripeColor", cherryOn ? cherryStripeB : car.index == 2 ? p3StripeB : p4StripeB);
+                solidBlock.SetFloat("_Solid", cherryOn || livery.striped ? 1 : 0);
+                solidBlock.SetColor("_SolidColor", cherryOn ? cherryStripeA : livery.stripeA);
+                solidBlock.SetColor("_StripeColor", cherryOn ? cherryStripeB : livery.stripeB);
                 car.body.SetPropertyBlock(solidBlock);
             }
             ShowCrown();
@@ -652,6 +654,19 @@ namespace TNDA.Prototype
             if (Phase == ArcadePhase.Attract) overlayHint.text = CabinetText.AttractHint;
             ShowStartMessages();
             ShowContinue();
+        }
+
+        // A seat's colours: P1 cyan and P2 yellow (Player2, or Panda in 1P) are solid (their stripe colours are unused
+        // but set as before); P3 and P4 are white bodies drawn striped. Seats past P4 repeat the four.
+        private (Color body, bool striped, Color stripeA, Color stripeB) Livery(int seat)
+        {
+            switch (seat % 4)
+            {
+                case 0: return (Cyan, false, p4StripeA, p4StripeB);
+                case 1: return (Yellow, false, p4StripeA, p4StripeB);
+                case 2: return (White, true, p3StripeA, p3StripeB);
+                default: return (White, true, p4StripeA, p4StripeB);
+            }
         }
 
         // The crown rides above the car in first place: highest score among cars still in, ties to the lower seat. Nobody
