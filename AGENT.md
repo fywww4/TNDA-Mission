@@ -108,7 +108,22 @@
 - 此場景**場地放大兩倍**（以場地中心 (0,-1.1) 放大：arena (-8.7,-6.6)～(8.7,4.4)，`Scrapyard (static)` 縮放 2、小地圖 ortho 10），**破壞物 5 個（箱子 3、油桶 2）、道具木箱 4 個**。超過原本「活動實體上限 10」的規格，屬使用者在此原型的要求。修補腳本 `tmp/m7-bigmap.cs`（只能跑一次）。
 - `DemolitionMatch` 的開局位置與重生角落改由場地邊界推算（預設場地數值不變，EditMode 33 個通過）。
 - `GAME3_Iso.unity`＋`IsoStage.cs`：先前的 Rock N' Roll Racing 式固定斜視角原型，保留供比較。
-- 待辦：車子仍是俯視圖立起來的占位圖（已給使用者 GPT 用的 16 方向、仰角 15° 的 768×48 sprite sheet 提示詞，車身烤漆固定 4 個紅色供換色）；2P 時 HUD 遮住上半畫面；P2 畫面無車名；sprite 前後遮擋仍依排序值；地面用 `Unlit/Texture`，出 Build 前需確保不被剔除。
+- **車圖（16 方向）**：追尾視角的車改用使用者以 GPT 產生的 `Game3/Art/CarSheet.png`（768×48，16 格、每格 22.5°，第 0 格為從正後方看、順時針），`CarSheetPalette.shader`／`.mat` 把圖上 4 個鍵紅色換成座位顏色。`Mode7Stage.carFrames`／`carSheetMaterial` 依「相機看車的方位 − 車頭方向」選格；小地圖仍畫原本的俯視車圖。切圖與接線腳本 `tmp/m7-carsheet.cs`，截圖 `tmp/m7-carshot.cs`。
+- 待辦：P2 畫面無車名（票單 02）；sprite 前後遮擋仍依排序值；地面用 `Unlit/Texture`，出 Build 前需確保不被剔除。
+
+### 512×448 混合解析度（票單 01，2026-11-09 完成）
+
+- **畫面組成**：所有場景相機（追尾相機、小地圖）畫進一張 256×224 的 RenderTexture（Point 濾鏡），由 `Mode7Stage` 執行期在 HUD 畫布最底層放一個 512×448 的 RawImage 顯示，美術每個像素在畫面上是 2×2；文字與 HUD 直接畫在 512×448 畫布上（原生像素）。另有一台只清黑底的 `Mode7 backdrop` 相機處理視窗多出的邊。換算集中在 `Runtime/HybridResolution.cs`（EditMode `HybridResolutionTests` 14 個）。
+- **整數倍顯示**：畫布改 `ConstantPixelSize`，倍率 = 視窗能放下 512×448 的最大整數倍（至少 1）：1024×896 以上 2 倍，1080p 全螢幕也是 2 倍、置中黑邊；剩餘邊寬為奇數時畫布往回移半像素，避免落在半像素上。已在 1100×960 與 1101×961 Game 視窗實測：畫面剛好 1024×896、美術為 4×4 方塊、無半像素。
+- **分割**：1P 全畫面；2P 上下各 512×224（RenderTexture 上各 256×112）。
+- **HUD 排版**（`Editor/Mode7Layout.cs`，`Mode7Layout.PatchScene()` 會先跑共用的 `Game3Text.PatchScene` 再改成 512×448，可重複執行，並把舊場景的小地圖範圍換成 `Mode7Stage.DefaultMinimapRect`）：追尾視角地平線以上約占每個畫面的上 1/3 天空，HUD 放在天空：頂端一行標題＋淘汰倒數，下面左側排行榜 4 行、右側玩家狀態；拿掉原本黑色頂條。提示列 1P 在 HUD 下方（y 360），2P 移到 P2 半邊的天空（y 206，`Mode7Stage.noticeAt1P/2P`）。底部一行操作提示。倒數、投幣繼續、結算面板置中；勝利圖 256×256 置中。
+- **小地圖**：256×224 上的 (4, 18, 72×48)（畫面 144×96），依場地含圍欄自動算 ortho 套進去，外加白色（`ArcadeGame.White`）1 美術像素外框；每台車加一個只在小地圖顯示的車色方塊（`Minimap blip`，layer 30，`blipSize` 1.6，比木箱大，白色的 P3／P4 也分得出是車）。2P 時小地圖在 P2 半邊左下角。
+- **Editor 與建置**：Game 視窗固定 512×448（自訂尺寸「Mode 7 512x448」）。Player Settings：Windows 預設 1024×896（仍是全螢幕視窗模式）、網頁畫布 1024×896。注意：目前 Build Settings 仍是俯視版 `GAME3`（320×320 版面），在 1024×896 會非整數放大；票單 03 換主場景後解決。
+- 驗證：`tmp/m7-01-shot.cs`（Play Mode，同一狀態跑兩次：先設定、再隔幾幀擷取）擷取待機示範、倒數、1P、2P、投幣繼續、勝利、結算 7 張 `tmp/m7-01-*.png`，逐一檢查排版；場景區 2×2 方塊一致（只有文字處不同）。EditMode 54 個通過，Console 零錯誤、零警告。
+
+## Mode 7 擴充規劃（2026-11-09，尚未實作）
+
+使用者確認以 `GAME3_Mode7` 為主線，新增功能拆成票單 `.scratch/mode7-expansion/issues/01～15`（照編號與 Blocked by 開工）。用詞以根目錄 `GLOSSARY.md` 為準（「硬幣」＝投幣點數、「金幣」＝存檔的獎勵貨幣，兩者不同）。解析度改為 512×448 混合（美術 2 倍粗像素、文字原生），見 `Docs/adr/0001-hybrid-512x448-resolution.md`。內容：混合解析度與 HUD、P2 標籤、換主場景、碎片噴濺、觀眾席與鐵絲網、8 台車金字塔淘汰（40 秒淘汰 4、80 秒淘汰 2、120 秒決賽）、金幣存檔、挑戰模式三個挑戰。車庫待決定；手排與關卡模式依使用者指示保留不做。觀眾席、鐵絲網、碎片的 GPT 美術提示詞已交給使用者（`crowd.png`、`fence.png`、`debris.png`），到貨前用占位圖。
 
 ## 建置輸出
 
