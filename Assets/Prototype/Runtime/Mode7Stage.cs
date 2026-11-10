@@ -175,6 +175,7 @@ namespace TNDA.Prototype
             KeepWholeScale();
             if (game.notice != null)
                 game.notice.rectTransform.anchoredPosition = two ? (Vector2)noticeAt2P : (Vector2)noticeAt1P;
+            PlaceContinuePanels(two);
             if (game.cars.Length > 4 && game.hud != null)
                 game.hud.rectTransform.anchoredPosition = new Vector2(6, two ? 210 : 362);
             foreach (var blip in blips)
@@ -418,6 +419,19 @@ namespace TNDA.Prototype
                 }
             }
             UnityEngine.Rendering.SortingGroup.UpdateAllSortingGroups();
+        }
+
+        // Each player's continue panel sits on that player's own road; GAME OVER (first panel) is centred on the screen.
+        private void PlaceContinuePanels(bool two)
+        {
+            if (game.continuePanels == null) return;
+            for (int seat = 0; seat < game.continuePanels.Length; seat++)
+            {
+                var view = game.continuePanels[seat];
+                if (view == null || view.panel == null) continue;
+                var rect = (RectTransform)view.panel.transform;
+                rect.anchoredPosition = HybridResolution.ContinueCentre(seat, two && !game.ContinueShowsGameOver) - rect.sizeDelta / 2;
+            }
         }
 
         // Name tags and score pop-ups get a set per chase view: one in 1P and attract, two in a 2P split.

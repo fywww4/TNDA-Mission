@@ -221,34 +221,47 @@ namespace TNDA.Prototype.Editor
             EditorUtility.SetDirty(game);
         }
 
-        // The CONTINUE? countdown over the arena centre (rebuilt each time): title, big number and the coin hint, all
-        // yellow on black. It sits above the score pop-ups and under the title/result panel.
+        // The CONTINUE? countdown panels (rebuilt each time), one per player seat: title, big number and the coin hint,
+        // all yellow on black. They sit above the score pop-ups and under the title/result panel. The stage moves
+        // each into its own half in 2P; the first one also carries GAME OVER.
         public static void CreateContinuePanel(DemolitionGame game)
         {
             var cabinet = game.header.transform.parent;
-            var old = cabinet.Find("Continue panel");
-            if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
-            var root = new UnityEngine.GameObject("Continue panel", typeof(UnityEngine.RectTransform)).GetComponent<UnityEngine.RectTransform>();
-            Undo.RegisterCreatedObjectUndo(root.gameObject, "GAME3 continue panel");
-            root.SetParent(cabinet, false);
-            root.SetSiblingIndex(game.overlay.transform.GetSiblingIndex());
-            root.anchorMin = root.anchorMax = root.pivot = UnityEngine.Vector2.zero;
-            root.anchoredPosition = new UnityEngine.Vector2(40, 78);
-            root.sizeDelta = new UnityEngine.Vector2(240, 116);
-            var rim = root.gameObject.AddComponent<UnityEngine.UI.Image>();
-            rim.color = ArcadeGame.Yellow;
-            rim.raycastTarget = false;
-            var inset = Rect(root, "Black inset", 1, 1, 238, 114).gameObject.AddComponent<UnityEngine.UI.Image>();
-            inset.color = UnityEngine.Color.black;
-            inset.raycastTarget = false;
-            const int px = ArcadeFontSetup.PixelSize;
+            foreach (var name in new[] { "Continue panel", "Continue panel P2" })
+            {
+                var old = cabinet.Find(name);
+                if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+            }
             Undo.RecordObject(game, "GAME3 continue panel");
-            game.continueTitle = Label(root, "Title", 0, 84, 240, 26, px * 2);
-            game.continueCount = Label(root, "Count", 0, 28, 240, 52, px * 4);
-            game.continueHint = Label(root, "Hint", 0, 10, 240, 13, px);
-            game.continuePanel = root.gameObject;
-            root.gameObject.SetActive(false);
+            game.continuePanels = new[] { Build("Continue panel"), Build("Continue panel P2") };
             EditorUtility.SetDirty(game);
+
+            DemolitionGame.ContinuePanelView Build(string panelName)
+            {
+                var root = new UnityEngine.GameObject(panelName, typeof(UnityEngine.RectTransform)).GetComponent<UnityEngine.RectTransform>();
+                Undo.RegisterCreatedObjectUndo(root.gameObject, "GAME3 continue panel");
+                root.SetParent(cabinet, false);
+                root.SetSiblingIndex(game.overlay.transform.GetSiblingIndex());
+                root.anchorMin = root.anchorMax = root.pivot = UnityEngine.Vector2.zero;
+                root.anchoredPosition = new UnityEngine.Vector2(40, 78);
+                root.sizeDelta = new UnityEngine.Vector2(240, 116);
+                var rim = root.gameObject.AddComponent<UnityEngine.UI.Image>();
+                rim.color = ArcadeGame.Yellow;
+                rim.raycastTarget = false;
+                var inset = Rect(root, "Black inset", 1, 1, 238, 114).gameObject.AddComponent<UnityEngine.UI.Image>();
+                inset.color = UnityEngine.Color.black;
+                inset.raycastTarget = false;
+                const int px = ArcadeFontSetup.PixelSize;
+                var view = new DemolitionGame.ContinuePanelView
+                {
+                    title = Label(root, "Title", 0, 84, 240, 26, px * 2),
+                    count = Label(root, "Count", 0, 28, 240, 52, px * 4),
+                    hint = Label(root, "Hint", 0, 10, 240, 13, px),
+                    panel = root.gameObject
+                };
+                root.gameObject.SetActive(false);
+                return view;
+            }
 
             TextMeshProUGUI Label(UnityEngine.RectTransform parent, string name, float x, float y, float w, float h, int size)
             {

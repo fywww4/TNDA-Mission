@@ -19,6 +19,15 @@ namespace TNDA.Prototype
         public static Rect ViewRect(int seat, bool twoPlayers) =>
             !twoPlayers ? new Rect(0, 0, 1, 1) : new Rect(0, seat == 0 ? .5f : 0, 1, .5f);
 
+        // Where a seat's continue panel is centred (cabinet pixels, bottom-left origin). 1P: the middle of the screen.
+        // 2P: the road of that seat's own half, below its sky (the top third of a view holds the HUD).
+        public static Vector2 ContinueCentre(int seat, bool twoPlayers)
+        {
+            var view = ViewRect(seat, twoPlayers);
+            float y = twoPlayers ? view.yMin * CabinetHeight + view.height * CabinetHeight / 3 : CabinetHeight / 2f;
+            return new Vector2(CabinetWidth / 2f, y);
+        }
+
         // A point on the art texture (pixels, bottom-left origin) in cabinet units (512x448, centre origin), the space
         // the name tags and score pop-ups are placed in.
         public static Vector2 ArtToCabinet(Vector2 artPixel) =>

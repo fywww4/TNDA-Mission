@@ -4,10 +4,12 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** done (2026-11-10)
 
-- [ ] EditMode 測試：40 秒與 80 秒淘汰的真人可以復活，決賽輸家不行
-- [ ] 2P 同一次淘汰兩人都出局時，兩人的繼續面板與倒數各自運作，一人復活不影響另一人
-- [ ] 沒投幣、場上已無真人時照舊顯示 GAME OVER 後回標題
-- [ ] 面板在 512×448 版面下位置正確，2P 時出現在各自的半邊
-- [ ] 重新編譯成功，Console 零錯誤、零警告
+- [x] EditMode 測試：40 秒與 80 秒淘汰的真人可以復活，決賽輸家不行
+- [x] 2P 同一次淘汰兩人都出局時，兩人的繼續面板與倒數各自運作，一人復活不影響另一人
+- [x] 沒投幣、場上已無真人時照舊顯示 GAME OVER 後回標題
+- [x] 面板在 512×448 版面下位置正確，2P 時出現在各自的半邊
+- [x] 重新編譯成功，Console 零錯誤、零警告
+
+驗證與設計：AGENT.md「Mode 7 票單 08」。EditMode `ContinueCountdownTests` 9 項、完整 EditMode 128／128、Play Mode 流程（2P 同時淘汰、GAME OVER）通過；截圖 `Docs/Game3/continue-2p.png`。

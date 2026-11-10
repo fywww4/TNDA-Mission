@@ -80,7 +80,7 @@ namespace TNDA.Prototype.Editor
             // Middle of the cabinet: countdown, coin/result panel, continue panel.
             Centre(game.countdownLabel.rectTransform);
             Centre((RectTransform)game.overlay.transform);
-            Centre((RectTransform)game.continuePanel.transform);
+            foreach (var view in game.continuePanels) Centre((RectTransform)view.panel.transform);   // Mode7Stage moves them per view
             LayOutAttract((RectTransform)game.attractScreen.transform);
             LayOutVictory((RectTransform)game.victoryScreen.transform);
             EditorUtility.SetDirty(game);

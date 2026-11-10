@@ -195,10 +195,19 @@ namespace TNDA.Prototype
         public float continueSeconds = 10;
         [Tooltip("GAME OVER shows this long once no player is left, then the title demo returns.")]
         public float gameOverSeconds = 2;
-        public GameObject continuePanel;
-        public TMP_Text continueTitle, continueCount, continueHint;
-        private readonly float[] continueLeft = { -1, -1 };
+        [System.Serializable]
+        public class ContinuePanelView
+        {
+            public GameObject panel;
+            public TMP_Text title, count, hint;
+        }
+        [Tooltip("One panel per player seat: index 0 is P1's, 1 is P2's. The stage places each in its own half in 2P.")]
+        public ContinuePanelView[] continuePanels = new ContinuePanelView[2];
+        private ContinueCountdowns continues;
+        private ContinueCountdowns Continues => continues ??= new ContinueCountdowns(2, continueSeconds);
         private float gameOverLeft = -1;
+        // GAME OVER is showing on the first panel instead of a seat's countdown (the stage then centres it).
+        public bool ContinueShowsGameOver => !Continues.AnyWaiting && gameOverLeft >= 0;
 
         [Header("Victory picture (a player won)")]
         [Tooltip("Shown full screen for victorySeconds when a player is champion (the match stands still), then the results.")]
@@ -286,7 +295,8 @@ namespace TNDA.Prototype
             demo = startingDemo;
             goldAwarded = false;
             RoundGold = 0;
-            continueLeft[0] = continueLeft[1] = gameOverLeft = -1;
+            Continues.Clear();
+            gameOverLeft = -1;
             victoryLeft = -1;
             victor = null;
             if (victoryScreen != null) victoryScreen.SetActive(false);
@@ -340,9 +350,8 @@ namespace TNDA.Prototype
                 if (e is DebrisSplashed debris && !quiet && !demo) DebrisPresented?.Invoke(debris);
                 if (e is RocketHit hit) Explode(hit.Point);
                 else if (e is ScoreChanged score) PopScore(score);
-                // A player knocked out before the final (45 or 80 s with four cars) may pay to continue; the final elimination ends the match.
-                else if (e is VehicleEliminated knockedOut && !quiet && !demo && !knockedOut.Car.computer && !Match.Finished
-                    && knockedOut.Car.index < continueLeft.Length) continueLeft[knockedOut.Car.index] = continueSeconds;
+                // A player knocked out before the final (the 40 s or 80 s elimination in arcade mode) may pay to continue; the final elimination ends the match.
+                else if (e is VehicleEliminated knockedOut && !quiet && !demo) Continues.Offer(knockedOut.Car, Match.Finished);
                 else if (e is MatchEnded end)
                 {
                     AwardGold();
@@ -548,36 +557,21 @@ namespace TNDA.Prototype
             }
         }
 
-        // Each knocked-out player's 10-second continue: the item button spends a coin and rejoins. Once no player is left
-        // and no countdown runs, GAME OVER shows briefly and the title demo returns.
+        // Each knocked-out player's own 10-second continue: the item button spends a coin and rejoins. Once no player is
+        // left and no countdown runs, GAME OVER shows briefly and the title demo returns.
         private void UpdateContinues(float dt, ArcadeInput p1, ArcadeInput p2)
         {
             if (Phase != ArcadePhase.Playing || Match.Finished)
             {
-                continueLeft[0] = continueLeft[1] = gameOverLeft = -1;
+                Continues.Clear();
+                gameOverLeft = -1;
                 return;
             }
-            for (int seat = 0; seat < continueLeft.Length; seat++)
-            {
-                if (continueLeft[seat] < 0) continue;
-                if (seat == 0 ? p1.actionPressed : p2.actionPressed)
-                {
-                    if (SpendCredits(1))
-                    {
-                        continueLeft[seat] = -1;
-                        Match.Revive(cars[seat]);
-                        Present();
-                        continue;
-                    }
-                    Announce(CabinetText.InsertCoinFirst, Yellow, 1.5f);
-                }
-                int shown = Mathf.CeilToInt(continueLeft[seat]);
-                continueLeft[seat] -= dt;
-                if (continueLeft[seat] <= 0) continueLeft[seat] = -1;
-                else if (Mathf.CeilToInt(continueLeft[seat]) != shown) Sound(0);
-            }
-            bool waiting = continueLeft[0] >= 0 || continueLeft[1] >= 0;
-            if (gameOverLeft < 0 && !waiting && cars.Where(c => !c.computer).All(c => c.eliminated))
+            Continues.Advance(dt, seat => seat == 0 ? p1.actionPressed : p2.actionPressed, () => SpendCredits(1),
+                seat => { Match.Revive(cars[seat]); Present(); },
+                seat => Announce(CabinetText.InsertCoinFirst, Yellow, 1.5f),
+                seat => Sound(0));
+            if (gameOverLeft < 0 && !Continues.AnyWaiting && cars.Where(c => !c.computer).All(c => c.eliminated))
             {
                 AwardGold();
                 gameOverLeft = gameOverSeconds;
@@ -587,22 +581,29 @@ namespace TNDA.Prototype
 
         private void ShowContinue()
         {
-            if (continuePanel == null) return;
-            int seat = continueLeft[0] >= 0 ? 0 : continueLeft[1] >= 0 ? 1 : -1;
-            bool over = seat < 0 && gameOverLeft >= 0;
-            continuePanel.SetActive(Phase == ArcadePhase.Playing && (seat >= 0 || over));
-            if (seat >= 0)
+            if (continuePanels == null) return;
+            bool over = ContinueShowsGameOver;
+            for (int seat = 0; seat < continuePanels.Length; seat++)
             {
-                string key = seat == 0 ? CabinetText.P1ContinueKey : CabinetText.P2ContinueKey;
-                continueTitle.text = string.Format(CabinetText.ContinueTitle, cars[seat].DriverName);
-                continueCount.text = Mathf.CeilToInt(continueLeft[seat]).ToString();
-                continueHint.text = Credits > 0 ? string.Format(CabinetText.ContinuePress, key, Credits) : string.Format(CabinetText.ContinueNeedCoin, key);
-            }
-            else if (over)
-            {
-                continueTitle.text = CabinetText.GameOver;
-                continueCount.text = "";
-                continueHint.text = GoldSummary;
+                var view = continuePanels[seat];
+                if (view == null || view.panel == null) continue;
+                bool waiting = seat < Continues.Seats && Continues.Waiting(seat);
+                bool show = Phase == ArcadePhase.Playing && (waiting || over && seat == 0);
+                view.panel.SetActive(show);
+                if (!show) continue;
+                if (waiting)
+                {
+                    string key = seat == 0 ? CabinetText.P1ContinueKey : CabinetText.P2ContinueKey;
+                    view.title.text = string.Format(CabinetText.ContinueTitle, cars[seat].DriverName);
+                    view.count.text = Continues.SecondsShown(seat).ToString();
+                    view.hint.text = Credits > 0 ? string.Format(CabinetText.ContinuePress, key, Credits) : string.Format(CabinetText.ContinueNeedCoin, key);
+                }
+                else
+                {
+                    view.title.text = CabinetText.GameOver;
+                    view.count.text = "";
+                    view.hint.text = GoldSummary;
+                }
             }
         }
 
