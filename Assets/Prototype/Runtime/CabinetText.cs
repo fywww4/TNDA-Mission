@@ -42,7 +42,10 @@ namespace TNDA.Prototype
         public const string ModeTabs = "←　{0}　{1}　→";
         public const string ChallengeRule = "不用投幣　只限單人";
         public const string ChallengePrompt = "↑↓選擇　按 1 開始";
-        public const string ChallengeLocked = "未解鎖，需 {0} 金幣";
+        public const string ChallengeLocked = "按 1 花 {0} 金幣解鎖";
+        public const string ChallengeGoldShort = "金幣不足　需 {0}，現有 {1}";
+        public const string ChallengeBought = "已解鎖「{0}」";
+        public const string ChallengeComingSoon = "準備中，尚未開放";
         public const string ChallengeRow = "{0} {1}　{2}";
         public const string ChallengeBestShort = "最佳 {0}";
         public const string ChallengeUnlocked = "已解鎖";
@@ -56,6 +59,9 @@ namespace TNDA.Prototype
         public const string ChallengeBoard = "挑戰　{0}";
         public const string ChallengeScoreLine = "本次成績 {0}";
         public const string ChallengeBestLine = "最佳紀錄 {0}";
+        // 不被撞毀's result: the durability left on a pass; a wreck (or no pass yet) shows ChallengeNotPassed.
+        public const string ChallengeDurabilityLeft = "耐久 {0}%";
+        public const string ChallengeNotPassed = "未過關";
         public const string ChallengeNewBest = "新紀錄！";
         public const string ChallengeResultsHint = "按 1 重試　按 Esc 回列表";
         public const string ChallengeReturn = "{0} 秒後回列表　按 1 重試";

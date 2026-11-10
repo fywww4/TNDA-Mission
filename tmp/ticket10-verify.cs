@@ -25,11 +25,11 @@ try
     check("rule line says no coin needed", g.attractRule.text == TNDA.Prototype.CabinetText.ChallengeRule);
 
     // Locked challenges cannot start; coins unchanged.
-    g.MoveChallengeCursor(1);
+    g.MoveChallengeCursor(2); // 不被撞毀: the 90 s challenge has no rules yet and says so instead
     g.Advance(dt, none, none);
     check("locked prompt shows the price", g.attractPrompt.text.Contains("150"));
     check("a locked challenge will not start", !g.TryStartChallenge(g.SelectedChallenge) && g.Phase == TNDA.Prototype.ArcadePhase.Attract);
-    g.MoveChallengeCursor(-1);
+    g.MoveChallengeCursor(-2);
 
     // Start with no coins.
     check("no coins inserted", g.Credits == oldCredits);
@@ -69,7 +69,7 @@ try
     g.ShowAttract();
     g.Advance(dt, none, none);
     check("back at the title in challenge mode with no active challenge", g.Phase == TNDA.Prototype.ArcadePhase.Attract && g.Mode == TNDA.Prototype.CabinetMode.Challenge && g.ActiveChallenge == null);
-    check("list shows the saved best", g.attractChallenges.text.Contains("最佳 1234"));
+    check("list shows the saved best", g.attractChallenges.text.Contains("最佳 01234"));
 
     // An arcade start afterwards has normal rules: three scheduled eliminations, crates can roll cherries.
     g.SelectMode(TNDA.Prototype.CabinetMode.Arcade);

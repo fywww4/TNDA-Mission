@@ -41,6 +41,15 @@ namespace TNDA.Prototype
         public bool randomPropSpots = true;
         // Challenge switches (default = the arcade match): crates give only rockets; rams earn no points or wreck bonus.
         public bool rocketCratesOnly = false, ramsScore = true;
+        // 不被撞毀: a player's wreck ends the round at once as a loss, and a player still in at the final wins it.
+        public bool wreckEndsRound = false;
+        // Every computer car drives as a 追王 whose chases go only for players (and keep going for the one it rammed).
+        public bool allAiHuntThePlayer = false;
+        // Every challenge switch back to the arcade match.
+        public void ResetChallengeSwitches()
+        {
+            rocketCratesOnly = false; ramsScore = true; wreckEndsRound = false; allAiHuntThePlayer = false;
+        }
         // Oil: the slick spins a car out for oilSlipSeconds, earns its dropper oilBonus, and dries after oilLifeSeconds.
         public float oilSlipSeconds = .8f, oilLifeSeconds = 12;
         public int oilBonus = 50;
@@ -139,7 +148,7 @@ namespace TNDA.Prototype
             for (int i = 0; i < Cars.Length; i++)
             {
                 Cars[i].ResetVehicle(starts[i].spot, starts[i].heading, humans);
-                Cars[i].Ai.BeginMatch();
+                Cars[i].Ai.BeginMatch(Tuning.allAiHuntThePlayer ? AiPersonality.Hunter : (AiPersonality?)null);
             }
             foreach (var pickup in Pickups)
             {
@@ -243,6 +252,7 @@ namespace TNDA.Prototype
         float IAiArena.HunterChaseSeconds => Tuning.hunterChaseSeconds;
         float IAiArena.HunterScatterSeconds => Tuning.hunterScatterSeconds;
         float IAiArena.HunterLeaderChance => Tuning.hunterLeaderChance;
+        bool IAiArena.HuntersChasePlayersOnly => Tuning.allAiHuntThePlayer;
         Vector2 IAiArena.ArenaMin => Tuning.arenaMin;
         Vector2 IAiArena.ArenaMax => Tuning.arenaMax;
 
@@ -512,6 +522,7 @@ namespace TNDA.Prototype
                 int deducted = Mathf.FloorToInt(previousScore - car.score);
                 events.Add(new VehicleWrecked(car, deducted));
                 if (deducted > 0) events.Add(new ScoreChanged(car, -deducted, point));
+                if (Tuning.wreckEndsRound && !car.computer && !demo && !Finished) EndRoundOnWreck(car);
             }
             return true;
         }
@@ -546,12 +557,13 @@ namespace TNDA.Prototype
             for (int i = 0; (final || i < count) && !Finished; i++) EliminateLowest();
         }
 
-        // Ties: lower durability loses first, then the higher car index. Never random.
+        // Ties: lower durability loses first, then the higher car index. Never random. In 不被撞毀 the computer cars go
+        // first whatever their score, so a player who lasts wins the final.
         public void EliminateLowest()
         {
             int count = Contenders;
             if (count <= 1) { EndRound(); return; }
-            var loser = Cars.Where(c => !c.eliminated).OrderBy(c => c.score).ThenBy(c => c.health).ThenByDescending(c => c.index).First();
+            var loser = Cars.Where(c => !c.eliminated).OrderBy(c => Tuning.wreckEndsRound && !c.computer).ThenBy(c => c.score).ThenBy(c => c.health).ThenByDescending(c => c.index).First();
             loser.Eliminate(count, LifecycleRules);
             foreach (var rocket in Rockets.Where(r => r.active && r.owner == loser.index)) rocket.Hide();
             CarsKnockedOut++;
@@ -574,9 +586,26 @@ namespace TNDA.Prototype
         private void EndRound()
         {
             var winner = Cars.First(c => !c.eliminated);
-            Champion = winner.index;
             Survived = !winner.computer;
             if (!winner.alive) RespawnVehicle(winner);
+            Crown(winner);
+        }
+
+        // 不被撞毀: the wrecked player comes last; the cars still in take the places above by score (the elimination
+        // tie order), and the first of them is the champion.
+        private void EndRoundOnWreck(ArcadeVehicle wrecked)
+        {
+            var others = Cars.Where(c => !c.eliminated && c != wrecked)
+                .OrderByDescending(c => c.score).ThenByDescending(c => c.health).ThenBy(c => c.index).ToList();
+            wrecked.FinalPlace = others.Count + 1;
+            for (int i = 1; i < others.Count; i++) others[i].FinalPlace = i + 1;
+            Survived = false;
+            Crown(others[0]);
+        }
+
+        private void Crown(ArcadeVehicle winner)
+        {
+            Champion = winner.index;
             winner.FinalPlace = 1;
             foreach (var rocket in Rockets) rocket.Hide();
             Finished = true;

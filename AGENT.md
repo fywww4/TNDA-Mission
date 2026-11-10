@@ -136,6 +136,14 @@
 
 驗證：`ChallengeTests`（EditMode 9 項：木箱只給火箭、衝撞不計分、火箭與破壞物照常、120 秒前不淘汰、名錄與解鎖、最佳紀錄保存與清除）與完整 EditMode 95 項通過；Play Mode `tmp/ticket10-verify.cs` 27 項通過（切換模式、鎖定、免費開局、結算、新紀錄、重試、回列表、街機規則還原；測試後還原金幣與紀錄存檔）；512×448 截圖 `tmp/ticket10-list.png`／`ticket10-results.png` 已檢視。Console 零錯誤、零警告。
 
+## Mode 7 票單 12：挑戰「不被撞毀」與金幣解鎖（2026-11-10 完成）
+
+「不被撞毀」：4 台車，`Challenges.NoWreck` 開 `MatchTuning.wreckEndsRound`（玩家一撞毀就立刻結束、判定失敗：玩家排最後一名，其餘依分數排名）與 `allAiHuntThePlayer`（三台 AI 全部是追王，追擊與櫻桃都只追玩家，撞到玩家後下一次追擊照樣追）。淘汰時間表只剩 120 秒決賽，決賽時 AI 一律先淘汰，玩家撐到最後就是冠軍。前 10 秒不傷玩家的緩衝期照舊。成績是過關時剩下的耐久（無條件進位的百分比，`Challenge.ScoreOf`），失敗是 0、不算紀錄；列表與結算用 `Challenge.RecordText` 顯示「耐久 64%」，沒有紀錄時顯示「未過關」。其他挑戰的紀錄仍是五位數分數（列表也改成「最佳 01234」，和結算一致）。金幣照票單 09 依名次與分數發放（過關第 1 名、失敗第 4 名）。每場比賽開始時，AI 會清掉上一場的目標。
+
+金幣解鎖（票單 11 的共用部分，先在這裡做）：挑戰列表選到未解鎖的挑戰時，提示列顯示「按 1 花 150 金幣解鎖」。按 1 時 `ArcadeGame.TryUnlockChallenge` 會呼叫 `ChallengeRecords.TryUnlock`，用 `GoldWallet.TrySpend` 扣金幣；成功顯示「已解鎖「…」」，金幣不足時顯示「金幣不足　需 150，現有 N」，不扣金幣。解鎖存在 `TNDA.Challenge.<id>.Unlocked`，長按 Delete 清存檔時一併上鎖。錢包從 `DemolitionGame` 移到 `ArcadeGame`。「90 秒最高分」還沒有規則（`Challenge.Playable` 為 false），所以不能購買也不能開始，提示列顯示「準備中，尚未開放」；票單 11 只剩這個挑戰本身的規則。
+
+驗證：EditMode `NoWreckChallengeTests` 5 項（撞毀立即失敗、撐過 120 秒過關並記錄耐久、三台都是追王且只追玩家／緩衝期不追、帶櫻桃的 AI 只追玩家、街機個性不變）與 `ChallengeUnlockTests` 5 項，完整 EditMode 112 項通過。Play Mode `tmp/ticket12-verify.cs` 22 項通過（解鎖不足／成功／未完成的挑戰不能買、存檔、過關 64%、新紀錄、失敗即結束、金幣，測試後還原存檔）。`tmp/ticket10-verify.cs` 改為檢查「不被撞毀」的上鎖提示與「最佳 01234」，其餘照舊；只有「街機規則還原」一項會失敗，因為另一個工作階段尚未提交的 8 台車時間表把第一次淘汰改成 40 秒。新字元已加入 Cubic 11 字型。Console 零錯誤、零警告。
+
 ## 建置輸出
 
 - **正式場景**：Windows 與 Web 都只建置 `Assets/Scenes/GAME3_Mode7.unity`。畫布 512×448、場景美術 256×224；預設輸出 1024×896，文字 2 倍、美術 4 倍；較大視窗保持整數倍率並置中黑邊。

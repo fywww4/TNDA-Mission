@@ -32,6 +32,8 @@ namespace TNDA.Prototype
         float HunterChaseSeconds { get; }
         float HunterScatterSeconds { get; }
         float HunterLeaderChance { get; }
+        // 不被撞毀: a 追王's chase and a cherry hunt go only for players, and ramming one does not spare it next chase.
+        bool HuntersChasePlayersOnly { get; }
         bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim);
     }
 
@@ -66,14 +68,21 @@ namespace TNDA.Prototype
         public static readonly IReadOnlyList<AiPersonality> SeatPersonalities = new[]
             { AiPersonality.Bumper, AiPersonality.Wanderer, AiPersonality.Hunter, AiPersonality.Bumper };
 
-        public AiPersonality Personality => SeatPersonalities[car.index % SeatPersonalities.Count];
+        // A challenge may set one personality for every computer car instead.
+        private AiPersonality? personality;
+        public AiPersonality Personality => personality ?? SeatPersonalities[car.index % SeatPersonalities.Count];
 
         // The car this AI is ramming right now; a wreck hunts nobody.
         public ArcadeVehicle Target => car.alive ? target : null;
         public Vector2 Destination => destination;
 
         // A new match staggers the first plans so the AI cars do not all decide on the same frame.
-        public void BeginMatch() => fresh = true;
+        public void BeginMatch(AiPersonality? forPersonality = null)
+        {
+            personality = forPersonality;
+            target = null; // so the last match's quarry is not reported before the first plan
+            fresh = true;
+        }
 
         public ArcadeInput Drive(IAiArena arena, float dt)
         {
@@ -278,12 +287,12 @@ namespace TNDA.Prototype
             }
         }
 
-        // With a cherry every personality hunts, preferring high scores and nearer cars.
+        // With a cherry every personality hunts, preferring high scores and nearer cars (only players in 不被撞毀).
         private void HuntWithCherry(IAiArena arena)
         {
             if (target != null && arena.CanHarm(car, target)) return;
             float top = arena.Cars.Max(c => c.score) + 1;
-            target = arena.Cars.Where(c => arena.CanHarm(car, c))
+            target = arena.Cars.Where(c => arena.CanHarm(car, c) && (!arena.HuntersChasePlayersOnly || !c.computer))
                 .OrderByDescending(c => (1 + arena.LeaderBias * c.score / top) / (1 + Vector2.Distance(c.position, car.position) * .35f)
                     * Random.Range(.85f, 1.15f))
                 .FirstOrDefault();
@@ -313,10 +322,11 @@ namespace TNDA.Prototype
         }
 
         // The chase target: first place (or second when this chase rolled second), ranked by score among cars it may
-        // hit, itself and the car it rammed last chase left out; nearer wins ties.
+        // hit, itself and the car it rammed last chase left out; nearer wins ties. In 不被撞毀 only players are chased.
         private ArcadeVehicle Quarry(IAiArena arena)
         {
-            var ranked = arena.Cars.Where(c => arena.CanHarm(car, c) && c != spared)
+            bool playersOnly = arena.HuntersChasePlayersOnly;
+            var ranked = arena.Cars.Where(c => arena.CanHarm(car, c) && (playersOnly ? !c.computer : c != spared))
                 .OrderByDescending(c => c.score).ThenBy(c => Vector2.Distance(c.position, car.position)).ToList();
             if (ranked.Count == 0) return null;
             return ranked[wantLeader || ranked.Count == 1 ? 0 : 1];

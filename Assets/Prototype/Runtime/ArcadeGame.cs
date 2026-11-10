@@ -61,6 +61,9 @@ namespace TNDA.Prototype
         public Challenge SelectedChallenge => Challenges.All[ChallengeCursor];
         private ChallengeRecords records;
         public ChallengeRecords Records => records ?? (records = new ChallengeRecords());
+        // Saved reward gold (not the inserted coins); it pays for challenge unlocks.
+        private GoldWallet wallet;
+        protected GoldWallet Wallet => wallet ?? (wallet = new GoldWallet());
         private float resultAge, noticeAge, goFlash;
         [NonSerialized] private AudioClip[] sounds; // generated in Awake; a reload must not turn it into an empty array
 
@@ -99,8 +102,11 @@ namespace TNDA.Prototype
                 bool challenge = Phase == ArcadePhase.Attract ? Mode == CabinetMode.Challenge : ActiveChallenge != null;
                 if (challenge)
                 {
-                    // Challenges are free and single-player: 1 starts the selected one, or retries the one just played.
-                    if (one) TryStartChallenge(Phase == ArcadePhase.Results ? ActiveChallenge : SelectedChallenge);
+                    // Challenges are free and single-player: 1 starts the selected one (or buys it while locked), or
+                    // retries the one just played.
+                    if (one && Phase == ArcadePhase.Results) TryStartChallenge(ActiveChallenge);
+                    else if (one && !Records.IsUnlocked(SelectedChallenge)) TryUnlockChallenge(SelectedChallenge);
+                    else if (one) TryStartChallenge(SelectedChallenge);
                 }
                 else if (Pressed(Key.Digit2) || Pressed(Key.NumpadEnter)) TryStartRun(2);
                 else if (one) TryStartRun(1);
@@ -159,8 +165,27 @@ namespace TNDA.Prototype
         // A free single-player start of a challenge; false (nothing happens) while it is still locked.
         public bool TryStartChallenge(Challenge challenge)
         {
-            if (challenge == null || !Records.IsUnlocked(challenge)) return false;
+            if (challenge == null || !challenge.Playable || !Records.IsUnlocked(challenge)) return false;
             StartRun(1, challenge);
+            return true;
+        }
+
+        // Pays the challenge's price in gold to open it for good; with too little gold it stays locked and says so.
+        public bool TryUnlockChallenge(Challenge challenge)
+        {
+            if (challenge == null) return false;
+            if (!challenge.Playable)
+            {
+                Announce(CabinetText.ChallengeComingSoon, Yellow, 2);
+                return false;
+            }
+            if (!Records.TryUnlock(challenge, Wallet))
+            {
+                Announce(string.Format(CabinetText.ChallengeGoldShort, challenge.UnlockPrice, Wallet.Total), Yellow, 2);
+                return false;
+            }
+            Sound(2);
+            Announce(string.Format(CabinetText.ChallengeBought, challenge.Name), Yellow, 2);
             return true;
         }
 

@@ -23,6 +23,16 @@ namespace TNDA.Prototype
             PlayerPrefs.Save();
             return added;
         }
+        // Pays for something (a challenge unlock); false and nothing spent when the wallet holds too little.
+        public bool TrySpend(int gold)
+        {
+            if (gold < 0 || gold > Total) return false;
+            Total -= gold;
+            PlayerPrefs.SetInt(saveKey, Total);
+            PlayerPrefs.Save();
+            return true;
+        }
+
         public void Clear()
         {
             Total = 0;

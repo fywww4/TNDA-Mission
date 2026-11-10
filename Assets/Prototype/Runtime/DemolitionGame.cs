@@ -160,7 +160,7 @@ namespace TNDA.Prototype
                 var t = match.Tuning;
                 if (eliminationSchedule == null || eliminationSchedule.Length == 0) eliminationSchedule = MatchTuning.DefaultEliminations();
                 t.eliminations = eliminationSchedule;
-                t.rocketCratesOnly = false; t.ramsScore = true;
+                t.ResetChallengeSwitches();
                 ActiveChallenge?.ApplyRules(t); // a challenge being played changes the rules; the title demo never does
                 t.driveSpeed = driveSpeed; t.accelerationPerSecond = accelerationPerSecond; t.coastDownPerSecond = coastDownPerSecond;
                 t.respawnSeconds = enemyRespawnSeconds; t.wreckPenalty = wreckPenalty; t.wreckBonus = wreckBonus;
@@ -220,8 +220,6 @@ namespace TNDA.Prototype
 
         [Header("Saved gold")]
         public TMP_Text attractGold, resetSaveHint;
-        private GoldWallet wallet;
-        private GoldWallet Wallet => wallet ?? (wallet = new GoldWallet());
         public int Gold => Wallet.Total;
         public int RoundGold { get; private set; }
         private bool goldAwarded, resetSaveLatched;
@@ -435,16 +433,16 @@ namespace TNDA.Prototype
                 + "\n" + GoldSummary);
         }
 
-        // A challenge counts only the player's score, whoever wins the final; the best record is saved first so the
-        // panel can say whether it was beaten.
+        // A challenge counts only the player's own result (its score, or 不被撞毀's durability left), whoever wins the
+        // final; the best record is saved first so the panel can say whether it was beaten.
         private void ShowChallengeResults()
         {
             var challenge = ActiveChallenge;
-            int score = Mathf.RoundToInt(cars[0].score);
+            int score = challenge.ScoreOf(Match, cars[0]);
             bool newBest = Records.Submit(challenge, score);
-            string best = string.Format(CabinetText.ChallengeBestLine, Records.Best(challenge).ToString("00000"))
+            string best = string.Format(CabinetText.ChallengeBestLine, challenge.RecordText(Records.Best(challenge)))
                 + (newBest ? "　" + CabinetText.ChallengeNewBest : "");
-            Finish(challenge.Name, string.Format(CabinetText.ChallengeScoreLine, score.ToString("00000")) + "\n" + best
+            Finish(challenge.Name, string.Format(CabinetText.ChallengeScoreLine, challenge.RecordText(score)) + "\n" + best
                 + "\n" + GoldSummary, CabinetText.ChallengeResultsHint);
             // The coin-start buttons belong to the arcade; a challenge restarts with 1 and leaves with Esc.
             onePlayerButton.gameObject.SetActive(false);
@@ -722,7 +720,8 @@ namespace TNDA.Prototype
                 }
                 if (attractPrompt != null && Mode == CabinetMode.Challenge)
                 {
-                    attractPrompt.text = Records.IsUnlocked(SelectedChallenge) ? CabinetText.ChallengePrompt
+                    attractPrompt.text = !SelectedChallenge.Playable ? CabinetText.ChallengeComingSoon
+                        : Records.IsUnlocked(SelectedChallenge) ? CabinetText.ChallengePrompt
                         : string.Format(CabinetText.ChallengeLocked, SelectedChallenge.UnlockPrice);
                     attractPrompt.enabled = Mathf.FloorToInt(Time.unscaledTime * 2) % 2 == 0;
                 }
@@ -835,7 +834,7 @@ namespace TNDA.Prototype
             {
                 var challenge = Challenges.All[i];
                 bool open = Records.IsUnlocked(challenge), selected = i == ChallengeCursor;
-                string state = open ? CabinetText.ChallengeUnlocked + "　" + string.Format(CabinetText.ChallengeBestShort, Records.Best(challenge))
+                string state = open ? CabinetText.ChallengeUnlocked + "　" + string.Format(CabinetText.ChallengeBestShort, challenge.RecordText(Records.Best(challenge)))
                     : string.Format(CabinetText.ChallengeLockedShort, challenge.UnlockPrice);
                 var color = selected ? Yellow : White;
                 lines.Add(Tinted(color, string.Format(CabinetText.ChallengeRow, selected ? ">" : " ", challenge.Name, state)));
