@@ -22,21 +22,19 @@ namespace TNDA.Prototype
         public const string ReverseGear = "R";
         public const string Instructions = P1Controls + "\n" + P2Controls;
 
-        // Attract mode, like an arcade cabinet waiting for coins.
-        public const string CoinRule = "單人 1 枚　雙人 2 枚";
-        // The attract prompt follows the coins inserted.
-        public const string CoinPrompt = "按 5 投幣";
-        public const string CoinPromptOne = "已投 {0} 枚　按 1 單人";
-        public const string CoinPromptTwo = "已投 {0} 枚　按 1 單人　按 2 雙人";
-        public const string CoinInserted = "已投 {0} 枚";
-        public const string InsertCoinFirst = "請先按 5 投幣";
-        public const string OnePlayerButton = "1P／3 台電腦";
-        public const string TwoPlayerButton = "2P／2 台電腦";
-        public const string AttractHint = "按 5 投幣　按 1／2 開始";
-        public const string ResultsHint = "按 5 投幣　按 1／2 再玩";
-        public const string ReturnToTitle = "{0} 秒後回標題　按 5 投幣再玩";
+        // Title screen (the demo plays behind it). START is Space or the pad's Start.
+        public const string NormalRule = "1～2 人　8 台車淘汰賽";
+        public const string StartPrompt = "按 START（空白鍵）開始";
+        // The player-count menu: the two choices (the chosen one tinted) and how to start.
+        public const string PlayerMenu = "←　{0}　{1}　→　START 開始";
+        public const string OnePlayer = "1 人";
+        public const string TwoPlayers = "2 人";
+        public const string OnePlayerButton = "1 人";
+        public const string TwoPlayerButton = "2 人";
+        public const string AttractHint = "按 START 開始";
+        public const string ResultsHint = "按 START 再玩　按 Esc 回標題";
 
-        // Saved reward currency; inserted cabinet coins are a separate balance.
+        // Saved reward currency, the game's only one.
         public const string GoldEarned = "+{0} 金幣";
         public const string GoldTotal = "累計 {0} 金幣";
         public const string ResetSaveHint = "長按 Delete 3 秒清除存檔";
@@ -62,12 +60,12 @@ namespace TNDA.Prototype
         public const string GarageStrengthStep = "強度：減少受到的傷害";
 
         // Challenge mode (title list, play and result).
-        public const string ModeArcade = "街機模式";
+        public const string ModeNormal = "一般模式";
         public const string ModeChallenge = "挑戰模式";
         public const string ModeTabs = "←　{0}　{1}　→";
-        public const string ChallengeRule = "不用投幣　只限單人";
-        public const string ChallengePrompt = "↑↓選擇　按 1 開始";
-        public const string ChallengeLocked = "按 1 花 {0} 金幣解鎖";
+        public const string ChallengeRule = "只限單人";
+        public const string ChallengePrompt = "↑↓選擇　按 START 開始";
+        public const string ChallengeLocked = "按 START 花 {0} 金幣解鎖";
         public const string ChallengeGoldShort = "金幣不足　需 {0}，現有 {1}";
         public const string ChallengeBought = "已解鎖「{0}」";
         public const string ChallengeComingSoon = "準備中，尚未開放";
@@ -88,18 +86,16 @@ namespace TNDA.Prototype
         public const string ChallengeDurabilityLeft = "耐久 {0}%";
         public const string ChallengeNotPassed = "未過關";
         public const string ChallengeNewBest = "新紀錄！";
-        public const string ChallengeResultsHint = "按 1 重試　按 Esc 回列表";
-        public const string ChallengeReturn = "{0} 秒後回列表　按 1 重試";
+        public const string ChallengeResultsHint = "按 START 重試　按 Esc 回列表";
 
         public const string Go = "出發！";
 
-        // Continue after a timed elimination (4th or 3rd place): 10-second countdown, one coin.
-        public const string ContinueTitle = "{0} 投幣繼續？";
-        public const string ContinueNeedCoin = "按 5 投幣，再按 {0}";
-        public const string ContinuePress = "按 {0} 繼續（已投 {1} 枚）";
-        public const string P1ContinueKey = "左Ctrl";
+        // Continue after a timed elimination before the final: 10-second countdown, free, once per player a match.
+        public const string ContinueTitle = "{0} 繼續？";
+        public const string ContinuePress = "按 {0} 繼續（本局限 1 次）";
+        public const string P1ContinueKey = "空白鍵";
         public const string P2ContinueKey = "數字鍵Enter";
-        public const string Revived = "{0} 投幣復活！";
+        public const string Revived = "{0} 繼續！";
         public const string GameOver = "GAME OVER";
         // Victory picture (2026-10-19), shown when a player wins, before the results.
         public const string VictorySurvived = "你活下來了";

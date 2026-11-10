@@ -6,8 +6,8 @@ using UnityEngine.InputSystem;
 namespace TNDA.Prototype
 {
     public enum ArcadePhase { Attract, Playing, Results, Countdown, Garage }
-    // What the title screen offers: the coin-operated elimination match, or free single-player challenges.
-    public enum CabinetMode { Arcade, Challenge }
+    // What the title screen offers: the normal 1P/2P elimination match, or single-player challenges.
+    public enum CabinetMode { Normal, Challenge }
 
     public struct ArcadeInput
     {
@@ -15,10 +15,12 @@ namespace TNDA.Prototype
         public bool action, actionPressed;
         public bool resetSaveHeld;
         public bool shiftUpPressed, shiftDownPressed;
+        // This seat's START (P1: Space or the first pad's Start; P2: Numpad Enter or the second pad's Start).
+        public bool startPressed;
     }
 
-    // The cabinet around GAME3: title (attract) -> 3-2-1 countdown -> match -> results -> back to title, coin and
-    // restart keys, player input, the notice line and sounds. The game fills in three things: resetting the match,
+    // The console shell around GAME3: title (demo) -> START, pick 1P/2P -> 3-2-1 countdown -> match -> results, which
+    // wait for START (play again) or Esc (title); player input, the notice line and sounds. The game fills in three things: resetting the match,
     // one frame of simulation, and the HUD.
     public abstract class ArcadeGame : MonoBehaviour
     {
@@ -35,7 +37,6 @@ namespace TNDA.Prototype
         public AudioSource speaker;
         public string cabinetTitle;
         [TextArea] public string instructions;
-        public float presentationSeconds = 0;
 
         [Header("Start countdown and recorded sounds (optional)")]
         [Tooltip("0 starts play immediately; otherwise a 3-2-1-GO countdown of this many seconds runs first.")]
@@ -51,9 +52,9 @@ namespace TNDA.Prototype
         public int PlayerCount { get; private set; } = 1;
         public float Elapsed { get; protected set; }
         public float CountdownLeft { get; private set; }
-        // Coins inserted and not yet spent. A 1P game costs one coin, a 2P game two, a continue one.
-        public int Credits { get; private set; }
-        public const int MaxCredits = 9;
+        // The title's player-count menu (normal mode): START opens it, left/right pick 1P or 2P, START again starts.
+        public bool ChoosingPlayers { get; private set; }
+        public int PlayerChoice { get; private set; } = 1;
         public const string TransmissionSaveKey = "TNDA.ManualTransmission";
         public bool ManualTransmission => PlayerPrefs.GetInt(TransmissionSaveKey, 0) == 1;
         public void SelectTransmission(bool manual)
@@ -61,7 +62,7 @@ namespace TNDA.Prototype
             PlayerPrefs.SetInt(TransmissionSaveKey, manual ? 1 : 0);
             PlayerPrefs.Save();
         }
-        // Title screen selection. ActiveChallenge is the challenge being played or just finished (null in arcade mode,
+        // Title screen selection. ActiveChallenge is the challenge being played or just finished (null in normal mode,
         // on the title and in the demo).
         public CabinetMode Mode { get; private set; }
         public int ChallengeCursor { get; private set; }
@@ -74,11 +75,11 @@ namespace TNDA.Prototype
         public string GarageMessage { get; private set; } = "";
         private ChallengeRecords records;
         public ChallengeRecords Records => records ?? (records = new ChallengeRecords());
-        // Saved reward gold (not the inserted coins); it pays for challenge unlocks.
+        // Saved reward gold, the game's only currency; it pays for challenge unlocks and upgrades.
         private GoldWallet wallet;
         protected GoldWallet Wallet => wallet ?? (wallet = new GoldWallet());
         public int Gold => Wallet.Total;
-        private float resultAge, noticeAge, goFlash;
+        private float noticeAge, goFlash;
         [NonSerialized] private AudioClip[] sounds; // generated in Awake; a reload must not turn it into an empty array
 
         private void Awake()
@@ -87,8 +88,8 @@ namespace TNDA.Prototype
             Time.timeScale = 1;
             AudioListener.volume = masterVolume;
             MakeSounds();
-            onePlayerButton.onClick.AddListener(() => TryStartRun(1));
-            twoPlayerButton.onClick.AddListener(() => TryStartRun(2));
+            onePlayerButton.onClick.AddListener(() => StartRun(1));
+            twoPlayerButton.onClick.AddListener(() => StartRun(2));
             PreparePreview();
         }
 
@@ -105,26 +106,16 @@ namespace TNDA.Prototype
         private void Update()
         {
             AudioListener.volume = masterVolume;
-            if (Pressed(Key.Escape)) ShowAttract();
-            // 5 is the coin slot (as in arcade emulators); the gamepad's Select inserts a coin too.
-            if (Pressed(Key.Digit5) || Pressed(Key.Numpad5) || (Gamepad.current != null && Gamepad.current.selectButton.wasPressedThisFrame))
-                InsertCoin();
-            if (Phase == ArcadePhase.Attract) NavigateTitle();
+            bool padBack = Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame;
+            // Esc backs out from anywhere (a match in progress included); the pad's B only on menus and results.
+            if (Pressed(Key.Escape) || padBack && Phase != ArcadePhase.Playing && Phase != ArcadePhase.Countdown) Back();
+            else if (Phase == ArcadePhase.Attract) NavigateTitle();
             else if (Phase == ArcadePhase.Garage) NavigateGarage();
             if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
             {
-                bool one = Pressed(Key.Digit1) || Pressed(Key.LeftCtrl) || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
-                bool challenge = Phase == ArcadePhase.Attract ? Mode == CabinetMode.Challenge : ActiveChallenge != null;
-                if (challenge)
-                {
-                    // Challenges are free and single-player: 1 starts the selected one (or buys it while locked), or
-                    // retries the one just played.
-                    if (one && Phase == ArcadePhase.Results) TryStartChallenge(ActiveChallenge);
-                    else if (one && !Records.IsUnlocked(SelectedChallenge)) TryUnlockChallenge(SelectedChallenge);
-                    else if (one) TryStartChallenge(SelectedChallenge);
-                }
-                else if (Pressed(Key.Digit2) || Pressed(Key.NumpadEnter)) TryStartRun(2);
-                else if (one) TryStartRun(1);
+                bool start = Pressed(Key.Space);
+                foreach (var pad in Gamepad.all) start |= pad.startButton.wasPressedThisFrame;
+                if (start) PressStart();
             }
             Advance(Mathf.Min(Time.deltaTime, .05f), ReadInput(0), ReadInput(1));
         }
@@ -149,20 +140,58 @@ namespace TNDA.Prototype
                 }
                 else SetCountdownLabel(Mathf.CeilToInt(CountdownLeft).ToString());
             }
-            else if (Phase == ArcadePhase.Results && presentationSeconds > 0)
-            {
-                resultAge += dt;
-                overlayHint.text = ReturnHint(Mathf.CeilToInt(Mathf.Max(0, presentationSeconds - resultAge)));
-                if (resultAge >= presentationSeconds) PreparePreview();
-            }
             Tick(dt, startPhase, p1, p2);
             RefreshHud();
             if (garage != null) garage.Render(this, dt);
         }
 
-        // Title screen: left/right switch between arcade and challenge mode, up/down pick a challenge.
+        // START on the title or results. Title, normal mode: the first press opens the 1P/2P menu, the next starts the
+        // chosen count. Title, challenge mode: starts the selected challenge, or buys it while locked. Results: the
+        // same game again (same player count, or a retry of the same challenge).
+        public void PressStart()
+        {
+            if (Phase == ArcadePhase.Results)
+            {
+                if (ActiveChallenge != null) TryStartChallenge(ActiveChallenge);
+                else StartRun(PlayerCount);
+                return;
+            }
+            if (Phase != ArcadePhase.Attract) return;
+            if (Mode == CabinetMode.Challenge)
+            {
+                if (!Records.IsUnlocked(SelectedChallenge)) TryUnlockChallenge(SelectedChallenge);
+                else TryStartChallenge(SelectedChallenge);
+            }
+            else if (!ChoosingPlayers)
+            {
+                ChoosingPlayers = true;
+                PlayerChoice = 1;
+                Sound(0);
+            }
+            else StartRun(PlayerChoice);
+        }
+
+        // Esc (or the pad's B): closes the player menu, leaves the garage, or ends a match or its results for the
+        // title (a challenge comes back to its list, as the title keeps challenge mode selected).
+        public void Back()
+        {
+            if (Phase == ArcadePhase.Attract) ChoosingPlayers = false;
+            else if (Phase == ArcadePhase.Garage) ShowAttract();
+            else PreparePreview();
+        }
+
+        public void PickPlayers(int players) => PlayerChoice = Mathf.Clamp(players, 1, 2);
+
+        // Title screen: left/right switch between normal and challenge mode, up/down pick a challenge; while the
+        // player menu is open, left/right pick 1P or 2P instead.
         private void NavigateTitle()
         {
+            bool sideways = PressedAny(Key.LeftArrow, Key.RightArrow, Key.A, Key.D, Key.Tab) || DpadPressed(pad => pad.dpad.left, pad => pad.dpad.right);
+            if (ChoosingPlayers)
+            {
+                if (sideways) PickPlayers(3 - PlayerChoice);
+                return;
+            }
             if (Pressed(Key.G) || (Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame))
             {
                 OpenGarage();
@@ -170,8 +199,7 @@ namespace TNDA.Prototype
             }
             if (Pressed(Key.T) || (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame))
                 SelectTransmission(!ManualTransmission);
-            if (PressedAny(Key.LeftArrow, Key.RightArrow, Key.A, Key.D, Key.Tab) || DpadPressed(pad => pad.dpad.left, pad => pad.dpad.right))
-                Mode = Mode == CabinetMode.Arcade ? CabinetMode.Challenge : CabinetMode.Arcade;
+            if (sideways) Mode = Mode == CabinetMode.Normal ? CabinetMode.Challenge : CabinetMode.Normal;
             if (Mode != CabinetMode.Challenge) return;
             if (PressedAny(Key.UpArrow, Key.W) || DpadPressed(pad => pad.dpad.up)) MoveChallengeCursor(-1);
             if (PressedAny(Key.DownArrow, Key.S) || DpadPressed(pad => pad.dpad.down)) MoveChallengeCursor(1);
@@ -212,7 +240,6 @@ namespace TNDA.Prototype
             if (PressedAny(Key.UpArrow, Key.W) || DpadPressed(pad => pad.dpad.up)) MoveGarageCursor(-1);
             if (PressedAny(Key.DownArrow, Key.S) || DpadPressed(pad => pad.dpad.down)) MoveGarageCursor(1);
             if (Pressed(Key.LeftCtrl) || (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)) TryBuySelectedUpgrade();
-            if (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame) ShowAttract();
         }
 
         public void MoveChallengeCursor(int delta)
@@ -248,40 +275,13 @@ namespace TNDA.Prototype
             return true;
         }
 
-        public void InsertCoin()
-        {
-            Credits = Mathf.Min(Credits + 1, MaxCredits);
-            Sound(0);
-            Announce(string.Format(CabinetText.CoinInserted, Credits), Yellow, 1.5f);
-        }
-
-        // Spends the coins for a continue or a new game; false (nothing spent) when too few are in.
-        protected bool SpendCredits(int coins)
-        {
-            if (Credits < coins) return false;
-            Credits -= coins;
-            return true;
-        }
-
-        // A paid start: one coin per player. Without enough coins nothing happens and the prompt keeps asking.
-        public bool TryStartRun(int players)
-        {
-            players = Mathf.Clamp(players, 1, 2);
-            if (!SpendCredits(players))
-            {
-                Announce(CabinetText.InsertCoinFirst, Yellow, 1.5f);
-                return false;
-            }
-            StartRun(players);
-            return true;
-        }
-
-        // Starts without coins; only CLI checks use it (every player start goes through TryStartRun).
+        // Starts a normal match for 1 or 2 players, or (with a challenge) that single-player challenge.
         public void StartRun(int players = 1, Challenge challenge = null)
         {
             ActiveChallenge = challenge;
             PlayerCount = challenge != null ? 1 : Mathf.Clamp(players, 1, 2);
-            Elapsed = resultAge = 0;
+            Elapsed = 0;
+            ChoosingPlayers = false;
             bool countdown = countdownSeconds > 0;
             Phase = countdown ? ArcadePhase.Countdown : ArcadePhase.Playing;
             if (garage != null) garage.gameObject.SetActive(false);
@@ -316,6 +316,7 @@ namespace TNDA.Prototype
             goFlash = 0;
             if (countdownLabel != null) countdownLabel.text = "";
             ActiveChallenge = null;
+            ChoosingPlayers = false;
             Phase = ArcadePhase.Attract;
             if (garage != null) garage.gameObject.SetActive(false);
             ShowOverlay(cabinetTitle, instructions, CabinetText.AttractHint);
@@ -327,17 +328,14 @@ namespace TNDA.Prototype
             overlayTitle.text = title;
             overlayBody.text = body;
             overlayHint.text = hint;
-            onePlayerButton.gameObject.SetActive(true);
-            twoPlayerButton.gameObject.SetActive(true);
+            // A console game: START replays and Esc leaves, so the old mouse buttons stay hidden.
+            onePlayerButton.gameObject.SetActive(false);
+            twoPlayerButton.gameObject.SetActive(false);
         }
-
-        // The line under the results while the return-to-title timer runs.
-        protected virtual string ReturnHint(int secondsLeft) => string.Format(CabinetText.ReturnToTitle, secondsLeft);
 
         protected void Finish(string title, string body, string hint = null)
         {
             Phase = ArcadePhase.Results;
-            resultAge = 0;
             ShowOverlay(title, body, hint ?? CabinetText.ResultsHint);
             Sound(3);
         }
@@ -390,6 +388,7 @@ namespace TNDA.Prototype
                 input.resetSaveHeld = index == 0 && k.deleteKey.isPressed;
                 input.shiftDownPressed = k[index == 0 ? Key.DownArrow : Key.S].wasPressedThisFrame;
                 input.shiftUpPressed = k[index == 0 ? Key.RightShift : Key.LeftShift].wasPressedThisFrame;
+                input.startPressed = k[index == 0 ? Key.Space : Key.NumpadEnter].wasPressedThisFrame;
             }
             if (Gamepad.all.Count > index)
             {
@@ -403,6 +402,7 @@ namespace TNDA.Prototype
                 input.actionPressed |= pad.buttonSouth.wasPressedThisFrame;
                 input.shiftDownPressed |= pad.leftShoulder.wasPressedThisFrame;
                 input.shiftUpPressed |= pad.rightShoulder.wasPressedThisFrame;
+                input.startPressed |= pad.startButton.wasPressedThisFrame;
             }
             return input;
         }

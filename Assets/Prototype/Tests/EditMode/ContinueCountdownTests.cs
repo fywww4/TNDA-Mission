@@ -48,10 +48,10 @@ namespace TNDA.Prototype.Tests
             foreach (var e in match.Events.OfType<VehicleEliminated>()) continues.Offer(e.Car, match.Finished);
         }
 
-        private void Advance(float dt, bool p1Pressed = false, bool p2Pressed = false, int coins = 0)
+        private void Advance(float dt, bool p1Pressed = false, bool p2Pressed = false)
         {
-            continues.Advance(dt, seat => seat == 0 ? p1Pressed : p2Pressed, () => coins-- > 0,
-                seat => match.Revive(match.Cars[seat]), seat => { }, seat => { });
+            continues.Advance(dt, seat => seat == 0 ? p1Pressed : p2Pressed,
+                seat => match.Revive(match.Cars[seat]), seat => { });
         }
 
         // The computer cars score 1000 + 100 x seat; the human on seat 0 gets the given score.
@@ -72,7 +72,7 @@ namespace TNDA.Prototype.Tests
             Assert.IsFalse(match.Finished);
             Assert.IsTrue(continues.Waiting(0));
 
-            Advance(Dt, p1Pressed: true, coins: 1);
+            Advance(Dt, p1Pressed: true);
 
             Assert.IsFalse(continues.Waiting(0));
             Assert.IsFalse(match.Cars[0].eliminated);
@@ -115,7 +115,7 @@ namespace TNDA.Prototype.Tests
             TwoHumansAtTheBottom();
             NextElimination();
 
-            Advance(1, p2Pressed: true, coins: 1);
+            Advance(1, p2Pressed: true);
 
             Assert.IsFalse(continues.Waiting(1), "P2 rejoined");
             Assert.IsFalse(match.Cars[1].eliminated);
@@ -125,31 +125,50 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
-        public void ACoinCoversOnlyTheSeatThatPressedFirst()
+        public void ContinuingIsFreeSoBothPlayersPressingTogetherBothRejoin()
         {
             TwoHumansAtTheBottom();
             NextElimination();
 
-            Advance(Dt, p1Pressed: true, p2Pressed: true, coins: 1);
+            Advance(Dt, p1Pressed: true, p2Pressed: true);
 
             Assert.IsFalse(match.Cars[0].eliminated);
-            Assert.IsTrue(match.Cars[1].eliminated);
-            Assert.IsTrue(continues.Waiting(1));
+            Assert.IsFalse(match.Cars[1].eliminated);
+            Assert.IsFalse(continues.AnyWaiting);
         }
 
         [Test]
-        public void WithoutACoinTheCountdownRunsOutAndNobodyRejoins()
+        public void WithoutPressingStartTheCountdownRunsOutAndNobodyRejoins()
         {
             OneHumanScoring(10);
             NextElimination();
-            int noCoin = 0;
 
-            for (int i = 0; i < 10 * 60 + 5; i++)
-                continues.Advance(Dt, seat => true, () => false, seat => Assert.Fail("no coin, no revive"), seat => noCoin++, seat => { });
+            for (int i = 0; i < 10 * 60 + 5; i++) Advance(Dt);
 
             Assert.IsFalse(continues.AnyWaiting);
-            Assert.That(noCoin, Is.GreaterThan(0));
+            Assert.IsFalse(continues.Used(0), "an unused countdown does not spend the continue");
             Assert.IsTrue(match.Cars[0].eliminated);
+        }
+
+        [Test]
+        public void EachPlayerGetsOnlyOneContinueAMatchAndANewMatchGivesItBack()
+        {
+            OneHumanScoring(10);
+            NextElimination();                        // out at 40 s
+            Advance(Dt, p1Pressed: true);             // the one continue
+            Assert.IsFalse(match.Cars[0].eliminated);
+            Assert.IsTrue(continues.Used(0));
+
+            match.Cars[0].score = 0;                  // lowest again at 80 s
+            NextElimination();
+            Assert.IsTrue(match.Cars[0].eliminated);
+            Assert.IsFalse(match.Finished);
+            Assert.IsFalse(continues.Waiting(0), "no second continue in the same match");
+
+            continues.NewMatch();
+            OneHumanScoring(10);
+            NextElimination();
+            Assert.IsTrue(continues.Waiting(0), "a new match gives the continue back");
         }
 
         [Test]

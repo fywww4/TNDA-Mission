@@ -193,7 +193,7 @@ namespace TNDA.Prototype
         public int Champion => Match.Champion;
 
         [Header("Continue (after a timed elimination)")]
-        [Tooltip("A player eliminated at the first or second timed elimination gets this long to insert a coin (5) and press their item button to rejoin.")]
+        [Tooltip("A player eliminated at a timed elimination before the final gets this long to press START and rejoin, once per match.")]
         public float continueSeconds = 10;
         [Tooltip("GAME OVER shows this long once no player is left, then the title demo returns.")]
         public float gameOverSeconds = 2;
@@ -299,7 +299,7 @@ namespace TNDA.Prototype
             demo = startingDemo;
             goldAwarded = false;
             RoundGold = 0;
-            Continues.Clear();
+            Continues.NewMatch();
             gameOverLeft = -1;
             victoryLeft = -1;
             victor = null;
@@ -466,13 +466,7 @@ namespace TNDA.Prototype
                 + (newBest ? "　" + CabinetText.ChallengeNewBest : "");
             Finish(challenge.Name, string.Format(CabinetText.ChallengeScoreLine, challenge.RecordText(score)) + "\n" + best
                 + "\n" + GoldSummary, CabinetText.ChallengeResultsHint);
-            // The coin-start buttons belong to the arcade; a challenge restarts with 1 and leaves with Esc.
-            onePlayerButton.gameObject.SetActive(false);
-            twoPlayerButton.gameObject.SetActive(false);
         }
-
-        protected override string ReturnHint(int secondsLeft) => ActiveChallenge != null
-            ? string.Format(CabinetText.ChallengeReturn, secondsLeft) : base.ReturnHint(secondsLeft);
 
         private string GoldSummary => string.Format(CabinetText.GoldEarned, RoundGold)
             + "\n" + string.Format(CabinetText.GoldTotal, Gold);
@@ -563,7 +557,7 @@ namespace TNDA.Prototype
             }
         }
 
-        // Each knocked-out player's own 10-second continue: the item button spends a coin and rejoins. Once no player is
+        // Each knocked-out player's own 10-second continue: their START rejoins, free, once per match. Once no player is
         // left and no countdown runs, GAME OVER shows briefly and the title demo returns.
         private void UpdateContinues(float dt, ArcadeInput p1, ArcadeInput p2)
         {
@@ -573,9 +567,8 @@ namespace TNDA.Prototype
                 gameOverLeft = -1;
                 return;
             }
-            Continues.Advance(dt, seat => seat == 0 ? p1.actionPressed : p2.actionPressed, () => SpendCredits(1),
+            Continues.Advance(dt, seat => seat == 0 ? p1.startPressed : p2.startPressed,
                 seat => { Match.Revive(cars[seat]); Present(); },
-                seat => Announce(CabinetText.InsertCoinFirst, Yellow, 1.5f),
                 seat => Sound(0));
             if (gameOverLeft < 0 && !Continues.AnyWaiting && cars.Where(c => !c.computer).All(c => c.eliminated))
             {
@@ -602,7 +595,7 @@ namespace TNDA.Prototype
                     string key = seat == 0 ? CabinetText.P1ContinueKey : CabinetText.P2ContinueKey;
                     view.title.text = string.Format(CabinetText.ContinueTitle, cars[seat].DriverName);
                     view.count.text = Continues.SecondsShown(seat).ToString();
-                    view.hint.text = Credits > 0 ? string.Format(CabinetText.ContinuePress, key, Credits) : string.Format(CabinetText.ContinueNeedCoin, key);
+                    view.hint.text = string.Format(CabinetText.ContinuePress, key);
                 }
                 else
                 {
@@ -726,9 +719,9 @@ namespace TNDA.Prototype
                 if (attract) overlay.SetActive(false);
                 foreach (var text in new[] { header, arenaBoard, leaderboard, hud, footer, notice })
                     if (text != null) text.gameObject.SetActive(!attract && !inGarage);
-                if (attractRule != null) attractRule.text = Mode == CabinetMode.Challenge ? CabinetText.ChallengeRule : CabinetText.CoinRule;
+                if (attractRule != null) attractRule.text = Mode == CabinetMode.Challenge ? CabinetText.ChallengeRule : CabinetText.NormalRule;
                 if (attractModes != null)
-                    attractModes.text = string.Format(CabinetText.ModeTabs, ModeTab(CabinetMode.Arcade, CabinetText.ModeArcade),
+                    attractModes.text = string.Format(CabinetText.ModeTabs, ModeTab(CabinetMode.Normal, CabinetText.ModeNormal),
                         ModeTab(CabinetMode.Challenge, CabinetText.ModeChallenge));
                 if (attractChallengePanel != null)
                 {
@@ -742,10 +735,17 @@ namespace TNDA.Prototype
                         : string.Format(CabinetText.ChallengeLocked, SelectedChallenge.UnlockPrice);
                     attractPrompt.enabled = Mathf.FloorToInt(Time.unscaledTime * 2) % 2 == 0;
                 }
+                else if (attractPrompt != null && ChoosingPlayers)
+                {
+                    // The player-count menu holds still; the chosen count is yellow.
+                    attractPrompt.text = string.Format(CabinetText.PlayerMenu,
+                        Tinted(PlayerChoice == 1 ? Yellow : White, CabinetText.OnePlayer),
+                        Tinted(PlayerChoice == 2 ? Yellow : White, CabinetText.TwoPlayers));
+                    attractPrompt.enabled = true;
+                }
                 else if (attractPrompt != null)
                 {
-                    attractPrompt.text = Credits == 0 ? CabinetText.CoinPrompt
-                        : string.Format(Credits == 1 ? CabinetText.CoinPromptOne : CabinetText.CoinPromptTwo, Credits);
+                    attractPrompt.text = CabinetText.StartPrompt;
                     attractPrompt.enabled = Mathf.FloorToInt(Time.unscaledTime * 2) % 2 == 0;
                 }
                 if (attractGold != null) attractGold.text = string.Format(CabinetText.GoldTotal, Gold);

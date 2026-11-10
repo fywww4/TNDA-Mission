@@ -50,7 +50,7 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
-        public void TitleOpensGarageWithoutCoinsAndReturningKeepsModeAndTransmission()
+        public void TitleOpensGarageAndReturningKeepsModeAndTransmission()
         {
             Assert.That(game.garage, Is.Not.Null, "saved scene must wire the garage");
             game.SelectMode(CabinetMode.Challenge);
@@ -59,7 +59,6 @@ namespace TNDA.Prototype.Tests
             Assert.That(game.Phase, Is.EqualTo(ArcadePhase.Garage));
             Assert.That(game.garage.gameObject.activeSelf, Is.True);
             Assert.That(game.attractScreen.activeSelf, Is.False);
-            Assert.That(game.Credits, Is.Zero);
             Assert.That(game.TryBuySelectedUpgrade(), Is.False);
             game.ShowAttract();
             game.Advance(0, new ArcadeInput(), new ArcadeInput());

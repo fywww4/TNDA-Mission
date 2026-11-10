@@ -129,10 +129,10 @@ namespace TNDA.Prototype.Editor
             const int px = ArcadeFontSetup.PixelSize;
             Backing(root, "Top backing", 0, 244, 320, 76);
             Label(root, "Title", CabinetText.Title, 0, 284, 320, 26, px * 2, ArcadeGame.Yellow);
-            var rule = Label(root, "Coin rule", CabinetText.CoinRule, 0, 258, 320, 13, px, ArcadeGame.White);
+            var rule = Label(root, "Coin rule", CabinetText.NormalRule, 0, 258, 320, 13, px, ArcadeGame.White);
             var modes = Label(root, "Mode tabs", CabinetText.ModeTabs, 0, 228, 320, 13, px, ArcadeGame.White);
-            Backing(root, "Prompt backing", 50, 193, 220, 19); // fits 已投 N 枚　按 1 單人　按 2 雙人
-            var prompt = Label(root, "Coin prompt", CabinetText.CoinPrompt, 0, 196, 320, 13, px, ArcadeGame.Yellow);
+            Backing(root, "Prompt backing", 50, 193, 220, 19); // fits ←　1 人　2 人　→　START 開始
+            var prompt = Label(root, "Coin prompt", CabinetText.StartPrompt, 0, 196, 320, 13, px, ArcadeGame.Yellow);
             Backing(root, "Gold backing", 0, 156, 320, 32);
             var gold = Label(root, "Gold total", CabinetText.GoldTotal, 0, 174, 320, 13, px, ArcadeGame.Yellow);
             var reset = Label(root, "Reset save hint", CabinetText.ResetSaveHint, 0, 159, 320, 13, px, ArcadeGame.White);

@@ -14,6 +14,8 @@
 
 ## 整合版規則
 
+> **2026-11-10 主機化（票單 17）**：遊戲不再是投幣街機。下方所有「投幣」「硬幣」「按 5」「按 1／2 開局」「結算 20 秒回標題」「投幣繼續（次數不限）」的描述都已被取代，現況見下方「Mode 7 票單 17：主機化」。
+
 ### 積分淘汰
 
 - 正式 Mode 7 街機模式共 8 台車：單人為 1 真人＋7 AI（迷糊 2、追王 2、碰碰 3），雙人為 2 真人＋6 AI（各 2）；待機示範也是 8 台。既有「只能用火箭」挑戰維持 4 台。
@@ -125,6 +127,17 @@
 ## Mode 7 擴充規劃（2026-11-09，尚未實作）
 
 使用者確認以 `GAME3_Mode7` 為主線，新增功能拆成票單 `.scratch/mode7-expansion/issues/01～15`（照編號與 Blocked by 開工）。用詞以根目錄 `GLOSSARY.md` 為準（「硬幣」＝投幣點數、「金幣」＝存檔的獎勵貨幣，兩者不同）。解析度改為 512×448 混合（美術 2 倍粗像素、文字原生），見 `Docs/adr/0001-hybrid-512x448-resolution.md`。內容：混合解析度與 HUD、P2 標籤、換主場景、碎片噴濺、觀眾席與鐵絲網、8 台車金字塔淘汰（40 秒淘汰 4、80 秒淘汰 2、120 秒決賽）、金幣存檔、挑戰模式三個挑戰。車庫（能力升級，票單 13；外觀為票單 16）；手排已於 2026-11-10 依票單 14 開工；關卡模式仍保留不做。觀眾席、鐵絲網、碎片的 GPT 美術提示詞已交給使用者（`crowd.png`、`fence.png`、`debris.png`），到貨前用占位圖。
+
+## Mode 7 票單 17：主機化，按 START 開始（2026-11-10）
+
+使用者要求改成主機遊戲：拿掉投幣，「街機模式」改名「一般模式」（`CabinetMode.Normal`），遊戲中只剩金幣一種貨幣。
+
+- **START**＝空白鍵或手把 Start（標題與結算時任何一支手把都算）。標題一般模式閃爍「按 START（空白鍵）開始」；按 START 開「1 人／2 人」選單（`ArcadeGame.ChoosingPlayers`／`PlayerChoice`，左右切換、選中的黃色），再按 START 開始（`PressStart`）。挑戰模式 START 開始選到的挑戰，未解鎖時花金幣解鎖。
+- **返回**（`ArcadeGame.Back`）：Esc 任何時候都可；手把 B 只在標題、車庫、結算有效（比賽中不會誤觸）。標題時先關人數選單；車庫回標題；比賽或結算回標題（挑戰回挑戰列表）。
+- **結算不再自動回標題**（移除 `presentationSeconds` 與倒數提示）：START 用同樣人數再玩一局（挑戰則重試），Esc 回標題。結算面板不再顯示舊的 1P／2P 滑鼠按鈕。
+- **繼續改為免費、每局每位真人 1 次**（`ContinueCountdowns.Used`／`NewMatch`）：40／80 秒被淘汰時 10 秒內按自己的 START（P1 空白鍵／第 1 支手把 Start；P2 數字鍵 Enter／第 2 支手把 Start）復活，復活規則不變；道具鍵不再能繼續。已用過的人再被淘汰就直接出局；沒按、倒數結束不算用掉。沒有真人時照舊 GAME OVER 2 秒後回標題。
+- 移除：`Credits`、`InsertCoin`、`SpendCredits`、`TryStartRun`、5／手把 Select 投幣、1／2／左 Ctrl 開局，以及所有投幣文字（`CabinetText` 改為 `NormalRule`、`StartPrompt`、`PlayerMenu` 等）。字型已補上新字。
+- 驗證：EditMode 165／165（新增 `ConsoleStartTests` 3 項；`ContinueCountdownTests` 改為免費與每局 1 次）。Play Mode `tmp/ticket17-play.cs`（狀態檔 `tmp/ticket17-state.txt`：title／menu／cont／results）全部通過，截圖 `tmp/ticket17-*.png` 已檢視；腳本結束時把 `TNDA.Gold`／`WreckBest` 還原，避免測試寫入使用者存檔。第一次執行時尚未加還原，金幣與最高分被寫入，已手動還原為 140 金幣與 50000（最高分在此之前的值無備份，沿用票單 03 紀錄的 50000）。
 
 ## Mode 7 票單 10：挑戰模式與「只能用火箭」（2026-11-09 完成）
 

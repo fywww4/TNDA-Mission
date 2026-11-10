@@ -54,7 +54,6 @@ namespace TNDA.Prototype.Editor
                 var game = root.AddComponent<DemolitionGame>();
                 // GAME3 cabinet defaults are set only when creating a new game component.
                 // DemolitionGame's field initializers supply the gameplay tuning defaults.
-                game.presentationSeconds = 20;
                 game.countdownSeconds = ArcadeSoundSetup.CountdownSeconds;
                 game.sceneCamera = camera;
                 game.cabinetTitle = CabinetText.Title;
