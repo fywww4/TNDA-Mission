@@ -30,6 +30,7 @@ namespace TNDA.Prototype.Editor
             CreateScorePopups(game);
             CreateContinuePanel(game);
             CreateVictoryScreen(game);
+            if (game.GetComponent<Mode7Stage>() != null) Game3Transmission.Apply(game, 320, 320);
             game.PreparePreview();
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);

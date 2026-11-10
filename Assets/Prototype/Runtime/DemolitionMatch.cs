@@ -24,6 +24,8 @@ namespace TNDA.Prototype
             new[] { new EliminationStep(45, 1), new EliminationStep(80, 1), new EliminationStep(120, 1) };
         public float RoundSeconds => eliminations[eliminations.Length - 1].at;
         public float driveSpeed = 2.8f, accelerationPerSecond = 1.4f, coastDownPerSecond = 2.2f;
+        // One saved cabinet setting shared by human seats. Computer drivers always use automatic.
+        public bool manualTransmission;
         public float respawnSeconds = 3;
         public int wreckPenalty = 250, wreckBonus = 300;
         public float shieldDuration = 6, pickupRespawnSeconds = 8;
@@ -189,7 +191,7 @@ namespace TNDA.Prototype
                 // Holding gas builds speed gradually; releasing it coasts down a little faster.
                 float ramp = input.throttle > .1f ? Tuning.accelerationPerSecond : Tuning.coastDownPerSecond;
                 float topSpeed = Tuning.driveSpeed * (car.computer ? AiTopSpeed(car) : 1) * (car.HasCherry ? Tuning.cherrySpeedMultiplier : 1);
-                car.Drive(dt, input, topSpeed, ramp);
+                car.Drive(dt, input, topSpeed, ramp, Tuning.manualTransmission && !car.computer);
                 // Bumper-car slide from recent hits, fading out.
                 car.AdvanceSlide(dt, Tuning.bumpFriction);
                 ConstrainToArena(car);

@@ -14,6 +14,7 @@ namespace TNDA.Prototype
         public float steer, throttle;
         public bool action, actionPressed;
         public bool resetSaveHeld;
+        public bool shiftUpPressed, shiftDownPressed;
     }
 
     // The cabinet around GAME3: title (attract) -> 3-2-1 countdown -> match -> results -> back to title, coin and
@@ -53,6 +54,13 @@ namespace TNDA.Prototype
         // Coins inserted and not yet spent. A 1P game costs one coin, a 2P game two, a continue one.
         public int Credits { get; private set; }
         public const int MaxCredits = 9;
+        public const string TransmissionSaveKey = "TNDA.ManualTransmission";
+        public bool ManualTransmission => PlayerPrefs.GetInt(TransmissionSaveKey, 0) == 1;
+        public void SelectTransmission(bool manual)
+        {
+            PlayerPrefs.SetInt(TransmissionSaveKey, manual ? 1 : 0);
+            PlayerPrefs.Save();
+        }
         // Title screen selection. ActiveChallenge is the challenge being played or just finished (null in arcade mode,
         // on the title and in the demo).
         public CabinetMode Mode { get; private set; }
@@ -147,6 +155,8 @@ namespace TNDA.Prototype
         // Title screen: left/right switch between arcade and challenge mode, up/down pick a challenge.
         private void NavigateTitle()
         {
+            if (Pressed(Key.T) || (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame))
+                SelectTransmission(!ManualTransmission);
             if (PressedAny(Key.LeftArrow, Key.RightArrow, Key.A, Key.D, Key.Tab) || DpadPressed(pad => pad.dpad.left, pad => pad.dpad.right))
                 Mode = Mode == CabinetMode.Arcade ? CabinetMode.Challenge : CabinetMode.Arcade;
             if (Mode != CabinetMode.Challenge) return;
@@ -327,6 +337,8 @@ namespace TNDA.Prototype
                 input.action = k[button].isPressed;
                 input.actionPressed = k[button].wasPressedThisFrame;
                 input.resetSaveHeld = index == 0 && k.deleteKey.isPressed;
+                input.shiftDownPressed = k[index == 0 ? Key.DownArrow : Key.S].wasPressedThisFrame;
+                input.shiftUpPressed = k[index == 0 ? Key.RightShift : Key.LeftShift].wasPressedThisFrame;
             }
             if (Gamepad.all.Count > index)
             {
@@ -338,6 +350,8 @@ namespace TNDA.Prototype
                 if (stick.y > .4f) input.throttle = 1;
                 input.action |= pad.buttonSouth.isPressed;
                 input.actionPressed |= pad.buttonSouth.wasPressedThisFrame;
+                input.shiftDownPressed |= pad.leftShoulder.wasPressedThisFrame;
+                input.shiftUpPressed |= pad.rightShoulder.wasPressedThisFrame;
             }
             return input;
         }

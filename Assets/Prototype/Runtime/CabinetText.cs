@@ -13,6 +13,13 @@ namespace TNDA.Prototype
         // Simplified rules (user request): only the two players' controls.
         public const string P1Controls = "P1　↑油門　←→轉向　左Ctrl道具";
         public const string P2Controls = "P2　W油門　AD轉向　數字鍵Enter道具";
+        public const string P1ManualControls = P1Controls + "　↓降檔　右Shift升檔";
+        public const string P2ManualControls = P2Controls + "　S降檔　左Shift升檔";
+        public const string ManualTransmission = "手排";
+        public const string AutomaticTransmission = "自排";
+        public const string TransmissionOption = "{0}　T／手把Y切換　LB降檔 RB升檔";
+        public const string PlayerGear = "P{0} {1} {2}檔";
+        public const string ReverseGear = "R";
         public const string Instructions = P1Controls + "\n" + P2Controls;
 
         // Attract mode, like an arcade cabinet waiting for coins.

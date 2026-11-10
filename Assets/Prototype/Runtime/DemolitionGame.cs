@@ -169,6 +169,7 @@ namespace TNDA.Prototype
                 t.ResetChallengeSwitches();
                 ActiveChallenge?.ApplyRules(t); // a challenge being played changes the rules; the title demo never does
                 t.driveSpeed = driveSpeed; t.accelerationPerSecond = accelerationPerSecond; t.coastDownPerSecond = coastDownPerSecond;
+                t.manualTransmission = ManualTransmission;
                 t.respawnSeconds = enemyRespawnSeconds; t.wreckPenalty = wreckPenalty; t.wreckBonus = wreckBonus;
                 t.shieldDuration = shieldDuration; t.pickupRespawnSeconds = pickupRespawnSeconds;
                 t.aiGraceSeconds = aiGraceSeconds; t.leaderBias = leaderBias;
@@ -230,6 +231,9 @@ namespace TNDA.Prototype
 
         [Header("Title: mode tabs and the challenge list")]
         public TMP_Text attractRule, attractModes, attractChallenges;
+        [Header("Transmission HUD")]
+        public TMP_Text attractTransmission;
+        public TMP_Text[] attractControls, gearLabels;
         [Tooltip("Backing and list shown only while the title is on challenge mode.")]
         public GameObject attractChallengePanel;
 
@@ -495,6 +499,7 @@ namespace TNDA.Prototype
             Wallet.Clear();
             Records.Clear();
             PlayerPrefs.DeleteKey("WreckBest");
+            PlayerPrefs.DeleteKey(TransmissionSaveKey);
             PlayerPrefs.Save();
             resetSaveLatched = true;
         }
@@ -833,11 +838,39 @@ namespace TNDA.Prototype
             if (cars.Length > 4) hud.text = hud.text.Replace("\n", "　");
             // One 11px line fits under the arena; in 2P it alternates between the two players every 3 seconds.
             bool showP2 = PlayerCount == 2 && Mathf.FloorToInt(Time.unscaledTime / 3) % 2 == 1;
-            footer.text = showP2 ? CabinetText.P2Controls : CabinetText.P1Controls;
+            footer.text = ControlsFor(showP2 ? 1 : 0);
             if (Phase == ArcadePhase.Attract) overlayHint.text = CabinetText.AttractHint;
             ShowStartMessages();
             ShowContinue();
+            RefreshTransmissionHud();
         }
+
+        private void RefreshTransmissionHud()
+        {
+            string mode = ManualTransmission ? CabinetText.ManualTransmission : CabinetText.AutomaticTransmission;
+            if (attractTransmission != null) attractTransmission.text = string.Format(CabinetText.TransmissionOption, mode);
+            if (attractControls != null)
+                for (int i = 0; i < attractControls.Length; i++)
+                    if (attractControls[i] != null) attractControls[i].text = ControlsFor(i);
+            var cabinet = (RectTransform)header.transform.parent;
+            if (gearLabels == null) return;
+            for (int i = 0; i < gearLabels.Length; i++)
+            {
+                var label = gearLabels[i];
+                if (label == null) continue;
+                bool shown = (Phase == ArcadePhase.Playing || Phase == ArcadePhase.Countdown) && i < PlayerCount && victoryLeft < 0 && gameOverLeft < 0;
+                label.transform.parent.gameObject.SetActive(shown);
+                label.text = string.Format(CabinetText.PlayerGear, i + 1, mode, cars[i].Gear == 0 ? CabinetText.ReverseGear : cars[i].Gear.ToString());
+                // P1's lower-right corner moves up to the top half in a split view; P2 keeps the bottom corner.
+                var rect = (RectTransform)label.transform.parent;
+                rect.anchoredPosition = new Vector2(cabinet.sizeDelta.x - rect.sizeDelta.x - 6,
+                    20 + (PlayerCount == 2 && i == 0 ? cabinet.sizeDelta.y / 2 : 0));
+            }
+        }
+
+        private string ControlsFor(int player) => player == 0
+            ? ManualTransmission ? CabinetText.P1ManualControls : CabinetText.P1Controls
+            : ManualTransmission ? CabinetText.P2ManualControls : CabinetText.P2Controls;
 
         private static string Tinted(Color color, string text) => "<color=#" + ColorUtility.ToHtmlStringRGB(color) + ">" + text + "</color>";
 
