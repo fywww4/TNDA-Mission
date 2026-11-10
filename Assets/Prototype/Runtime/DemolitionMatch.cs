@@ -26,6 +26,7 @@ namespace TNDA.Prototype
         public float driveSpeed = 2.8f, accelerationPerSecond = 1.4f, coastDownPerSecond = 2.2f;
         // One saved cabinet setting shared by human seats. Computer drivers always use automatic.
         public bool manualTransmission;
+        public VehicleUpgrades playerUpgrades;
         public float respawnSeconds = 3;
         public int wreckPenalty = 250, wreckBonus = 300;
         public float shieldDuration = 6, pickupRespawnSeconds = 8;
@@ -190,8 +191,11 @@ namespace TNDA.Prototype
                 }
                 // Holding gas builds speed gradually; releasing it coasts down a little faster.
                 float ramp = input.throttle > .1f ? Tuning.accelerationPerSecond : Tuning.coastDownPerSecond;
+                if (input.throttle > .1f) ramp *= 1 + HumanBonus(car, VehicleAbility.Acceleration);
                 float topSpeed = Tuning.driveSpeed * (car.computer ? AiTopSpeed(car) : 1) * (car.HasCherry ? Tuning.cherrySpeedMultiplier : 1);
-                car.Drive(dt, input, topSpeed, ramp, Tuning.manualTransmission && !car.computer);
+                topSpeed *= 1 + HumanBonus(car, VehicleAbility.TopSpeed);
+                car.Drive(dt, input, topSpeed, ramp, Tuning.manualTransmission && !car.computer,
+                    1 + HumanBonus(car, VehicleAbility.Handling));
                 // Bumper-car slide from recent hits, fading out.
                 car.AdvanceSlide(dt, Tuning.bumpFriction);
                 ConstrainToArena(car);
@@ -376,7 +380,7 @@ namespace TNDA.Prototype
                 events.Add(new CherryStrike(attacker, victim, false));
                 return;
             }
-            bool wrecked = ApplyDamage(victim, 1) && !victim.alive;
+            bool wrecked = ApplyDamage(victim, 1, ignoresStrength: true) && !victim.alive;
             if (wrecked) AwardWreck(attacker);
             events.Add(new CherryStrike(attacker, victim, wrecked));
             if (wrecked && ram >= 1) SplashDebris(attacker, victim);
@@ -473,7 +477,7 @@ namespace TNDA.Prototype
                     .OrderBy(c => Vector2.Distance(from, c.position)).FirstOrDefault();
                 if (victim != null)
                 {
-                    if (ApplyDamage(victim, victim.HasCherry ? 1 : .38f))
+                    if (ApplyDamage(victim, victim.HasCherry ? 1 : .38f, ignoresStrength: victim.HasCherry))
                     {
                         AddScore(owner, 120);
                         if (!victim.alive) AwardWreck(owner);
@@ -509,8 +513,13 @@ namespace TNDA.Prototype
             return Vector2.Distance(point, from + segment * t);
         }
 
-        public bool ApplyDamage(ArcadeVehicle car, float damage)
+        private float HumanBonus(ArcadeVehicle car, VehicleAbility ability) =>
+            car.computer || Tuning.playerUpgrades == null ? 0 : Tuning.playerUpgrades.Bonus(ability);
+
+        public bool ApplyDamage(ArcadeVehicle car, float damage, bool ignoresStrength = false)
         {
+            // Cherry contact is an instant wreck, while ordinary rams and rockets use durability damage.
+            if (!ignoresStrength) damage *= 1 - HumanBonus(car, VehicleAbility.Strength);
             float previousScore = car.score;
             Vector2 point = car.position;
             if (!car.TakeDamage(damage, LifecycleRules))

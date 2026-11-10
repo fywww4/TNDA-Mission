@@ -170,6 +170,7 @@ namespace TNDA.Prototype
                 ActiveChallenge?.ApplyRules(t); // a challenge being played changes the rules; the title demo never does
                 t.driveSpeed = driveSpeed; t.accelerationPerSecond = accelerationPerSecond; t.coastDownPerSecond = coastDownPerSecond;
                 t.manualTransmission = ManualTransmission;
+                t.playerUpgrades = Upgrades;
                 t.respawnSeconds = enemyRespawnSeconds; t.wreckPenalty = wreckPenalty; t.wreckBonus = wreckBonus;
                 t.shieldDuration = shieldDuration; t.pickupRespawnSeconds = pickupRespawnSeconds;
                 t.aiGraceSeconds = aiGraceSeconds; t.leaderBias = leaderBias;
@@ -239,7 +240,6 @@ namespace TNDA.Prototype
 
         [Header("Saved gold")]
         public TMP_Text attractGold, resetSaveHint;
-        public int Gold => Wallet.Total;
         public int RoundGold { get; private set; }
         private bool goldAwarded, resetSaveLatched;
         private float resetSaveHeldSeconds;
@@ -498,6 +498,7 @@ namespace TNDA.Prototype
             if (resetSaveHeldSeconds < 3) return;
             Wallet.Clear();
             Records.Clear();
+            Upgrades.Clear();
             PlayerPrefs.DeleteKey("WreckBest");
             PlayerPrefs.DeleteKey(TransmissionSaveKey);
             PlayerPrefs.Save();
@@ -720,10 +721,11 @@ namespace TNDA.Prototype
             bool attract = Phase == ArcadePhase.Attract && attractScreen != null;
             if (attractScreen != null)
             {
+                bool inGarage = Phase == ArcadePhase.Garage;
                 attractScreen.SetActive(attract);
                 if (attract) overlay.SetActive(false);
                 foreach (var text in new[] { header, arenaBoard, leaderboard, hud, footer, notice })
-                    if (text != null) text.gameObject.SetActive(!attract);
+                    if (text != null) text.gameObject.SetActive(!attract && !inGarage);
                 if (attractRule != null) attractRule.text = Mode == CabinetMode.Challenge ? CabinetText.ChallengeRule : CabinetText.CoinRule;
                 if (attractModes != null)
                     attractModes.text = string.Format(CabinetText.ModeTabs, ModeTab(CabinetMode.Arcade, CabinetText.ModeArcade),
@@ -761,7 +763,7 @@ namespace TNDA.Prototype
                     {
                         // Screen-space tag, one per view, in cabinet units with the origin at the centre (top-down:
                         // 1 world unit = 32 cabinet units). Sits just above the roof health bar.
-                        bool shown = !attract && car.alive && car.gameObject.activeInHierarchy;
+                        bool shown = !attract && Phase != ArcadePhase.Garage && car.alive && car.gameObject.activeInHierarchy;
                         int views = CabinetViews;
                         for (int v = 0; v < TagViews(extraLabels); v++)
                         {

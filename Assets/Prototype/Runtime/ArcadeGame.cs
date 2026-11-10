@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 namespace TNDA.Prototype
 {
-    public enum ArcadePhase { Attract, Playing, Results, Countdown }
+    public enum ArcadePhase { Attract, Playing, Results, Countdown, Garage }
     // What the title screen offers: the coin-operated elimination match, or free single-player challenges.
     public enum CabinetMode { Arcade, Challenge }
 
@@ -67,11 +67,17 @@ namespace TNDA.Prototype
         public int ChallengeCursor { get; private set; }
         public Challenge ActiveChallenge { get; private set; }
         public Challenge SelectedChallenge => Challenges.All[ChallengeCursor];
+        public GarageScreen garage;
+        private VehicleUpgrades upgrades;
+        public VehicleUpgrades Upgrades => upgrades ?? (upgrades = new VehicleUpgrades());
+        public int GarageCursor { get; private set; }
+        public string GarageMessage { get; private set; } = "";
         private ChallengeRecords records;
         public ChallengeRecords Records => records ?? (records = new ChallengeRecords());
         // Saved reward gold (not the inserted coins); it pays for challenge unlocks.
         private GoldWallet wallet;
         protected GoldWallet Wallet => wallet ?? (wallet = new GoldWallet());
+        public int Gold => Wallet.Total;
         private float resultAge, noticeAge, goFlash;
         [NonSerialized] private AudioClip[] sounds; // generated in Awake; a reload must not turn it into an empty array
 
@@ -104,6 +110,7 @@ namespace TNDA.Prototype
             if (Pressed(Key.Digit5) || Pressed(Key.Numpad5) || (Gamepad.current != null && Gamepad.current.selectButton.wasPressedThisFrame))
                 InsertCoin();
             if (Phase == ArcadePhase.Attract) NavigateTitle();
+            else if (Phase == ArcadePhase.Garage) NavigateGarage();
             if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
             {
                 bool one = Pressed(Key.Digit1) || Pressed(Key.LeftCtrl) || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
@@ -150,11 +157,17 @@ namespace TNDA.Prototype
             }
             Tick(dt, startPhase, p1, p2);
             RefreshHud();
+            if (garage != null) garage.Render(this, dt);
         }
 
         // Title screen: left/right switch between arcade and challenge mode, up/down pick a challenge.
         private void NavigateTitle()
         {
+            if (Pressed(Key.G) || (Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame))
+            {
+                OpenGarage();
+                return;
+            }
             if (Pressed(Key.T) || (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame))
                 SelectTransmission(!ManualTransmission);
             if (PressedAny(Key.LeftArrow, Key.RightArrow, Key.A, Key.D, Key.Tab) || DpadPressed(pad => pad.dpad.left, pad => pad.dpad.right))
@@ -165,6 +178,42 @@ namespace TNDA.Prototype
         }
 
         public void SelectMode(CabinetMode mode) => Mode = mode;
+
+        public void OpenGarage()
+        {
+            if (Phase != ArcadePhase.Attract || garage == null) return;
+            Phase = ArcadePhase.Garage;
+            GarageMessage = "";
+            overlay.SetActive(false);
+            RefreshHud();
+            garage.Render(this, 0);
+        }
+
+        public void MoveGarageCursor(int delta)
+        {
+            GarageCursor = ((GarageCursor + delta) % 4 + 4) % 4;
+            GarageMessage = "";
+        }
+
+        public bool TryBuySelectedUpgrade()
+        {
+            if (Phase != ArcadePhase.Garage) return false;
+            var ability = (VehicleAbility)GarageCursor;
+            bool bought = Upgrades.TryBuy(ability, Wallet);
+            GarageMessage = bought ? CabinetText.GarageBought
+                : Upgrades.Level(ability) == VehicleUpgrades.MaxLevel ? CabinetText.GarageMaxed : CabinetText.GarageGoldShort;
+            if (bought) Sound(2);
+            garage.Render(this, 0);
+            return bought;
+        }
+
+        private void NavigateGarage()
+        {
+            if (PressedAny(Key.UpArrow, Key.W) || DpadPressed(pad => pad.dpad.up)) MoveGarageCursor(-1);
+            if (PressedAny(Key.DownArrow, Key.S) || DpadPressed(pad => pad.dpad.down)) MoveGarageCursor(1);
+            if (Pressed(Key.LeftCtrl) || (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)) TryBuySelectedUpgrade();
+            if (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame) ShowAttract();
+        }
 
         public void MoveChallengeCursor(int delta)
         {
@@ -235,6 +284,7 @@ namespace TNDA.Prototype
             Elapsed = resultAge = 0;
             bool countdown = countdownSeconds > 0;
             Phase = countdown ? ArcadePhase.Countdown : ArcadePhase.Playing;
+            if (garage != null) garage.gameObject.SetActive(false);
             if (speaker != null) speaker.Stop();
             ResetMatch();
             overlay.SetActive(false);
@@ -267,6 +317,7 @@ namespace TNDA.Prototype
             if (countdownLabel != null) countdownLabel.text = "";
             ActiveChallenge = null;
             Phase = ArcadePhase.Attract;
+            if (garage != null) garage.gameObject.SetActive(false);
             ShowOverlay(cabinetTitle, instructions, CabinetText.AttractHint);
         }
 

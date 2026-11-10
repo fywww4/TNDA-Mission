@@ -173,7 +173,7 @@ namespace TNDA.Prototype
                 spinSpeed = 0;
         }
 
-        public void Drive(float dt, ArcadeInput input, float maxSpeed, float acceleration, bool manual = false)
+        public void Drive(float dt, ArcadeInput input, float maxSpeed, float acceleration, bool manual = false, float turnScale = 1)
         {
             stun = Mathf.Max(0, stun - dt);
             cooldown = Mathf.Max(0, cooldown - dt);
@@ -188,7 +188,7 @@ namespace TNDA.Prototype
             if (stun > 0)
             {
                 speed = Mathf.MoveTowards(speed, 0, dt * 7);
-                heading -= input.steer * 155 * dt;
+                heading -= input.steer * 155 * turnScale * dt;
                 return;
             }
             if (manual)
@@ -208,7 +208,7 @@ namespace TNDA.Prototype
                 float roadSpeed = maxSpeed > 0 ? Mathf.Abs(speed) * 2.8f / maxSpeed : 0;
                 Gear = roadSpeed >= 1.9f ? 3 : roadSpeed >= 1.2f ? 2 : 1;
             }
-            heading -= input.steer * 155 * dt * Mathf.Clamp(Mathf.Abs(speed), .9f, 1.4f) * (speed < 0 ? -1 : 1);
+            heading -= input.steer * 155 * turnScale * dt * Mathf.Clamp(Mathf.Abs(speed), .9f, 1.4f) * (speed < 0 ? -1 : 1);
             position += Forward * speed * dt;
         }
 

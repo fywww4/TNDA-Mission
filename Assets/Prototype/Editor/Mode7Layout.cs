@@ -84,6 +84,7 @@ namespace TNDA.Prototype.Editor
             LayOutAttract((RectTransform)game.attractScreen.transform);
             LayOutVictory((RectTransform)game.victoryScreen.transform);
             Game3Transmission.Apply(game, W, H);
+            Game3Garage.Apply(stage);
             EditorUtility.SetDirty(game);
 
             void Centre(RectTransform rect) => Place(rect, (W - (int)rect.sizeDelta.x) / 2, (H - (int)rect.sizeDelta.y) / 2, rect.sizeDelta.x, rect.sizeDelta.y);

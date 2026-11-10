@@ -43,6 +43,24 @@ namespace TNDA.Prototype
         public const string ResetSaveConfirm = "清除存檔？繼續按住 Delete {0} 秒";
         public const string SaveCleared = "存檔已清除，請放開 Delete";
 
+        public const string GarageTitle = "車庫";
+        public const string GarageEntry = "G／手把X 車庫";
+        public const string GarageAbilityTab = "←　能力　→";
+        public const string GarageShared = "P1・P2 共用能力";
+        public const string GarageTopSpeed = "最高速";
+        public const string GarageAcceleration = "加速";
+        public const string GarageHandling = "操控";
+        public const string GarageStrength = "強度";
+        public static readonly string[] GarageAbilities = { GarageTopSpeed, GarageAcceleration, GarageHandling, GarageStrength };
+        public const string GarageBonus = "+{0}%";
+        public const string GaragePrice = "{0} 金幣";
+        public const string GarageMaxed = "已滿";
+        public const string GarageBought = "升級完成！";
+        public const string GarageGoldShort = "金幣不足";
+        public const string GarageControls = "↑↓選擇　左Ctrl／手把A 購買　Esc／手把B 返回";
+        public const string GarageStep = "每級 +5%　最多 +20%";
+        public const string GarageStrengthStep = "強度：減少受到的傷害";
+
         // Challenge mode (title list, play and result).
         public const string ModeArcade = "街機模式";
         public const string ModeChallenge = "挑戰模式";

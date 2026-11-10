@@ -124,7 +124,7 @@
 
 ## Mode 7 擴充規劃（2026-11-09，尚未實作）
 
-使用者確認以 `GAME3_Mode7` 為主線，新增功能拆成票單 `.scratch/mode7-expansion/issues/01～15`（照編號與 Blocked by 開工）。用詞以根目錄 `GLOSSARY.md` 為準（「硬幣」＝投幣點數、「金幣」＝存檔的獎勵貨幣，兩者不同）。解析度改為 512×448 混合（美術 2 倍粗像素、文字原生），見 `Docs/adr/0001-hybrid-512x448-resolution.md`。內容：混合解析度與 HUD、P2 標籤、換主場景、碎片噴濺、觀眾席與鐵絲網、8 台車金字塔淘汰（40 秒淘汰 4、80 秒淘汰 2、120 秒決賽）、金幣存檔、挑戰模式三個挑戰。車庫待決定；手排已於 2026-11-10 依票單 14 開工；關卡模式仍保留不做。觀眾席、鐵絲網、碎片的 GPT 美術提示詞已交給使用者（`crowd.png`、`fence.png`、`debris.png`），到貨前用占位圖。
+使用者確認以 `GAME3_Mode7` 為主線，新增功能拆成票單 `.scratch/mode7-expansion/issues/01～15`（照編號與 Blocked by 開工）。用詞以根目錄 `GLOSSARY.md` 為準（「硬幣」＝投幣點數、「金幣」＝存檔的獎勵貨幣，兩者不同）。解析度改為 512×448 混合（美術 2 倍粗像素、文字原生），見 `Docs/adr/0001-hybrid-512x448-resolution.md`。內容：混合解析度與 HUD、P2 標籤、換主場景、碎片噴濺、觀眾席與鐵絲網、8 台車金字塔淘汰（40 秒淘汰 4、80 秒淘汰 2、120 秒決賽）、金幣存檔、挑戰模式三個挑戰。車庫（能力升級，票單 13；外觀為票單 16）；手排已於 2026-11-10 依票單 14 開工；關卡模式仍保留不做。觀眾席、鐵絲網、碎片的 GPT 美術提示詞已交給使用者（`crowd.png`、`fence.png`、`debris.png`），到貨前用占位圖。
 
 ## Mode 7 票單 10：挑戰模式與「只能用火箭」（2026-11-09 完成）
 
@@ -302,3 +302,9 @@
 `Game3Transmission.Apply` 只加入標題選項與兩個 11px 檔位框，不重建原 HUD；共用文字修補與 `Mode7Layout` 都會重新接線，兩次完整修補維持 276 物件。1P 檔位在右下角，2P 的 P1 移到上半邊右下角、P2 留在下半邊右下角。手排操作提示加上各自升降檔鍵，畫面文字集中於 `CabinetText`。
 
 驗證細節與截圖見 `Docs/Game3/manual-transmission-verification.md`。本次交付為 Unity 專案，未重建 Windows／Web 發行檔。
+
+## 車庫與能力升級（票單 13，2026-11-10）
+
+標題按 G／手把 X 進入車庫（`ArcadePhase.Garage`），↑↓選項、左 Ctrl／手把 A 購買、Esc／手把 B 回標題。能力四項（最高速、加速、操控、強度）各 4 級，每級 +5%，價格 50／100／200／400 金幣，整台機器共用，存於 `TNDA.Upgrades.<能力>`，Delete 長按清除存檔時一併歸零。邏輯在 `Runtime/VehicleUpgrades.cs`，畫面在 `Runtime/GarageScreen.cs`，場景由 `Editor/Game3Garage.cs` 補上（`Mode7Layout` 會重跑）。`DemolitionMatch` 只對真人車套用：最高速、加速、操控加成；強度只降低被撞與被火箭命中的傷害（櫻桃碰撞不減）；AI 完全不變，仍以基礎最高速 2.8 為準。「外觀」分頁尚未做（票單 16）。
+
+驗證：EditMode `VehicleUpgradeTests`／`UpgradeDrivingTests`／`GarageCabinetTests` 加上既有測試共 161 項全數通過；Play Mode 截圖 `Docs/Game3/garage-abilities.png`（512×448，字元無缺）已檢視；Console 零錯誤、零警告。截圖測試時動用的金幣與升級存檔已還原。
