@@ -17,11 +17,13 @@
 - 公開流程 `tmp/ticket14-play.cs`：26／26。涵蓋 1P 手排、2P 手排、自排的自動操作整局流程，獨立換檔、撞毀重生、40 秒計時淘汰／投幣復活、三個挑戰倒車、清除存檔與字型。這是自動操作驗證；真人駕駛手感仍由使用者遊玩判斷。
 - 真正 Input System 事件經正常 `Update`：`tmp/ticket14-input.ps1` 7／7。四個鍵盤換檔鍵、按住只換一次、兩支手把各自 LB／RB、T／手把 Y 切換。副本使用 IgnoreFocus 接收背景輸入，未變更正式專案輸入設定。
 - 完整場景修補兩次：276→276，兩個檔位框與標題／操作提示參照有效。
-- 結案（2026-11-10）：主 Editor 重新編譯 up_to_date；完整 EditMode 140／140 通過；Console 最新取樣 compilationFailed=false、錯誤 0、警告 0。專案沒有 PlayMode 測試組件，PlayMode 以上述公開流程自動操作驗證。
+- 結案（2026-11-10）：主 Editor 重新編譯完成；完整 EditMode 140／140、PlayMode 渲染測試 1／1 通過。主 Editor 與驗證副本 Console 最新取樣 compilationFailed=false、錯誤 0、警告 0。PlayMode 測試組件為 `TNDA.Prototype.Tests.PlayMode`；結果分別記錄於 `tmp/ticket14-editmode-final.json` 與 `tmp/ticket14-playmode-final.json`。
 
 測試副本：`C:\Users\a0900\AppData\Local\Temp\TNDA-ticket14-20261110`，獨立產品名稱 `TNDA Ticket14 QA 20261110`，清存檔測試不接觸正式存檔。CLI 包裝 `tmp/ticket14-qa.ps1`。原完整測試切換 Play Mode 遇到 batch 場景儲存對話框；已將車輛測試隔離到 preview scene，重開驗證副本後於空白場景重跑。
 
 主 Editor 最初 CLI 逾時，後來恢復連線，已以 Editor API 加入所需 UI 並儲存正式場景。票單 08 的既有變更保留，由其原代理獨立提交為 `f60598d`。本票審查以該提交為固定點。
+
+Standards 雙軸審查：硬性違規 0；1 項低風險判斷為 Editor 初始檔位框與執行期各自計算位置，保留現行做法。審查發現的 AGENT.md 舊駕駛摘要已更新。Spec：0 項需求缺漏、錯誤實作或超出範圍。功能提交為 `f1ed001`，後續提交補齊本驗證與交接紀錄。
 
 ## 畫面
 

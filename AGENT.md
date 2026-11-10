@@ -198,7 +198,7 @@
 | `Assets/Prototype/Runtime/MatchEvents.cs` | 比賽事件：火箭命中、撞擊、櫻桃撞車、撞牆、撞碎破壞物、撿到／使用道具、火箭仍在飛、防護罩擋下、撞毀、撞毀獎勵、每次得分變化（`ScoreChanged`，供加分文字）、淘汰、比賽結束。規則只記錄事件，提示文字、顏色、停留時間與音效都由 `DemolitionGame.Cue` 決定。 |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | GAME3 場景 adapter：BreakableProp／ArenaPickup、Inspector 調整值與輸入送進 `DemolitionMatch`，再把狀態與事件轉成車輛／破壞物／木箱／火箭顯示、爆炸特效、提示文字與音效。 |
 | `Assets/Prototype/Tests/EditMode/` | EditMode 測試組件 `TNDA.Prototype.Tests.EditMode`（不載入 GAME3 場景），以 Unity CLI `run_tests --mode editor` 執行；執行期程式在 `TNDA.Prototype` 組件。 |
-| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 只有油門加速與放開滑行，無倒車、無自動前進。規則不碰顯示物件：`Visible`（行駛中或打滑飛出中）由場景 adapter 轉成物件顯示隱藏，車色也由 adapter 在開局設定。 |
+| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 處理自排與手排 R／1～4、油門加速與放開滑行；開局與重生回 1 檔。規則不碰顯示物件：`Visible`（行駛中或打滑飛出中）由場景 adapter 轉成物件顯示隱藏，車色也由 adapter 在開局設定。 |
 | `Assets/Prototype/Runtime/AiDriver.cs` | AI 駕駛 module（`car.Ai`）：依座位固定的個性（`AiPersonality`：碰碰／追王／迷糊）決定目標與道具時機；共用閃避玩家、逃離櫻桃、櫻桃追殺；比對車輛的 `Collisions`／`Spawns` 與存活車數自行重新規劃。比賽主程式經 `IAiArena` 提供局面。 |
 | `Assets/Prototype/Runtime/ArenaItems.cs` | 道具 module：`ArenaItem` 列舉、木箱抽選、使用效果、名稱／標籤／狀態文字；比賽主程式經 `IItemArena` 提供火箭與持續時間；撿到／使用道具的提示文字由 `PickupMessage`／`UsedMessage` 產生，經事件由場景 adapter 顯示。 |
 | `Assets/Prototype/Runtime/VehicleHarmPolicy.cs` | 衝撞、櫻桃、火箭與 AI 選目標共用的傷害資格規則；所有 AI 攻擊在開局前 10 秒不傷玩家，之後可傷玩家。 |

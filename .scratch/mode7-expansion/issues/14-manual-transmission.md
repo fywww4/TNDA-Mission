@@ -12,9 +12,12 @@
 
 - 使用者已同意 TDD 公開邊界：`ArcadeVehicle.Drive` 的檔位／行駛行為、`ArcadeGame` 的設定保存與開局流程。
 - 自排／AI 保留既有加速曲線，手排 R／1～4；標題以 T／手把 Y 切換共用設定。
-- 工作區已有票 08 的未提交變更，不可覆蓋或納入本票提交；起始版本備份在 `tmp/ticket14-baseline/`。
-- 主 Editor CLI `editor_status` 逾時，先用獨立副本 `C:\Users\a0900\AppData\Local\Temp\TNDA-ticket14-20261110` 驗證；CLI 包裝 `tmp/ticket14-qa.ps1`，Editor log 為 `tmp/ticket14-editor.log`。
-- 已加入換檔輸入／Gear 的介面骨架與第一個測試；尚未實作駕駛變化，紅燈測試待執行。
+- 實作已完成並提交為 `f1ed001`。票 08 的既有變更由原代理另行提交為 `f60598d`，本票保留該版本。
+- 完整 EditMode 140／140、PlayMode 渲染測試 1／1、公開遊戲流程 26／26、實際鍵盤／兩支手把輸入 7／7 皆通過。TDD 車輛 11 項與設定／雙人開局 1 項包含於上述 EditMode。
+- 主 Editor 已恢復連線，重新編譯與網域重新載入完成，Console 最新零錯誤、零警告，停止 Play Mode。
+- Standards 審查硬性違規 0；1 項低風險版面座標重複判斷保留。Spec 審查 0 項。審查發現的 AGENT.md 舊「無倒車」摘要已修正。
+- 詳細驗證與三張畫面：`Docs/Game3/manual-transmission-verification.md`。獨立驗證副本為 `C:\Users\a0900\AppData\Local\Temp\TNDA-ticket14-20261110`；CLI 包裝 `tmp/ticket14-qa.ps1`。初期副本的舊票 08 測試已同步最新版本；完整測試於空白場景重跑通過。
+- 無待接續的實作工作。Windows／Web 發行檔未重建；真人駕駛手感可再由使用者遊玩調整。
 
 - [x] EditMode 測試：各檔最高速與加速力符合上表；R 檔按油門會倒退、最高速 1.0；升到 4 檔可超過 2.8
 - [x] EditMode 測試：自排自動在 1～3 檔間換檔、最高速 2.8，起步與加速手感與修改前的一鍵油門接近（自排即現行駕駛）
