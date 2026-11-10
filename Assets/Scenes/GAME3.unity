@@ -4238,9 +4238,13 @@ MonoBehaviour:
   - {fileID: 1972445567}
   - {fileID: 250212862}
   - {fileID: 991248682}
-  firstElimination: 45
-  secondElimination: 80
-  roundSeconds: 120
+  eliminationSchedule:
+  - at: 45
+    count: 1
+  - at: 80
+    count: 1
+  - at: 120
+    count: 1
   driveSpeed: 2.8
   accelerationPerSecond: 1.4
   coastDownPerSecond: 2.2
