@@ -138,18 +138,20 @@ namespace TNDA.Prototype.Tests
             Assert.AreEqual(Challenges.All.Count, Challenges.All.Select(c => c.Id).Distinct().Count());
         }
 
-        [Test]
-        public void ABestRecordOnlyRisesAndSurvivesReopening()
+        [TestCase("rocket-only")]
+        [TestCase("score-90")]
+        public void ABestRecordOnlyRisesAndSurvivesReopening(string challengeId)
         {
+            var challenge = Challenges.All.Single(c => c.Id == challengeId);
             var records = new ChallengeRecords(recordPrefix);
-            Assert.AreEqual(0, records.Best(Challenges.RocketOnly));
-            Assert.IsTrue(records.Submit(Challenges.RocketOnly, 800));
-            Assert.IsFalse(records.Submit(Challenges.RocketOnly, 500));
-            Assert.IsFalse(records.Submit(Challenges.RocketOnly, 800));
-            Assert.AreEqual(800, records.Best(Challenges.RocketOnly));
-            Assert.AreEqual(800, new ChallengeRecords(recordPrefix).Best(Challenges.RocketOnly));
-            Assert.IsTrue(records.Submit(Challenges.RocketOnly, 900));
-            Assert.AreEqual(900, new ChallengeRecords(recordPrefix).Best(Challenges.RocketOnly));
+            Assert.AreEqual(0, records.Best(challenge));
+            Assert.IsTrue(records.Submit(challenge, 800));
+            Assert.IsFalse(records.Submit(challenge, 500));
+            Assert.IsFalse(records.Submit(challenge, 800));
+            Assert.AreEqual(800, records.Best(challenge));
+            Assert.AreEqual(800, new ChallengeRecords(recordPrefix).Best(challenge));
+            Assert.IsTrue(records.Submit(challenge, 900));
+            Assert.AreEqual(900, new ChallengeRecords(recordPrefix).Best(challenge));
         }
 
         [Test]

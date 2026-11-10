@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -27,61 +28,70 @@ namespace TNDA.Prototype.Tests
         // 100 for first place plus 99 for the score: 199 gold.
         private GoldWallet WalletWith199() { var wallet = new GoldWallet(goldKey); wallet.AwardRound((1, 9900)); return wallet; }
 
-        [Test]
-        public void TooLittleGoldLeavesTheChallengeLockedAndTheGoldUntouched()
+        [TestCase("no-wreck")]
+        [TestCase("score-90")]
+        public void TooLittleGoldLeavesTheChallengeLockedAndTheGoldUntouched(string challengeId)
         {
+            var challenge = Challenges.All.Single(c => c.Id == challengeId);
             var wallet = new GoldWallet(goldKey);
             wallet.AwardRound((2, 8900)); // 60 + 89 = 149
             var records = new ChallengeRecords(recordPrefix);
 
-            Assert.IsFalse(records.TryUnlock(Challenges.NoWreck, wallet));
-            Assert.IsFalse(records.IsUnlocked(Challenges.NoWreck));
+            Assert.IsFalse(records.TryUnlock(challenge, wallet));
+            Assert.IsFalse(records.IsUnlocked(challenge));
             Assert.AreEqual(149, wallet.Total);
             Assert.AreEqual(149, new GoldWallet(goldKey).Total);
         }
 
-        [Test]
-        public void EnoughGoldPays150AndTheUnlockSurvivesReopening()
+        [TestCase("no-wreck")]
+        [TestCase("score-90")]
+        public void EnoughGoldPays150AndTheUnlockSurvivesReopening(string challengeId)
         {
+            var challenge = Challenges.All.Single(c => c.Id == challengeId);
             var wallet = WalletWith199();
             var records = new ChallengeRecords(recordPrefix);
 
-            Assert.IsTrue(records.TryUnlock(Challenges.NoWreck, wallet));
-            Assert.IsTrue(records.IsUnlocked(Challenges.NoWreck));
+            Assert.IsTrue(records.TryUnlock(challenge, wallet));
+            Assert.IsTrue(records.IsUnlocked(challenge));
             Assert.AreEqual(49, wallet.Total);
             Assert.AreEqual(49, new GoldWallet(goldKey).Total);
-            Assert.IsTrue(new ChallengeRecords(recordPrefix).IsUnlocked(Challenges.NoWreck));
-            Assert.IsFalse(records.IsUnlocked(Challenges.NinetySecondScore), "only the chosen challenge opens");
+            Assert.IsTrue(new ChallengeRecords(recordPrefix).IsUnlocked(challenge));
+            foreach (var other in Challenges.All.Where(c => c.UnlockPrice > 0 && c != challenge))
+                Assert.IsFalse(records.IsUnlocked(other), "only the chosen challenge opens");
         }
 
-        [Test]
-        public void AnOpenChallengeCostsNothingMore()
+        [TestCase("no-wreck")]
+        [TestCase("score-90")]
+        public void AnOpenChallengeCostsNothingMore(string challengeId)
         {
+            var challenge = Challenges.All.Single(c => c.Id == challengeId);
             var wallet = WalletWith199();
             var records = new ChallengeRecords(recordPrefix);
-            records.TryUnlock(Challenges.NoWreck, wallet);
+            records.TryUnlock(challenge, wallet);
 
-            Assert.IsTrue(records.TryUnlock(Challenges.NoWreck, wallet));
+            Assert.IsTrue(records.TryUnlock(challenge, wallet));
             Assert.IsTrue(records.TryUnlock(Challenges.RocketOnly, wallet));
             Assert.AreEqual(49, wallet.Total);
         }
 
         [Test]
-        public void OnlyChallengesWithRulesArePlayable()
+        public void AllThreeChallengesArePlayable()
         {
             Assert.IsTrue(Challenges.RocketOnly.Playable);
             Assert.IsTrue(Challenges.NoWreck.Playable);
-            Assert.IsFalse(Challenges.NinetySecondScore.Playable, "its rules arrive with ticket 11");
+            Assert.IsTrue(Challenges.NinetySecondScore.Playable);
         }
 
-        [Test]
-        public void ClearingTheSaveLocksItAgain()
+        [TestCase("no-wreck")]
+        [TestCase("score-90")]
+        public void ClearingTheSaveLocksItAgain(string challengeId)
         {
+            var challenge = Challenges.All.Single(c => c.Id == challengeId);
             var records = new ChallengeRecords(recordPrefix);
-            records.TryUnlock(Challenges.NoWreck, WalletWith199());
+            records.TryUnlock(challenge, WalletWith199());
             records.Clear();
-            Assert.IsFalse(records.IsUnlocked(Challenges.NoWreck));
-            Assert.IsFalse(new ChallengeRecords(recordPrefix).IsUnlocked(Challenges.NoWreck));
+            Assert.IsFalse(records.IsUnlocked(challenge));
+            Assert.IsFalse(new ChallengeRecords(recordPrefix).IsUnlocked(challenge));
             Assert.IsTrue(records.IsUnlocked(Challenges.RocketOnly));
         }
     }

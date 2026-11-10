@@ -50,9 +50,12 @@ namespace TNDA.Prototype
                 tuning.eliminations = new[] { new EliminationStep(120, 1) };
             });
 
-        // Listed with their unlock price; the rules arrive with their own tickets.
+        // Eight cars keep scoring until the 90 s final, without any earlier timed eliminations.
         public static readonly Challenge NinetySecondScore = new Challenge("score-90", CabinetText.ChallengeScore90,
-            CabinetText.ChallengeScore90Rule, 150, null);
+            CabinetText.ChallengeScore90Rule, 150, tuning =>
+            {
+                tuning.eliminations = new[] { new EliminationStep(90, 1) };
+            }, carCount: 8);
         // Four cars, all three computers 追王 that chase the player; a wreck fails at once, lasting 120 s passes. The
         // record is the durability left (percent) on a pass.
         public static readonly Challenge NoWreck = new Challenge("no-wreck", CabinetText.ChallengeNoWreck,

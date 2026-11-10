@@ -26,9 +26,8 @@ try
     check("short-gold notice", g.notice.text.Contains("金幣不足"));
     check("locked will not start", !g.TryStartChallenge(noWreck));
 
-    var score90 = TNDA.Prototype.Challenges.NinetySecondScore;
+    // All three challenges are now playable; ticket11-play.cs covers the 90-second unlock and rules.
     setGold(200);
-    check("the unbuilt 90 s challenge cannot be bought", !g.TryUnlockChallenge(score90) && !g.Records.IsUnlocked(score90) && g.Gold == 200 && g.notice.text.Contains("尚未開放"));
 
     check("200 gold unlocks", g.TryUnlockChallenge(noWreck) && g.Records.IsUnlocked(noWreck) && g.Gold == 50);
     check("unlock saved", UnityEngine.PlayerPrefs.GetInt(unlockKey, 0) == 1 && new TNDA.Prototype.ChallengeRecords().IsUnlocked(noWreck));
