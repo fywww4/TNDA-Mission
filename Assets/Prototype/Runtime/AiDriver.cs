@@ -68,17 +68,25 @@ namespace TNDA.Prototype
         public static readonly IReadOnlyList<AiPersonality> SeatPersonalities = new[]
             { AiPersonality.Bumper, AiPersonality.Wanderer, AiPersonality.Hunter, AiPersonality.Bumper };
 
+        // P2 becomes a bumper when it is AI in 1P; P3..P8 are two of each personality in 2P.
+        private static readonly AiPersonality[] PyramidPersonalities = {
+            AiPersonality.Bumper, AiPersonality.Bumper, AiPersonality.Wanderer, AiPersonality.Hunter,
+            AiPersonality.Wanderer, AiPersonality.Hunter, AiPersonality.Bumper, AiPersonality.Bumper
+        };
+        private int carCount = 4;
         // A challenge may set one personality for every computer car instead.
         private AiPersonality? personality;
-        public AiPersonality Personality => personality ?? SeatPersonalities[car.index % SeatPersonalities.Count];
+        public AiPersonality Personality => personality ?? (carCount == 8 ? PyramidPersonalities[car.index]
+            : SeatPersonalities[car.index % SeatPersonalities.Count]);
 
         // The car this AI is ramming right now; a wreck hunts nobody.
         public ArcadeVehicle Target => car.alive ? target : null;
         public Vector2 Destination => destination;
 
         // A new match staggers the first plans so the AI cars do not all decide on the same frame.
-        public void BeginMatch(AiPersonality? forPersonality = null)
+        public void BeginMatch(AiPersonality? forPersonality = null, int cars = 4)
         {
+            carCount = cars;
             personality = forPersonality;
             target = null; // so the last match's quarry is not reported before the first plan
             fresh = true;

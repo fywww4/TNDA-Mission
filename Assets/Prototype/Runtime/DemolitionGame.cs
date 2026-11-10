@@ -149,14 +149,20 @@ namespace TNDA.Prototype
 
         private readonly ArcadeEngineAudio engine = new ArcadeEngineAudio();
         private DemolitionMatch match;
+        private ArcadeVehicle[] matchSource;
 
         // Rebuilt when scene tooling swaps an array; the Inspector tuning is copied in on every use.
         private DemolitionMatch Match
         {
             get
             {
-                if (match == null || match.Cars != cars || match.Props != props || match.Pickups != pickups || match.Rockets != rockets)
-                    match = new DemolitionMatch(cars, props, pickups, rockets, new MatchTuning());
+                int count = ActiveChallenge == null ? cars.Length : Mathf.Min(cars.Length, ActiveChallenge.CarCount);
+                if (match == null || matchSource != cars || match.Cars.Length != count
+                    || match.Props != props || match.Pickups != pickups || match.Rockets != rockets)
+                {
+                    match = new DemolitionMatch(count == cars.Length ? cars : cars.Take(count).ToArray(), props, pickups, rockets, new MatchTuning());
+                    matchSource = cars;
+                }
                 var t = match.Tuning;
                 if (eliminationSchedule == null || eliminationSchedule.Length == 0) eliminationSchedule = MatchTuning.DefaultEliminations();
                 t.eliminations = eliminationSchedule;
@@ -254,7 +260,7 @@ namespace TNDA.Prototype
             engine.Update(this, engineClip, cars, Phase == ArcadePhase.Playing || Phase == ArcadePhase.Countdown, driveSpeed);
         }
 
-        // Title screen: four AI cars play a silent demo match behind the coin prompt.
+        // Title screen: all seats play a silent AI demo match behind the coin prompt.
         private void TickDemo(float dt)
         {
             if (!demo || Elapsed >= demoLoopSeconds) StartDemo();
@@ -426,10 +432,13 @@ namespace TNDA.Prototype
         {
             int best = Mathf.Max(PlayerPrefs.GetInt("WreckBest", 0), Mathf.RoundToInt(cars.Where(c => !c.computer).Max(c => c.score)));
             PlayerPrefs.SetInt("WreckBest", best);
-            string standings = string.Join("\n", cars.OrderBy(c => c.FinalPlace)
+            string standings = string.Join("\n", Match.Cars.OrderBy(c => c.FinalPlace)
                 .Select(c => string.Format(CabinetText.Standing, c.FinalPlace, c.DriverName, Mathf.RoundToInt(c.score).ToString("00000"))));
             Finish(string.Format(CabinetText.Winner, winner.DriverName), standings
-                + "\n" + string.Format(CabinetText.ResultsSummary, best, Wrecks) + "\n" + CabinetText.EliminationRule
+                + "\n" + string.Format(CabinetText.ResultsSummary, best, Wrecks) + "\n"
+                + string.Join("／", eliminationSchedule.Select((step, i) => i == eliminationSchedule.Length - 1
+                    ? string.Format(CabinetText.EliminationFinal, step.at)
+                    : string.Format(CabinetText.EliminationStep, step.at, step.count)))
                 + "\n" + GoldSummary);
         }
 
@@ -487,7 +496,7 @@ namespace TNDA.Prototype
         {
             foreach (var car in cars)
             {
-                car.gameObject.SetActive(car.Visible);
+                car.gameObject.SetActive(car.index < Match.Cars.Length && car.Visible);
                 car.Sync();
             }
             foreach (var prop in props)
@@ -804,16 +813,23 @@ namespace TNDA.Prototype
             arenaBoard.text = ActiveChallenge != null ? string.Format(CabinetText.ChallengeBoard, ActiveChallenge.Name)
                 : Phase == ArcadePhase.Results ? string.Format(CabinetText.Champion, cars[Champion].DriverName)
                 : string.Format(CabinetText.NextElimination, Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)), Contenders);
-            var order = Phase == ArcadePhase.Results ? cars.OrderBy(c => c.FinalPlace)
-                : cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? c.FinalPlace : -c.score);
+            var order = Phase == ArcadePhase.Results ? Match.Cars.OrderBy(c => c.FinalPlace)
+                : Match.Cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? c.FinalPlace : -c.score);
             if (leaderboard != null)
-                leaderboard.text = string.Join("\n", order.Select((c, rank) =>
+            {
+                var lines = order.Select((c, rank) =>
                     Tinted(c.body.color, (rank + 1) + " " + c.DriverName.PadRight(3)
-                    + " " + Mathf.RoundToInt(c.score).ToString("00000") + "  " + DriverStatus(c))));
+                    + " " + Mathf.RoundToInt(c.score).ToString("00000") + "  " + DriverStatus(c))).ToArray();
+                int rows = (lines.Length + 1) / 2;
+                leaderboard.text = lines.Length <= 4 ? string.Join("\n", lines)
+                    : string.Join("\n", Enumerable.Range(0, rows).Select(i => lines[i]
+                        + (i + rows < lines.Length ? "<pos=250>" + lines[i + rows] : "")));
+            }
             hud.text = string.Format(CabinetText.PlayerStatus, cars[0].DriverName, ActionStatus(cars[0]))
                 + (PlayerCount == 2 ? "\n" + string.Format(CabinetText.PlayerStatus, cars[1].DriverName, ActionStatus(cars[1])) : "")
                 + "\n" + string.Format(CabinetText.TimeAndWrecks, Mathf.CeilToInt(Remaining), Wrecks)
                 + (Phase == ArcadePhase.Playing && cars.Where(c => !c.computer).All(c => c.eliminated) ? "\n" + CabinetText.Spectating : "");
+            if (cars.Length > 4) hud.text = hud.text.Replace("\n", "　");
             // One 11px line fits under the arena; in 2P it alternates between the two players every 3 seconds.
             bool showP2 = PlayerCount == 2 && Mathf.FloorToInt(Time.unscaledTime / 3) % 2 == 1;
             footer.text = showP2 ? CabinetText.P2Controls : CabinetText.P1Controls;
@@ -845,15 +861,19 @@ namespace TNDA.Prototype
         }
 
         // A seat's colours: P1 cyan and P2 yellow (Player2, or Panda in 1P) are solid (their stripe colours are unused
-        // but set as before); P3 and P4 are white bodies drawn striped. Seats past P4 repeat the four.
+        // but set as before); P3/P4 are striped. P5..P8 have distinct bright colours in the chase view and map.
         private (Color body, bool striped, Color stripeA, Color stripeB) Livery(int seat)
         {
-            switch (seat % 4)
+            switch (seat % 8)
             {
                 case 0: return (Cyan, false, p4StripeA, p4StripeB);
                 case 1: return (Yellow, false, p4StripeA, p4StripeB);
                 case 2: return (White, true, p3StripeA, p3StripeB);
-                default: return (White, true, p4StripeA, p4StripeB);
+                case 3: return (White, true, p4StripeA, p4StripeB);
+                case 4: return (new Color32(255, 128, 172, 255), false, White, White);
+                case 5: return (new Color32(96, 224, 160, 255), false, White, White);
+                case 6: return (new Color32(181, 160, 255, 255), false, White, White);
+                default: return (new Color32(255, 152, 72, 255), false, White, White);
             }
         }
 
@@ -862,7 +882,7 @@ namespace TNDA.Prototype
         private void ShowCrown()
         {
             if (crownView == null) return;
-            var leader = cars.Where(c => !c.eliminated).OrderByDescending(c => c.score).ThenBy(c => c.index).FirstOrDefault();
+            var leader = Match.Cars.Where(c => !c.eliminated).OrderByDescending(c => c.score).ThenBy(c => c.index).FirstOrDefault();
             bool show = leader != null && leader.score > 0 && leader.alive && leader.gameObject.activeInHierarchy;
             crownView.gameObject.SetActive(show);
             if (show) crownView.transform.position = PixelPosition(leader.position + Vector2.up * crownHeight);

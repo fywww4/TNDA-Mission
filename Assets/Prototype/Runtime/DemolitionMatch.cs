@@ -148,7 +148,7 @@ namespace TNDA.Prototype
             for (int i = 0; i < Cars.Length; i++)
             {
                 Cars[i].ResetVehicle(starts[i].spot, starts[i].heading, humans);
-                Cars[i].Ai.BeginMatch(Tuning.allAiHuntThePlayer ? AiPersonality.Hunter : (AiPersonality?)null);
+                Cars[i].Ai.BeginMatch(Tuning.allAiHuntThePlayer ? AiPersonality.Hunter : (AiPersonality?)null, cars: Cars.Length);
             }
             foreach (var pickup in Pickups)
             {

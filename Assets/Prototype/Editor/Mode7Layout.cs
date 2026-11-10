@@ -53,12 +53,27 @@ namespace TNDA.Prototype.Editor
                 var backing = cabinet.Find(name);
                 if (backing != null) { Undo.RecordObject(backing.gameObject, "Mode 7 HUD"); backing.gameObject.SetActive(false); }
             }
-            // Top: title and elimination timer, then four-car scores (left) and player status (right).
+            // Top: title and elimination timer. Eight cars use two columns of four scores so both split-screen
+            // skies stay clear of the road; the compact status line moves to P2's sky in the split view.
             int top = H - 3 - line;                                    // 432
             Place(game.header.rectTransform, 6, top, 240, line);
             Place(game.arenaBoard.rectTransform, W - 6 - 260, top, 260, line);
             Place(game.leaderboard.rectTransform, 6, top - 2 - line * 4, 300, line * 4);   // 378..430
             Place(game.hud.rectTransform, W - 6 - 190, top - 2 - line * 4, 190, line * 4);
+            if (game.cars.Length > 4)
+            {
+                Place(game.leaderboard.rectTransform, 6, top - 2 - line * 4, W - 12, line * 4);
+                Place(game.hud.rectTransform, 6, 362, W - 12, line);
+                // Twelve result lines: eight places, summary, schedule, and the two gold lines.
+                var panel = (RectTransform)game.overlay.transform;
+                Place(panel, (W - 400) / 2, (H - 274) / 2, 400, 274);
+                Place(Child(panel, "Black inset"), 2, 2, 396, 270);
+                Place(game.overlayTitle.rectTransform, 6, 238, 388, 28);
+                Place(game.overlayBody.rectTransform, 6, 65, 388, 169);
+                Place(game.overlayHint.rectTransform, 6, 6, 388, line);
+                Place(game.onePlayerButton.GetComponent<RectTransform>(), 68, 32, 116, 23);
+                Place(game.twoPlayerButton.GetComponent<RectTransform>(), 216, 32, 116, 23);
+            }
             // Feedback line (Mode7Stage moves it between 1P and 2P) and one-line controls at the bottom edge.
             Place(game.notice.rectTransform, stage.noticeAt1P.x, stage.noticeAt1P.y, W - 12, line);
             Place(game.footer.rectTransform, 6, 3, W - 12, line);

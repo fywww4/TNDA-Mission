@@ -80,6 +80,7 @@ namespace TNDA.Prototype
         private (UnityEngine.UI.CanvasScaler.ScaleMode mode, float factor) scalerBefore;
         private readonly List<(SpriteRenderer view, ArcadeVehicle car)> blips = new List<(SpriteRenderer, ArcadeVehicle)>();
         private Texture2D blipTexture;
+        private MaterialPropertyBlock blipPalette;
         private GameObject ground, floor;
         private readonly List<Standing> standing = new List<Standing>();
         private readonly Dictionary<Transform, UnityEngine.Rendering.SortingGroup> standingGroups =
@@ -101,6 +102,7 @@ namespace TNDA.Prototype
 
         private void OnEnable()
         {
+            blipPalette = new MaterialPropertyBlock();
             map = game.sceneCamera;
             foreach (var behaviour in map.GetComponents<MonoBehaviour>())
                 if (behaviour != null && behaviour.GetType().Name.Contains("PixelPerfect")) behaviour.enabled = false;
@@ -173,7 +175,14 @@ namespace TNDA.Prototype
             KeepWholeScale();
             if (game.notice != null)
                 game.notice.rectTransform.anchoredPosition = two ? (Vector2)noticeAt2P : (Vector2)noticeAt1P;
-            foreach (var blip in blips) blip.view.color = blip.car.body.color;
+            if (game.cars.Length > 4 && game.hud != null)
+                game.hud.rectTransform.anchoredPosition = new Vector2(6, two ? 210 : 362);
+            foreach (var blip in blips)
+            {
+                blip.view.color = blip.car.body.color;
+                blip.car.body.GetPropertyBlock(blipPalette);
+                blip.view.SetPropertyBlock(blipPalette);
+            }
             CollectStanding();
         }
 
@@ -248,10 +257,12 @@ namespace TNDA.Prototype
         // A square in each car's colour that only the minimap draws, so every car reads at minimap size.
         private void MakeBlips()
         {
-            blipTexture = new Texture2D(1, 1) { filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
-            blipTexture.SetPixel(0, 0, Color.white);
+            // Six texels give striped seats two three-pixel bands, matching the car palette shader. A non-white
+            // source texel is tinted by that shader; white texels are deliberately preserved on the car art.
+            blipTexture = new Texture2D(6, 6) { filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
+            for (int y = 0; y < 6; y++) for (int x = 0; x < 6; x++) blipTexture.SetPixel(x, y, Color.red);
             blipTexture.Apply();
-            var sprite = Sprite.Create(blipTexture, new Rect(0, 0, 1, 1), new Vector2(.5f, .5f), 1);
+            var sprite = Sprite.Create(blipTexture, new Rect(0, 0, 6, 6), new Vector2(.5f, .5f), 6);
             sprite.hideFlags = HideFlags.DontSave;
             foreach (var car in game.cars)
             {
@@ -261,6 +272,7 @@ namespace TNDA.Prototype
                 go.transform.localScale = Vector3.one * blipSize;
                 var renderer = go.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
+                renderer.sharedMaterial = car.body.sharedMaterial;
                 renderer.sortingOrder = 1000;
                 blips.Add((renderer, car));
             }
@@ -273,7 +285,7 @@ namespace TNDA.Prototype
             if (!own.eliminated) return own;
             ArcadeVehicle best = own;
             foreach (var car in game.cars)
-                if (!car.eliminated && (best.eliminated || car.score > best.score)) best = car;
+                if (!car.eliminated && car.gameObject.activeInHierarchy && (best.eliminated || car.score > best.score)) best = car;
             return best;
         }
 

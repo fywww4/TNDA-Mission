@@ -107,7 +107,8 @@ namespace TNDA.Prototype
         public const string Winner = "{0} 獲勝！";
         public const string Standing = "{0}. {1}  {2}";
         public const string ResultsSummary = "最高分 {0}　撞毀 {1} 次";
-        public const string EliminationRule = "45／80／120 秒各淘汰最後一名";
+        public const string EliminationStep = "{0} 秒淘汰 {1} 台";
+        public const string EliminationFinal = "{0} 秒決賽";
 
         // Leaderboard, player status and timer.
         public const string StatusEliminated = "淘汰 第{0}名";

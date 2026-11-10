@@ -12,6 +12,8 @@ namespace TNDA.Prototype
         public string Condition { get; }
         // Gold needed to unlock it; 0 = open from the start.
         public int UnlockPrice { get; }
+        // Challenges keep their own field size when the arcade scene has more cars.
+        public int CarCount { get; }
         private readonly System.Action<MatchTuning> rules;
         private readonly System.Func<DemolitionMatch, ArcadeVehicle, int> score;
         private readonly System.Func<int, string> recordText;
@@ -19,11 +21,12 @@ namespace TNDA.Prototype
         // score: the run's result for the best record, from the finished match and the player's car; by default the
         // player's points. recordText: how a result reads on the list and the results panel; by default 5 digits.
         public Challenge(string id, string name, string condition, int unlockPrice, System.Action<MatchTuning> rules,
-            System.Func<DemolitionMatch, ArcadeVehicle, int> score = null, System.Func<int, string> recordText = null)
+            System.Func<DemolitionMatch, ArcadeVehicle, int> score = null, System.Func<int, string> recordText = null, int carCount = 4)
         {
             Id = id; Name = name; Condition = condition; UnlockPrice = unlockPrice; this.rules = rules;
             this.score = score ?? ((match, player) => Mathf.RoundToInt(player.score));
             this.recordText = recordText ?? (result => result.ToString("00000"));
+            CarCount = carCount;
         }
 
         public void ApplyRules(MatchTuning tuning) => rules?.Invoke(tuning);

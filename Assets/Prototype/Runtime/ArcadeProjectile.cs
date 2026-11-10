@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace TNDA.Prototype
 {
-    // Rocket pool slot, also used for oil slicks (rockets and slicks share the two slots). The match moves it;
+    // Rocket pool slot, also used for oil slicks (the eight-car arcade shares four slots). The match moves it;
     // DemolitionGame mirrors it onto the rocket or slick view each frame.
     [Serializable]
     public class ArcadeProjectile
