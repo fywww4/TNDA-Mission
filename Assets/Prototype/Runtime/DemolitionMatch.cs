@@ -23,7 +23,7 @@ namespace TNDA.Prototype
         public static EliminationStep[] DefaultEliminations() =>
             new[] { new EliminationStep(45, 1), new EliminationStep(80, 1), new EliminationStep(120, 1) };
         public float RoundSeconds => eliminations[eliminations.Length - 1].at;
-        public float driveSpeed = 2.8f, accelerationPerSecond = 1.4f, coastDownPerSecond = 2.2f;
+        public float driveSpeed = 3.5f, accelerationPerSecond = 2f, coastDownPerSecond = 2.2f;
         // One saved cabinet setting shared by human seats. Computer drivers always use automatic.
         public bool manualTransmission;
         public VehicleUpgrades playerUpgrades;

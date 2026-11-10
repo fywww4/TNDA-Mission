@@ -186,7 +186,7 @@ namespace TNDA.Prototype
         // player menu is open, left/right pick 1P or 2P instead.
         private void NavigateTitle()
         {
-            bool sideways = PressedAny(Key.LeftArrow, Key.RightArrow, Key.A, Key.D, Key.Tab) || DpadPressed(pad => pad.dpad.left, pad => pad.dpad.right);
+            bool sideways = PressedAny(Key.LeftArrow, Key.RightArrow, Key.Numpad4, Key.Numpad6, Key.Tab) || DpadPressed(pad => pad.dpad.left, pad => pad.dpad.right);
             if (ChoosingPlayers)
             {
                 if (sideways) PickPlayers(3 - PlayerChoice);
@@ -201,8 +201,8 @@ namespace TNDA.Prototype
                 SelectTransmission(!ManualTransmission);
             if (sideways) Mode = Mode == CabinetMode.Normal ? CabinetMode.Challenge : CabinetMode.Normal;
             if (Mode != CabinetMode.Challenge) return;
-            if (PressedAny(Key.UpArrow, Key.W) || DpadPressed(pad => pad.dpad.up)) MoveChallengeCursor(-1);
-            if (PressedAny(Key.DownArrow, Key.S) || DpadPressed(pad => pad.dpad.down)) MoveChallengeCursor(1);
+            if (PressedAny(Key.UpArrow, Key.Numpad8) || DpadPressed(pad => pad.dpad.up)) MoveChallengeCursor(-1);
+            if (PressedAny(Key.DownArrow, Key.Numpad2) || DpadPressed(pad => pad.dpad.down)) MoveChallengeCursor(1);
         }
 
         public void SelectMode(CabinetMode mode) => Mode = mode;
@@ -237,8 +237,8 @@ namespace TNDA.Prototype
 
         private void NavigateGarage()
         {
-            if (PressedAny(Key.UpArrow, Key.W) || DpadPressed(pad => pad.dpad.up)) MoveGarageCursor(-1);
-            if (PressedAny(Key.DownArrow, Key.S) || DpadPressed(pad => pad.dpad.down)) MoveGarageCursor(1);
+            if (PressedAny(Key.UpArrow, Key.Numpad8) || DpadPressed(pad => pad.dpad.up)) MoveGarageCursor(-1);
+            if (PressedAny(Key.DownArrow, Key.Numpad2) || DpadPressed(pad => pad.dpad.down)) MoveGarageCursor(1);
             if (Pressed(Key.LeftCtrl) || (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)) TryBuySelectedUpgrade();
         }
 
@@ -374,9 +374,9 @@ namespace TNDA.Prototype
         {
             // P1: arrows (Up = gas) + Left Ctrl item. P2: A/D/W + Numpad Enter item.
             var k = Keyboard.current;
-            Key left = index == 0 ? Key.LeftArrow : Key.A;
-            Key right = index == 0 ? Key.RightArrow : Key.D;
-            Key gas = index == 0 ? Key.UpArrow : Key.W;
+            Key left = index == 0 ? Key.LeftArrow : Key.Numpad4;
+            Key right = index == 0 ? Key.RightArrow : Key.Numpad6;
+            Key gas = index == 0 ? Key.UpArrow : Key.Numpad8;
             Key button = index == 0 ? Key.LeftCtrl : Key.NumpadEnter;
             var input = new ArcadeInput();
             if (k != null)
@@ -386,8 +386,8 @@ namespace TNDA.Prototype
                 input.action = k[button].isPressed;
                 input.actionPressed = k[button].wasPressedThisFrame;
                 input.resetSaveHeld = index == 0 && k.deleteKey.isPressed;
-                input.shiftDownPressed = k[index == 0 ? Key.DownArrow : Key.S].wasPressedThisFrame;
-                input.shiftUpPressed = k[index == 0 ? Key.RightShift : Key.LeftShift].wasPressedThisFrame;
+                input.shiftDownPressed = k[index == 0 ? Key.E : Key.NumpadMinus].wasPressedThisFrame;
+                input.shiftUpPressed = k[index == 0 ? Key.Q : Key.NumpadPlus].wasPressedThisFrame;
                 input.startPressed = k[index == 0 ? Key.Space : Key.NumpadEnter].wasPressedThisFrame;
             }
             if (Gamepad.all.Count > index)

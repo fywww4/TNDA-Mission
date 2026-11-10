@@ -4026,8 +4026,8 @@ MonoBehaviour:
   firstElimination: 45
   secondElimination: 80
   roundSeconds: 120
-  driveSpeed: 2.8
-  accelerationPerSecond: 1.4
+  driveSpeed: 3.5
+  accelerationPerSecond: 2
   coastDownPerSecond: 2.2
   enemyRespawnSeconds: 3
   wreckPenalty: 250

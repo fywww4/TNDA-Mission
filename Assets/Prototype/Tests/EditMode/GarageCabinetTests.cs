@@ -102,7 +102,7 @@ namespace TNDA.Prototype.Tests
                 game.Advance(1f / 60, gas, gas);
             }
             for (int i = 0; i < players; i++) Assert.That(game.cars[i].speed, Is.EqualTo(3.36f).Within(.001f), "seat " + i);
-            Assert.That(game.driveSpeed, Is.EqualTo(2.8f), "base speed stays unchanged");
+            Assert.That(game.driveSpeed, Is.EqualTo(3.5f), "base speed stays unchanged");
         }
     }
 }

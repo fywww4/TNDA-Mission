@@ -4245,8 +4245,8 @@ MonoBehaviour:
     count: 1
   - at: 120
     count: 1
-  driveSpeed: 2.8
-  accelerationPerSecond: 1.4
+  driveSpeed: 3.5
+  accelerationPerSecond: 2
   coastDownPerSecond: 2.2
   enemyRespawnSeconds: 3
   wreckPenalty: 250
