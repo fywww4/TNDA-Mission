@@ -15,15 +15,20 @@ namespace TNDA.Prototype
         [Tooltip("Four 64x64 cells in a row: body panel (its 4 key reds become the seat colour), glass, oil, parts. Read/Write enabled.")]
         public Texture2D sheet;
         public float splashSeconds = 3;
-        [Tooltip("Share of the rammer's view the splash covers.")]
-        [Range(.1f, .6f)] public float coverage = 1 / 3f;
+        [Tooltip("Share of the rammer's view the pieces themselves cover; sets how many pieces fly.")]
+        [Range(.1f, .6f)] public float coverage = .25f;
+        [Tooltip("Share of the view the pieces are scattered across (wider = sparser, less clumped).")]
+        [Range(.3f, .9f)] public float scatter = .75f;
+        [Tooltip("Pieces keep at least this many piece widths apart from each other where the view has room.")]
+        [Range(0, 1.2f)] public float minGap = .85f;
         [Tooltip("The pieces stick this long before they start to slide, and blink out over the last fadeSeconds.")]
         public float holdSeconds = .35f, fadeSeconds = .5f;
 
         private const int Cells = 4, CellPixels = 64, BodyCell = 0, MaxPieces = 8;
         private const float CellSize = CellPixels * HybridResolution.ArtScale;
-        // The splash is an ellipse this much wider than tall, filled with this many pieces per cell-sized patch of it.
-        private const float SplashAspect = 1.4f, PiecesPerCell = 1.6f;
+        // The scatter area is an ellipse this much wider than tall; tries per piece to find a spot clear of the others.
+        private const float SplashAspect = 1.4f;
+        private const int SpotTries = 24;
         // Share of pieces after the first that are body panels; how far (in view heights) the pieces drop by the end.
         private const float BodyShare = .4f, DropViews = .9f;
 
@@ -107,11 +112,16 @@ namespace TNDA.Prototype
             if (seat >= views.Length || views[seat] == null || (seat == 1 && !TwoViews)) return;
             var view = views[seat];
             var area = ViewPixels(seat);
-            // Scatter the pieces over an ellipse covering `coverage` of the view, centred on the road below the sky.
-            float spread = area.width * area.height * coverage;
-            float ry = Mathf.Sqrt(spread / (Mathf.PI * SplashAspect)), rx = ry * SplashAspect;
-            var centre = new Vector2(Random.Range(.35f, .65f) * area.width, Random.Range(.3f, .5f) * area.height);
-            view.count = Mathf.Clamp(Mathf.RoundToInt(spread / (CellSize * CellSize) * PiecesPerCell), 2, MaxPieces);
+            // Enough pieces to cover `coverage` of the view, scattered across a wider ellipse (`scatter` of the view)
+            // and kept apart, so the splash reads as separate shards rather than one clump.
+            float viewArea = area.width * area.height;
+            view.count = Mathf.Clamp(Mathf.RoundToInt(viewArea * coverage / (CellSize * CellSize)), 2, MaxPieces);
+            float ry = Mathf.Sqrt(viewArea * scatter / (Mathf.PI * SplashAspect)), rx = ry * SplashAspect;
+            // Keep a piece's centre a third of a piece inside the view so most of it shows.
+            float inset = CellSize / 3;
+            rx = Mathf.Min(rx, area.width / 2 - inset);
+            ry = Mathf.Min(ry, area.height / 2 - inset);
+            var centre = new Vector2(Random.Range(.45f, .55f) * area.width, Random.Range(.4f, .5f) * area.height);
             Texture2D body = BodyTexture(debris.Victim.body != null ? debris.Victim.body.color : Color.white);
             for (int i = 0; i < MaxPieces; i++)
             {
@@ -127,12 +137,30 @@ namespace TNDA.Prototype
                 var rect = piece.image.rectTransform;
                 rect.localRotation = Quaternion.Euler(0, 0, 90 * Random.Range(0, 4));
                 rect.localScale = new Vector3(Random.value < .5f ? -1 : 1, 1, 1);
-                var offset = Random.insideUnitCircle;
-                piece.start = centre + new Vector2(offset.x * Mathf.Max(0, rx - CellSize / 3), offset.y * Mathf.Max(0, ry - CellSize / 3));
+                piece.start = FreeSpot(view, i, centre, rx, ry);
                 piece.fall = Random.Range(.8f, 1.2f);
             }
             view.age = 0;
             Place(view, seat);
+        }
+
+        // A random spot in the scatter ellipse at least minGap piece widths from the pieces already placed; when the
+        // view is too crowded for that, the farthest of the tries.
+        private Vector2 FreeSpot(View view, int placed, Vector2 centre, float rx, float ry)
+        {
+            float gap = minGap * CellSize;
+            Vector2 best = centre;
+            float bestClear = -1;
+            for (int t = 0; t < SpotTries; t++)
+            {
+                var offset = Random.insideUnitCircle;
+                var spot = centre + new Vector2(offset.x * rx, offset.y * ry);
+                float clear = float.MaxValue;
+                for (int j = 0; j < placed; j++) clear = Mathf.Min(clear, Vector2.Distance(spot, view.pieces[j].start));
+                if (clear >= gap) return spot;
+                if (clear > bestClear) { bestClear = clear; best = spot; }
+            }
+            return best;
         }
 
         private void LateUpdate()

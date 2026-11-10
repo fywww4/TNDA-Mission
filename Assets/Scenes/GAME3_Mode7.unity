@@ -6970,7 +6970,9 @@ MonoBehaviour:
   stage: {fileID: 530138701}
   sheet: {fileID: 2800000, guid: 59a9f0fa5a98c294684facecb98c5da4, type: 3}
   splashSeconds: 3
-  coverage: 0.33333334
+  coverage: 0.25
+  scatter: 0.75
+  minGap: 0.85
   holdSeconds: 0.35
   fadeSeconds: 0.5
 --- !u!1 &535094528

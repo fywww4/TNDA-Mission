@@ -19,4 +19,5 @@
 - 規則：`DemolitionMatch` 在真人撞車且（撞毀對方或撞擊速度 ≥ `MatchTuning.smashSpeed` 2.1，與破壞物共用同一門檻）時回報 `DebrisSplashed(Rammer, Victim)`。對方須真的受傷（防護罩、保護擋下不算）；真人用櫻桃車主動撞毀對方算，櫻桃車只是被 AI 碰到不算；火箭不算（題目是「撞」）。
 - 呈現：`Runtime/Mode7Debris.cs`（掛在 `GAME3 Prototype`，`DemolitionGame.DebrisPresented` 通知，待機示範不發）。每個追尾畫面一層 RectMask2D，夾在美術圖與 HUD 文字之間；碎片 2 倍粗像素、只轉 90° 與鏡像。1P 約 7 片、2P 半邊約 4 片，散在佔畫面 1/3 的橢圓；停 0.35 秒後加速滑落，最後 0.5 秒分 4 階淡出，3 秒消失。同一畫面新噴濺取代舊的；倒數與待機時清空。
 - 美術：使用者提供的 `Game3/Art/Debris.png`（256×64，4 格：車殼、玻璃、黑油、零件），車殼 4 個鍵紅色在 CPU 換成被撞車座位色（與 `CarSheetPalette.shader` 同一套色階）。`Editor/Mode7DebrisArt.Apply()`（選單 TNDA / Mode 7 / Apply debris splash）可重跑匯入設定與接線。
+- **2026-11-10 調稀（玩家反應太密集）**：碎片數改由 `coverage` 0.25 決定（1P 4 片、2P 半邊 2 片，原本 7／4 片），分散在佔畫面 75% 的橢圓（`scatter`），每片之間盡量相隔 0.85 片寬（`minGap`，最多試 24 個位置，擠不下時取最遠的）。三個值都可在 Inspector 調。已截圖確認 1P／2P 碎片分開、3 秒後消失，Console 零錯誤、零警告。
 - 驗證：EditMode 新增 9 個測試（撞毀、≥2.1、低速、AI、防護罩、櫻桃主動／被動、換色兩項）全過；Play Mode `tmp/m7-04-debris.cs` 檢查 1P／2P 位置、顏色、3 秒消失、倒數清空，Console 零錯誤、零警告。
