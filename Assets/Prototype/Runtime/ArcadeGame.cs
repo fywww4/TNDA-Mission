@@ -107,8 +107,11 @@ namespace TNDA.Prototype
         {
             AudioListener.volume = masterVolume;
             bool padBack = Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame;
-            // Esc backs out from anywhere (a match in progress included); the pad's B only on menus and results.
-            if (Pressed(Key.Escape) || padBack && Phase != ArcadePhase.Playing && Phase != ArcadePhase.Countdown) Back();
+            // Esc backs out from anywhere (a match in progress included); the pad's B only on menus and results. On the
+            // bare title B has nothing to back out of: it opens the garage instead.
+            bool padBackOut = padBack && Phase != ArcadePhase.Playing && Phase != ArcadePhase.Countdown
+                && !(Phase == ArcadePhase.Attract && !ChoosingPlayers);
+            if (Pressed(Key.Escape) || padBackOut) Back();
             else if (Phase == ArcadePhase.Attract) NavigateTitle();
             else if (Phase == ArcadePhase.Garage) NavigateGarage();
             if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
@@ -192,7 +195,7 @@ namespace TNDA.Prototype
                 if (sideways) PickPlayers(3 - PlayerChoice);
                 return;
             }
-            if (Pressed(Key.G) || (Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame))
+            if (Pressed(Key.G) || (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame))
             {
                 OpenGarage();
                 return;

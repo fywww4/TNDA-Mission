@@ -318,6 +318,6 @@
 
 ## 車庫與能力升級（票單 13，2026-11-10）
 
-標題按 G／手把 X 進入車庫（`ArcadePhase.Garage`），↑↓選項、左 Ctrl／手把 A 購買、Esc／手把 B 回標題。能力四項（最高速、加速、操控、強度）各 4 級，每級 +5%，價格 50／100／200／400 金幣，整台機器共用，存於 `TNDA.Upgrades.<能力>`，Delete 長按清除存檔時一併歸零。邏輯在 `Runtime/VehicleUpgrades.cs`，畫面在 `Runtime/GarageScreen.cs`，場景由 `Editor/Game3Garage.cs` 補上（`Mode7Layout` 會重跑）。`DemolitionMatch` 只對真人車套用：最高速、加速、操控加成；強度只降低被撞與被火箭命中的傷害（櫻桃碰撞不減）；AI 完全不變，仍以基礎最高速 2.8 為準。「外觀」分頁尚未做（票單 16）。
+標題按 G／手把 B 進入車庫（2026-11-11 由 X 改為 B；標題上 B 沒有可退出的東西，所以改成開車庫，車庫內 B 仍是返回）（`ArcadePhase.Garage`），↑↓選項、左 Ctrl／手把 A 購買、Esc／手把 B 回標題。能力四項（最高速、加速、操控、強度）各 4 級，每級 +5%，價格 50／100／200／400 金幣，整台機器共用，存於 `TNDA.Upgrades.<能力>`，Delete 長按清除存檔時一併歸零。邏輯在 `Runtime/VehicleUpgrades.cs`，畫面在 `Runtime/GarageScreen.cs`，場景由 `Editor/Game3Garage.cs` 補上（`Mode7Layout` 會重跑）。`DemolitionMatch` 只對真人車套用：最高速、加速、操控加成；強度只降低被撞與被火箭命中的傷害（櫻桃碰撞不減）；AI 完全不變，仍以基礎最高速 2.8 為準。「外觀」分頁尚未做（票單 16）。
 
 驗證：EditMode `VehicleUpgradeTests`／`UpgradeDrivingTests`／`GarageCabinetTests` 加上既有測試共 161 項全數通過；Play Mode 截圖 `Docs/Game3/garage-abilities.png`（512×448，字元無缺）已檢視；Console 零錯誤、零警告。截圖測試時動用的金幣與升級存檔已還原。

@@ -42,7 +42,7 @@ namespace TNDA.Prototype
         public const string SaveCleared = "存檔已清除，請放開 Delete";
 
         public const string GarageTitle = "車庫";
-        public const string GarageEntry = "G／手把X 車庫";
+        public const string GarageEntry = "G／手把B 車庫";
         public const string GarageAbilityTab = "←　能力　→";
         public const string GarageShared = "P1・P2 共用能力";
         public const string GarageTopSpeed = "最高速";
