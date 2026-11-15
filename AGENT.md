@@ -39,7 +39,7 @@
 - 箱子 100 分、油桶 75 分；車速至少 2.1 才可直接撞碎，火箭也能破壞。破壞物 6 秒後且附近沒有車時重生。
 - 障礙物（破壞物）位置隨機（2026-10-15 使用者要求）：每局開始與每次重生都在場內隨機挑空位（離車 1.2、離木箱 1、兩個破壞物互離 1.4 以上；40 次找不到就沿用原位置）。開關為 `randomPropSpots`（Inspector，預設開；EditMode 測試關閉以固定位置）。
 - 車對車衝撞依速度計分；側撞 2 倍、追撞 1.5 倍。
-- 碰碰車手感（2026-10-13 使用者要求，避免被撞後黏住卡死）：每次新接觸兩車互推一個會滑行並逐漸減速的位移（`contactBump` 1.4）；被衝撞的車再加上依撞擊速度增加的滑行（`ramBump` 2.4），車頭隨機偏 15～30°，硬直縮短為 0.12 秒；撞人的車會小幅反彈。滑行以 `bumpFriction` 4.5 衰減，撞牆時反向減弱。實測：側面被撞的靜止 P1 約 1 秒內滑開 1.17 單位、兩車分開。
+- 碰碰車手感（2026-10-13 使用者要求，避免被撞後黏住卡死）：每次新接觸兩車互推一個會滑行並逐漸減速的位移（`contactBump` 1.4）；被衝撞的車再加上依撞擊速度增加的滑行（`ramBump` 2.4），車頭隨機偏 15～30°，硬直縮短為 0.12 秒；撞人的車會小幅反彈。滑行以 `bumpFriction` 4.5 衰減，撞牆時反向減弱。實測：側面被撞的靜止 P1 約 1 秒內滑開 1.17 單位、兩車分開。**2026-11-15 票單 18 已改寫**：`ramBump` 換成依相對速度成正比的 `ramBumpPerSpeed`／`ramBumpMax`／`rammerReboundPerSpeed`，並加入側撞打轉與擦撞，見下方「Mode 7 票單 18」。
 - 撞毀一台車獎勵攻擊者 300 分；被撞毀者扣 250 分，最低扣至 0 分。
 - 一般撞毀不是永久淘汰：玩家與 AI 均在 3 秒後滿耐久重生，保留扣分後的分數，清除道具，給 2 秒保護。
 - 開局也有 2 秒保護。
@@ -208,7 +208,8 @@
 | 檔案 | 用途 |
 | --- | --- |
 | `Assets/Prototype/Runtime/DemolitionMatch.cs` | 比賽規則模擬（不需場景物件）：駕駛、破壞物、木箱、碰撞、火箭、撞毀、計時淘汰與冠軍；`MatchTuning` 為規則數值，以 `IAiArena`／`IItemArena` 提供局面給 AI 駕駛與道具 module，發生的事記錄為 `Events`。 |
-| `Assets/Prototype/Runtime/MatchEvents.cs` | 比賽事件：火箭命中、撞擊、櫻桃撞車、撞牆、撞碎破壞物、撿到／使用道具、火箭仍在飛、防護罩擋下、撞毀、撞毀獎勵、每次得分變化（`ScoreChanged`，供加分文字）、淘汰、比賽結束。規則只記錄事件，提示文字、顏色、停留時間與音效都由 `DemolitionGame.Cue` 決定。 |
+| `Assets/Prototype/Runtime/ImpactFeel.cs` | 撞擊手感的呈現規則（票單 18）：`ImpactFeel.Kicks` 把撞擊事件換成各真人畫面的震動（`ShakeKick`），`TrySparks` 決定火花；`ScreenShake` 產生整數美術像素的震動位移；`ImpactFeelTuning` 為 Inspector 調整值。 |
+| `Assets/Prototype/Runtime/MatchEvents.cs` | 比賽事件：火箭命中、撞擊（`CarRammed` 含 `ImpactKind` 正面／追撞／側撞／擦撞與 `VictimWrecked`）、櫻桃撞車、撞牆、撞碎破壞物、撿到／使用道具、火箭仍在飛、防護罩擋下、撞毀、撞毀獎勵、每次得分變化（`ScoreChanged`，供加分文字）、淘汰、比賽結束。規則只記錄事件，提示文字、顏色、停留時間與音效都由 `DemolitionGame.Cue` 決定。 |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | GAME3 場景 adapter：BreakableProp／ArenaPickup、Inspector 調整值與輸入送進 `DemolitionMatch`，再把狀態與事件轉成車輛／破壞物／木箱／火箭顯示、爆炸特效、提示文字與音效。 |
 | `Assets/Prototype/Tests/EditMode/` | EditMode 測試組件 `TNDA.Prototype.Tests.EditMode`（不載入 GAME3 場景），以 Unity CLI `run_tests --mode editor` 執行；執行期程式在 `TNDA.Prototype` 組件。 |
 | `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 處理自排與手排 R／1～4、油門加速與放開滑行；開局與重生回 1 檔。規則不碰顯示物件：`Visible`（行駛中或打滑飛出中）由場景 adapter 轉成物件顯示隱藏，車色也由 adapter 在開局設定。 |
@@ -321,3 +322,15 @@
 標題按 G／手把 X 進入車庫（`ArcadePhase.Garage`），↑↓選項、左 Ctrl／手把 A 購買、Esc／手把 B 回標題。能力四項（最高速、加速、操控、強度）各 4 級，每級 +5%，價格 50／100／200／400 金幣，整台機器共用，存於 `TNDA.Upgrades.<能力>`，Delete 長按清除存檔時一併歸零。邏輯在 `Runtime/VehicleUpgrades.cs`，畫面在 `Runtime/GarageScreen.cs`，場景由 `Editor/Game3Garage.cs` 補上（`Mode7Layout` 會重跑）。`DemolitionMatch` 只對真人車套用：最高速、加速、操控加成；強度只降低被撞與被火箭命中的傷害（櫻桃碰撞不減）；AI 完全不變，仍以基礎最高速 2.8 為準。「外觀」分頁尚未做（票單 16）。
 
 驗證：EditMode `VehicleUpgradeTests`／`UpgradeDrivingTests`／`GarageCabinetTests` 加上既有測試共 161 項全數通過；Play Mode 截圖 `Docs/Game3/garage-abilities.png`（512×448，字元無缺）已檢視；Console 零錯誤、零警告。截圖測試時動用的金幣與升級存檔已還原。
+
+## Mode 7 票單 18：碰撞手感（2026-11-15）
+
+回應試玩回饋「希望有除了正面直直碰撞之外的選擇」。規則在 `DemolitionMatch`，`CarRammed` 回報 `ImpactKind`（正面／追撞／側撞／擦撞）、撞擊速度、`Point` 與 `VictimWrecked`；呈現由 `ImpactFeel.cs`、`DemolitionGame`、`Mode7Stage` 負責。所有數值都在 `DemolitionGame` Inspector（「Bumper-car knockback」「Side hits and scrapes」「Impact feel」三組）。
+
+- **依速度彈開**：被撞車額外滑行 = 相對接近速度 × `ramBumpPerSpeed` 1.6，上限 `ramBumpMax` 6（約 1.3 單位，不會飛出場外）；撞人的車反彈 × `rammerReboundPerSpeed` 0.45，上限為 `ramBumpMax` 的 1/3。原 `contactBump` 1.4 不變。舊 `ramBump` 欄位已移除（場景檔仍有一行未使用的 `ramBump: 2.4`，下次存場景會清掉）。
+- **側撞**：判定不變（2 倍分）。被撞且確實受傷的車原地打轉 180°（撞擊速度 1）～360°（`sideSpinFullSpeed` 3.5 以上），歷時 `sideSpinSeconds` 0.55 秒並硬直；方向依撞人車頭推的方向。防護罩、出生保護、開局緩衝期不受傷的車不打轉。正面／追撞維持原本車頭隨機偏 15～30°。
+- **擦撞**：兩車都在前進、車頭夾角約 30° 內（`scrapeAlignment` 0.87）、接觸線偏側面（`scrapeSideways` 0.6）、較快的車速度 ≥ `scrapeMinSpeed` 1。兩車各往外推 `scrapeBump` 1.2、速度保留 `scrapeSlowdown` 85%、冒火花、不硬直。傷害與得分為一般衝撞的 `scrapeMultiplier` 0.5 倍，並以兩車**相對速度**計算（相對速度不到 1 不扣耐久），同速並排只摩擦不傷。只有擦撞撞毀才噴碎片。
+- **鏡頭震動**：只震撞人或被撞的真人自己的追尾畫面（2P 各震各的）；AI 互撞、火箭撞毀、待機示範不震。撞擊速度 < 1.5 不震，1.5～2.1 震 1 美術像素 0.15 秒，≥ 2.1（`MatchTuning.smashSpeed`）2 像素 0.25 秒，撞毀 3 像素 0.35 秒。以投影矩陣平移整數美術像素，畫面保持清晰、車名標籤一起移動；切回 1P 或回標題時停止。
+- **爆炸與火花**：撞毀（耐久歸零，任何原因）在車上播 `Explosion.png`，大小為火箭命中的 `wreckExplosionScale` 1.4 倍；火箭直接打爆時只播撞毀的大爆炸。撞擊速度 ≥ 2.1 或任何擦撞，在兩車中間冒程式畫的 9×9 四色（白／黃／橘／紅）星形火花 0.2 秒（`DemolitionGame` 執行期建立 6 個，Mode 7 立起來顯示）。
+- **測試**：EditMode `ImpactFeelTests`（11：彈開比例與上限、反彈、側撞打轉與硬直、種類判定、擦撞互推減速、擦撞傷害較低、同速並排不傷、防護罩不打轉、慢速只是接觸）與 `ImpactFeelPresentationTests`（8：只震相關真人、輕碰不震、強度與時間、撞毀最大、火花條件、整數像素與衰減）。`MatchCarCountTests` 的 4 車固定亂數紀錄因 3.5 最高速與本票單重新錄製。
+- **驗證**：全部 EditMode 184 個中 171 通過；13 個失敗都是 `GarageCabinetTests`／`UpgradeDrivingTests` 仍以舊最高速 2.8、加速 1.4 計算（commit 964e8a5 改了預設值但未更新測試），與本票單無關。Play Mode `Docs/Game3/impact-feel-play.cs.txt`（即 `tmp/ticket18-play.cs`）1P 側撞 4 項、擦撞 5 項、2P（AI 互撞不震、P2 撞毀只震 P2、大爆炸）6 項全部通過；截圖 `Docs/Game3/impact-side-1p.png`、`impact-scrape-1p.png`、`impact-wreck-2p.png`。重新編譯後 Console 零錯誤、零警告（Play 期間出現的兩筆為其他工作階段的 CLI 呼叫）。

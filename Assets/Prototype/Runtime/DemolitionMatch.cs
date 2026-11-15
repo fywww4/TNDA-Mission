@@ -37,7 +37,19 @@ namespace TNDA.Prototype
         public float hunterChaseSeconds = 6, hunterScatterSeconds = 4, hunterLeaderChance = .6f;
         public float cherryDuration = 8, cherrySpeedMultiplier = 1.35f, trailingCherryChance = .5f;
         public float spinOutTurnsPerSecond = 4, spinOutStartSpeed = 4, spinOutAcceleration = 14;
-        public float contactBump = 1.4f, ramBump = 2.4f, bumpFriction = 4.5f;
+        public float contactBump = 1.4f, bumpFriction = 4.5f;
+        // Ram knockback (ticket 18): slide speed per unit of closing speed for the rammed car, capped at ramBumpMax so
+        // it stays in the arena; the rammer rebounds by rammerReboundPerSpeed per unit, capped at a third of the max.
+        public float ramBumpPerSpeed = 1.6f, ramBumpMax = 6f, rammerReboundPerSpeed = .45f;
+        // A side hit spins the victim from sideSpinMinDegrees (impact 1) to sideSpinMaxDegrees (sideSpinFullSpeed and
+        // up) over sideSpinSeconds, stunned meanwhile.
+        public float sideSpinMinDegrees = 180, sideSpinMaxDegrees = 360, sideSpinFullSpeed = 3.5f, sideSpinSeconds = .55f;
+        // Scrape (擦撞): both driving forwards, headings within acos(scrapeAlignment) of each other (about 30°),
+        // touching mostly side to side (the contact line's share along either heading below scrapeSideways), the
+        // faster at scrapeMinSpeed or more. Both get scrapeBump outwards and keep scrapeSlowdown of their speed; harm
+        // and points use scrapeMultiplier and their relative speed, from scrapeMinSpeed of it.
+        public float scrapeAlignment = .87f, scrapeSideways = .6f, scrapeMinSpeed = 1;
+        public float scrapeBump = 1.2f, scrapeSlowdown = .85f, scrapeMultiplier = .5f;
         // Driving into a prop at least this fast smashes it; a player ramming a car this fast splashes its debris.
         public float smashSpeed = 2.1f;
         public Vector2 arenaMin = new Vector2(-4.35f, -3.85f), arenaMax = new Vector2(4.35f, 1.65f);
@@ -428,13 +440,34 @@ namespace TNDA.Prototype
                 else CherryWreck(cherry, other, cherryRam);
                 return;
             }
+            if (TryScrape(a, b)) return;
             var attacker = approachA >= approachB ? a : b;
             var victim = attacker == a ? b : a;
             float impact = Mathf.Max(0, Mathf.Max(approachA, approachB));
             if (impact < 1) return;
             float alignment = Vector2.Dot(attacker.Forward, victim.Forward);
             float rear = Vector2.Dot((attacker.position - victim.position).normalized, victim.Forward);
-            float multiplier = Mathf.Abs(alignment) < .5f ? 2 : alignment > .6f && rear < -.25f ? 1.5f : 1;
+            var kind = Mathf.Abs(alignment) < .5f ? ImpactKind.Side : alignment > .6f && rear < -.25f ? ImpactKind.Rear : ImpactKind.Front;
+            float multiplier = kind == ImpactKind.Side ? 2 : kind == ImpactKind.Rear ? 1.5f : 1;
+            bool damaged = Strike(attacker, victim, impact, multiplier);
+            attacker.speed *= .6f;
+            if (damaged && victim.alive) { victim.speed *= .4f; victim.stun = .12f; }
+            // Bumper cars: the rammed car slides away and its nose is knocked aside; the rammer rebounds.
+            Vector2 push = (victim.position - attacker.position).normalized;
+            float closing = Mathf.Max(0, approachA + approachB);
+            victim.ApplySlide(push * Mathf.Min(Tuning.ramBumpPerSpeed * closing, Tuning.ramBumpMax));
+            attacker.ApplySlide(-push * Mathf.Min(Tuning.rammerReboundPerSpeed * closing, Tuning.ramBumpMax / 3));
+            // Only a victim the ram could hurt spins (not a shielded, protected or grace-period car).
+            if (kind == ImpactKind.Side && damaged) SpinVictim(attacker, victim, impact);
+            else victim.heading += Random.Range(15f, 30f) * (Random.value < .5f ? -1 : 1);
+            events.Add(new CarRammed(attacker, victim, impact, multiplier, damaged && victim.alive, kind, damaged && !victim.alive));
+            if (damaged && (!victim.alive || impact >= Tuning.smashSpeed)) SplashDebris(attacker, victim);
+        }
+
+        // The ram's harm: damage by impact and multiplier (none where the harm rules protect the victim), the
+        // rammer's points and wreck bonus, and a little damage back to the rammer. True when the victim was hurt.
+        private bool Strike(ArcadeVehicle attacker, ArcadeVehicle victim, float impact, float multiplier)
+        {
             float damage = (.035f + impact * .035f) * multiplier;
             if (!CanHarm(attacker, victim)) damage = 0;
             bool damaged = ApplyDamage(victim, damage);
@@ -444,15 +477,43 @@ namespace TNDA.Prototype
                 if (!victim.alive) AwardWreck(attacker);
             }
             ApplyDamage(attacker, damage * .15f);
-            attacker.speed *= .6f;
-            if (damaged && victim.alive) { victim.speed *= .4f; victim.stun = .12f; }
-            // Bumper cars: the rammed car slides away and its nose is knocked aside; the rammer rebounds.
-            Vector2 push = (victim.position - attacker.position).normalized;
-            victim.ApplySlide(push * Tuning.ramBump * (.6f + impact * .4f));
-            attacker.ApplySlide(-push * Tuning.ramBump * .35f);
-            victim.heading += Random.Range(15f, 30f) * (Random.value < .5f ? -1 : 1);
-            events.Add(new CarRammed(attacker, victim, impact, multiplier, damaged && victim.alive));
-            if (damaged && (!victim.alive || impact >= Tuning.smashSpeed)) SplashDebris(attacker, victim);
+            return damaged;
+        }
+
+        // Scrape (擦撞): two cars driving forwards the same way touch side to side with one of them really moving.
+        // Both are pushed apart and slowed a little. The harm goes by their relative speed, so cars cruising side by
+        // side at the same pace only rub: the faster one scrapes the other for scrapeMultiplier of a ram's harm once
+        // the relative speed reaches scrapeMinSpeed.
+        private bool TryScrape(ArcadeVehicle a, ArcadeVehicle b)
+        {
+            Vector2 apart = (b.position - a.position).normalized;
+            if (a.speed < 0 || b.speed < 0 || Vector2.Dot(a.Forward, b.Forward) < Tuning.scrapeAlignment
+                || Mathf.Abs(Vector2.Dot(apart, a.Forward)) >= Tuning.scrapeSideways
+                || Mathf.Abs(Vector2.Dot(apart, b.Forward)) >= Tuning.scrapeSideways
+                || Mathf.Max(a.speed, b.speed) < Tuning.scrapeMinSpeed) return false;
+            var attacker = a.speed >= b.speed ? a : b;
+            var victim = attacker == a ? b : a;
+            float impact = (a.Forward * a.speed - b.Forward * b.speed).magnitude;
+            bool damaged = impact >= Tuning.scrapeMinSpeed && Strike(attacker, victim, impact, Tuning.scrapeMultiplier);
+            a.ApplySlide(-apart * Tuning.scrapeBump);
+            b.ApplySlide(apart * Tuning.scrapeBump);
+            a.speed *= Tuning.scrapeSlowdown;
+            b.speed *= Tuning.scrapeSlowdown;
+            events.Add(new CarRammed(attacker, victim, impact, Tuning.scrapeMultiplier, damaged && victim.alive, ImpactKind.Scrape, damaged && !victim.alive));
+            if (damaged && !victim.alive) SplashDebris(attacker, victim);
+            return true;
+        }
+
+        // A side hit turns the victim on the spot, half a turn for a slow hit up to a full turn at sideSpinFullSpeed,
+        // the way the rammer's nose pushes its flank (either way when hit dead centre).
+        private void SpinVictim(ArcadeVehicle attacker, ArcadeVehicle victim, float impact)
+        {
+            float degrees = Mathf.Lerp(Tuning.sideSpinMinDegrees, Tuning.sideSpinMaxDegrees,
+                Mathf.InverseLerp(1, Tuning.sideSpinFullSpeed, impact));
+            Vector2 offset = attacker.position - victim.position, shove = attacker.Forward;
+            float torque = offset.x * shove.y - offset.y * shove.x;
+            float sign = Mathf.Abs(torque) > .01f ? -Mathf.Sign(torque) : Random.value < .5f ? -1 : 1;
+            victim.SpinFromHit(sign * degrees, Tuning.sideSpinSeconds);
         }
 
         // Only a player's own rams throw debris, onto that player's screen; computer rams never do.

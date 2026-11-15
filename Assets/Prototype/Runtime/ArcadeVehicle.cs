@@ -42,6 +42,8 @@ namespace TNDA.Prototype
         [System.NonSerialized] private AiDriver ai;
         private float spinSpeed;
         private Vector2 spinDirection;
+        // A side hit's turn on the spot: degrees per second, and seconds of it left.
+        private float hitSpinRate, hitSpinSeconds;
         private const float ProtectionSeconds = 2;
 
         // P1 to P8 by seat in the arcade, for players and computer cars alike.
@@ -72,6 +74,7 @@ namespace TNDA.Prototype
         {
             Gear = 1;
             speed = stun = cooldown = respawn = shieldSeconds = spawnProtection = CherrySeconds = SlipSeconds = spinSpeed = 0;
+            hitSpinRate = hitSpinSeconds = 0;
             item = ArenaItem.None;
             FinalPlace = 0;
             SlideVelocity = spinDirection = Vector2.zero;
@@ -138,6 +141,15 @@ namespace TNDA.Prototype
             speed = 0;
         }
 
+        // Knocked side-on: turns `degrees` on the spot (negative turns clockwise) over `seconds`, stunned meanwhile.
+        public void SpinFromHit(float degrees, float seconds)
+        {
+            if (!alive || seconds <= 0) return;
+            hitSpinRate = degrees / seconds;
+            hitSpinSeconds = seconds;
+            stun = Mathf.Max(stun, seconds);
+        }
+
         public void ApplySlide(Vector2 impulse)
         {
             if (alive) SlideVelocity += impulse;
@@ -184,6 +196,12 @@ namespace TNDA.Prototype
                 speed = 0;
                 heading += 450 * dt;
                 return;
+            }
+            if (hitSpinSeconds > 0)
+            {
+                float step = Mathf.Min(dt, hitSpinSeconds);
+                heading += hitSpinRate * step;
+                hitSpinSeconds -= step;
             }
             if (stun > 0)
             {

@@ -46,16 +46,26 @@ namespace TNDA.Prototype
         public RocketsBusy(ArcadeVehicle car) { Car = car; }
     }
 
-    // Attacker drove into Victim (Impact is the closing speed, Multiplier 2 for a side hit, 1.5 from behind).
-    // VictimHurt: the victim lost durability and is still driving.
+    // How two cars met (ticket 18). Front: nose into a car that is not side-on or running ahead; Rear: from behind;
+    // Side: into its flank (the victim spins); Scrape: side by side heading the same way (both pushed apart, sparks).
+    public enum ImpactKind { Front, Rear, Side, Scrape }
+
+    // Attacker drove into Victim. Impact is the attacker's speed into the victim (for a scrape, the faster car is the
+    // attacker and Impact the two cars' relative speed); Multiplier is 2 for a side hit, 1.5 from behind, 1 head-on and less for a scrape.
+    // VictimHurt: the victim lost durability and is still driving. VictimWrecked: this ram wrecked the victim.
     public sealed class CarRammed : MatchEvent
     {
         public readonly ArcadeVehicle Attacker, Victim;
         public readonly float Impact, Multiplier;
-        public readonly bool VictimHurt;
-        public CarRammed(ArcadeVehicle attacker, ArcadeVehicle victim, float impact, float multiplier, bool victimHurt)
+        public readonly bool VictimHurt, VictimWrecked;
+        public readonly ImpactKind Kind;
+        public readonly Vector2 Point;
+        public CarRammed(ArcadeVehicle attacker, ArcadeVehicle victim, float impact, float multiplier, bool victimHurt,
+            ImpactKind kind, bool victimWrecked)
         {
             Attacker = attacker; Victim = victim; Impact = impact; Multiplier = multiplier; VictimHurt = victimHurt;
+            Kind = kind; VictimWrecked = victimWrecked;
+            Point = (attacker.position + victim.position) / 2;
         }
     }
 

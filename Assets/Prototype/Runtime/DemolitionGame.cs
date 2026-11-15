@@ -110,7 +110,7 @@ namespace TNDA.Prototype
         [Header("Rocket explosion")]
         public SpriteRenderer[] explosions;
         public float explosionSeconds = .45f;
-        private float[] explosionAge = Array.Empty<float>();
+        private float[] explosionAge = Array.Empty<float>(), explosionScale = Array.Empty<float>();
         private MaterialPropertyBlock solidBlock;
 
         [Header("Score pop-ups")]
@@ -138,10 +138,37 @@ namespace TNDA.Prototype
         [Header("Bumper-car knockback")]
         [Tooltip("Sliding push given to cars that touch, so they bounce apart instead of sticking.")]
         public float contactBump = Defaults.contactBump;
-        [Tooltip("Extra push for the car that gets rammed, scaled by impact speed.")]
-        public float ramBump = Defaults.ramBump;
+        [Tooltip("Extra slide for the rammed car per unit of closing speed: a light tap barely pushes, a fast ram sends it flying.")]
+        public float ramBumpPerSpeed = Defaults.ramBumpPerSpeed;
+        [Tooltip("The rammed car's extra slide never exceeds this, so it stays in the arena.")]
+        public float ramBumpMax = Defaults.ramBumpMax;
+        [Tooltip("The rammer's rebound per unit of closing speed (capped at a third of ramBumpMax).")]
+        public float rammerReboundPerSpeed = Defaults.rammerReboundPerSpeed;
         [Tooltip("How fast the sliding push fades (per second).")]
         public float bumpFriction = Defaults.bumpFriction;
+
+        [Header("Side hits and scrapes")]
+        [Tooltip("A side hit spins the victim this many degrees at impact 1, up to the max at sideSpinFullSpeed.")]
+        public float sideSpinMinDegrees = Defaults.sideSpinMinDegrees, sideSpinMaxDegrees = Defaults.sideSpinMaxDegrees;
+        public float sideSpinFullSpeed = Defaults.sideSpinFullSpeed;
+        [Tooltip("The side-hit spin's length; the victim is stunned meanwhile.")]
+        public float sideSpinSeconds = Defaults.sideSpinSeconds;
+        [Tooltip("Scrape: the two headings' dot product at least this (0.87 is about 30 degrees apart).")]
+        [Range(0, 1)] public float scrapeAlignment = Defaults.scrapeAlignment;
+        [Tooltip("Scrape: the contact line's share along either heading below this (side to side, not nose to tail).")]
+        [Range(0, 1)] public float scrapeSideways = Defaults.scrapeSideways;
+        [Tooltip("Scrape: the faster car's speed must reach this.")]
+        public float scrapeMinSpeed = Defaults.scrapeMinSpeed;
+        [Tooltip("Scrape: outward push for both cars, the share of speed both keep, and the share of a ram's damage and points.")]
+        public float scrapeBump = Defaults.scrapeBump;
+        [Range(0, 1)] public float scrapeSlowdown = Defaults.scrapeSlowdown, scrapeMultiplier = Defaults.scrapeMultiplier;
+
+        [Header("Impact feel: shake, sparks, wreck explosion")]
+        public ImpactFeelTuning impactFeel = new ImpactFeelTuning();
+        // Runtime spark bursts (code-drawn four-colour star), styled like the explosions; Mode7Stage stands them up.
+        [NonSerialized] public SpriteRenderer[] sparks = Array.Empty<SpriteRenderer>();
+        private float[] sparkAge = Array.Empty<float>();
+        private const int SparkSlots = 6;
         public bool HasCherry(ArcadeVehicle car) => car.HasCherry;
         public Vector2 arenaMin = Defaults.arenaMin;
         public Vector2 arenaMax = Defaults.arenaMax;
@@ -179,7 +206,12 @@ namespace TNDA.Prototype
                 t.hunterChaseSeconds = hunterChaseSeconds; t.hunterScatterSeconds = hunterScatterSeconds; t.hunterLeaderChance = hunterLeaderChance;
                 t.cherryDuration = cherryDuration; t.cherrySpeedMultiplier = cherrySpeedMultiplier; t.trailingCherryChance = trailingCherryChance;
                 t.spinOutTurnsPerSecond = spinOutTurnsPerSecond; t.spinOutStartSpeed = spinOutStartSpeed; t.spinOutAcceleration = spinOutAcceleration;
-                t.contactBump = contactBump; t.ramBump = ramBump; t.bumpFriction = bumpFriction;
+                t.contactBump = contactBump; t.ramBumpPerSpeed = ramBumpPerSpeed; t.ramBumpMax = ramBumpMax;
+                t.rammerReboundPerSpeed = rammerReboundPerSpeed; t.bumpFriction = bumpFriction;
+                t.sideSpinMinDegrees = sideSpinMinDegrees; t.sideSpinMaxDegrees = sideSpinMaxDegrees;
+                t.sideSpinFullSpeed = sideSpinFullSpeed; t.sideSpinSeconds = sideSpinSeconds;
+                t.scrapeAlignment = scrapeAlignment; t.scrapeSideways = scrapeSideways; t.scrapeMinSpeed = scrapeMinSpeed;
+                t.scrapeBump = scrapeBump; t.scrapeSlowdown = scrapeSlowdown; t.scrapeMultiplier = scrapeMultiplier;
                 t.arenaMin = arenaMin; t.arenaMax = arenaMax; t.randomPropSpots = randomPropSpots;
                 return match;
             }
@@ -312,6 +344,9 @@ namespace TNDA.Prototype
             explosionAge = new float[explosions == null ? 0 : explosions.Length];
             for (int i = 0; i < explosionAge.Length; i++) explosionAge[i] = -1;
             if (explosions != null) foreach (var blast in explosions) if (blast != null) blast.gameObject.SetActive(false);
+            explosionScale = new float[explosionAge.Length];
+            MakeSparks();
+            for (int i = 0; i < sparks.Length; i++) { sparkAge[i] = -1; sparks[i].gameObject.SetActive(false); }
             int popups = scorePopups == null ? 0 : scorePopups.Length;
             popupAge = new float[popups];
             popupAmount = new int[popups];
@@ -342,6 +377,8 @@ namespace TNDA.Prototype
         public event System.Action WreckPresented;
         // A player's ram threw debris onto that player's screen (Mode7Debris). Never in the attract demo.
         public event System.Action<DebrisSplashed> DebrisPresented;
+        // A player's chase view should shake (ticket 18). Never in the attract demo.
+        public event System.Action<ShakeKick> ShakePresented;
 
         // Shows what the match reported, in order, then forgets it. The attract demo plays the picture and the score
         // pop-ups (so passers-by see what scores) but no notice text and no sound, like a cabinet waiting for a coin.
@@ -352,7 +389,12 @@ namespace TNDA.Prototype
             {
                 if (e is VehicleWrecked) WreckPresented?.Invoke();
                 if (e is DebrisSplashed debris && !quiet && !demo) DebrisPresented?.Invoke(debris);
-                if (e is RocketHit hit) Explode(hit.Point);
+                if (!quiet && !demo && ShakePresented != null)
+                    foreach (var kick in ImpactFeel.Kicks(e, Match.Tuning.smashSpeed, impactFeel)) ShakePresented(kick);
+                if (ImpactFeel.TrySparks(e, Match.Tuning.smashSpeed, out var sparkAt)) Spark(sparkAt);
+                if (e is VehicleWrecked wrecked) Explode(wrecked.Car.position, impactFeel.wreckExplosionScale);
+                // A rocket that wrecks its target shows only the wreck's bigger explosion.
+                if (e is RocketHit hit && !Match.Events.Any(w => w is VehicleWrecked v && v.Car == hit.Victim)) Explode(hit.Point);
                 else if (e is ScoreChanged score) PopScore(score);
                 // A player knocked out before the final (the 40 s or 80 s elimination in arcade mode) may pay to continue; the final elimination ends the match.
                 else if (e is VehicleEliminated knockedOut && !quiet && !demo) Continues.Offer(knockedOut.Car, Match.Finished);
@@ -530,13 +572,14 @@ namespace TNDA.Prototype
             }
         }
 
-        // Rocket hit: the supplied explosion picture pops up over the car and fades out.
-        private void Explode(Vector2 point)
+        // Rocket hit or wreck: the supplied explosion picture pops up over the car (a wreck's bigger) and fades out.
+        private void Explode(Vector2 point, float size = 1)
         {
-            if (explosions == null || explosions.Length == 0) return;
+            if (explosions == null || explosions.Length == 0 || explosionAge.Length != explosions.Length) return;
             int slot = 0;
             for (int i = 0; i < explosions.Length; i++) if (explosionAge[i] < 0) { slot = i; break; }
             explosionAge[slot] = 0;
+            explosionScale[slot] = size;
             explosions[slot].transform.position = PixelPosition(point);
             explosions[slot].gameObject.SetActive(true);
         }
@@ -552,8 +595,77 @@ namespace TNDA.Prototype
                 if (t >= 1) { explosionAge[i] = -1; explosions[i].gameObject.SetActive(false); continue; }
                 // Quick pop to full size, then flicker out (no alpha: the palette stays four solid colours).
                 float scale = t < .25f ? Mathf.Lerp(.5f, 1.15f, t / .25f) : Mathf.Lerp(1.15f, 1f, (t - .25f) / .75f);
+                scale *= explosionScale[i] > 0 ? explosionScale[i] : 1;
                 explosions[i].transform.localScale = new Vector3(scale, scale, 1);
                 explosions[i].enabled = t < .6f || Mathf.FloorToInt(explosionAge[i] * 20) % 2 == 0;
+            }
+            for (int i = 0; i < sparks.Length; i++)
+            {
+                if (sparkAge[i] < 0) continue;
+                sparkAge[i] += dt;
+                if (sparkAge[i] >= impactFeel.sparkSeconds) { sparkAge[i] = -1; sparks[i].gameObject.SetActive(false); continue; }
+                // Solid, then flickering out; no alpha, as with explosions.
+                sparks[i].enabled = sparkAge[i] < impactFeel.sparkSeconds * .5f || Mathf.FloorToInt(sparkAge[i] * 30) % 2 == 0;
+            }
+        }
+
+        // A spark burst between two cars that hit hard or scraped.
+        private void Spark(Vector2 point)
+        {
+            if (sparks.Length == 0) return;
+            int slot = 0;
+            for (int i = 0; i < sparks.Length; i++) if (sparkAge[i] < 0) { slot = i; break; }
+            sparkAge[slot] = 0;
+            sparks[slot].transform.position = PixelPosition(point);
+            sparks[slot].enabled = true;
+            sparks[slot].gameObject.SetActive(true);
+        }
+
+        // 9x9 four-colour star drawn in code (no art file), on the explosions' parent, layer and sorting.
+        private static readonly string[] SparkPicture =
+        {
+            "R...O...R",
+            ".O..Y..O.",
+            "..Y.Y.Y..",
+            "...YWY...",
+            "OYYWWWYYO",
+            "...YWY...",
+            "..Y.Y.Y..",
+            ".O..Y..O.",
+            "R...O...R",
+        };
+
+        private void MakeSparks()
+        {
+            if (sparks.Length > 0 || explosions == null || explosions.Length == 0 || explosions[0] == null) return;
+            var template = explosions[0];
+            int size = SparkPicture.Length;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave };
+            var orange = new Color32(255, 140, 40, 255);
+            var red = new Color32(208, 48, 16, 255);
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    char c = SparkPicture[size - 1 - y][x];
+                    texture.SetPixel(x, y, c == 'W' ? White : c == 'Y' ? Yellow : c == 'O' ? (Color)orange : c == 'R' ? (Color)red : Color.clear);
+                }
+            texture.Apply();
+            var sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(.5f, .5f), 32);
+            sprite.hideFlags = HideFlags.DontSave;
+            sparks = new SpriteRenderer[SparkSlots];
+            sparkAge = new float[SparkSlots];
+            for (int i = 0; i < SparkSlots; i++)
+            {
+                var view = new GameObject("Impact sparks " + i, typeof(SpriteRenderer)).GetComponent<SpriteRenderer>();
+                view.transform.SetParent(template.transform.parent, false);
+                view.gameObject.layer = template.gameObject.layer;
+                view.sprite = sprite;
+                view.sharedMaterial = template.sharedMaterial;
+                view.sortingLayerID = template.sortingLayerID;
+                view.sortingOrder = template.sortingOrder;
+                view.gameObject.SetActive(false);
+                sparks[i] = view;
             }
         }
 
@@ -696,6 +808,11 @@ namespace TNDA.Prototype
         {
             base.OnDestroy();
             engine.Dispose();
+            if (sparks.Length > 0 && sparks[0] != null && sparks[0].sprite != null)
+            {
+                Destroy(sparks[0].sprite.texture);
+                Destroy(sparks[0].sprite);
+            }
         }
 
         private string DriverStatus(ArcadeVehicle car)

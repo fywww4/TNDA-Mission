@@ -71,6 +71,7 @@ namespace TNDA.Prototype
         private readonly Camera[] chase = new Camera[2];
         private readonly float[] chaseYaw = new float[2];
         private readonly bool[] chaseReady = new bool[2];
+        private readonly ScreenShake[] shakes = { new ScreenShake(), new ScreenShake() };
         private Camera map, backdrop;
         private Rect mapRectBefore;
         private float mapSizeBefore;
@@ -128,10 +129,12 @@ namespace TNDA.Prototype
             for (int i = 0; i < chase.Length; i++) if (chase[i] != null) Destroy(chase[i].gameObject);
             if (backdrop != null) Destroy(backdrop.gameObject);
             DestroyGround(ground);
+            game.ShakePresented += Shake;
             DestroyGround(floor);
             foreach (var blip in blips) if (blip.view != null) Destroy(blip.view.gameObject);
             blips.Clear();
             if (blipTexture != null) Destroy(blipTexture);
+            game.ShakePresented -= Shake;
             if (artImage != null) Destroy(artImage.gameObject);
             if (scaler != null)
             {
@@ -159,7 +162,9 @@ namespace TNDA.Prototype
             {
                 bool on = i == 0 || two;
                 chase[i].enabled = on;
-                if (!on) { chaseReady[i] = false; continue; }
+                if (!on) { chaseReady[i] = false; shakes[i].Stop(); continue; }
+                // The attract demo never shakes; a shake left from the last match ends with it.
+                if (game.Phase == ArcadePhase.Attract) shakes[i].Stop();
                 chase[i].rect = HybridResolution.ViewRect(i, two);
                 Follow(i, Target(i));
             }
@@ -176,6 +181,7 @@ namespace TNDA.Prototype
             if (game.notice != null)
                 game.notice.rectTransform.anchoredPosition = two ? (Vector2)noticeAt2P : (Vector2)noticeAt1P;
             PlaceContinuePanels(two);
+                ApplyShake(i);
             if (game.cars.Length > 4 && game.hud != null)
                 game.hud.rectTransform.anchoredPosition = new Vector2(6, two ? 210 : 362);
             foreach (var blip in blips)
@@ -333,6 +339,27 @@ namespace TNDA.Prototype
             for (int i = 0; i < standing.Count; i++)
             {
                 var s = standing[i];
+        // Ticket 18: a player's own ram, or being rammed, shakes only that player's view.
+        private void Shake(ShakeKick kick)
+        {
+            int seat = kick.Car.index;
+            if (seat < shakes.Length && (seat == 0 || TwoViews)) shakes[seat].Kick(kick.Pixels, kick.Seconds);
+        }
+
+        // Shifts the view's picture by whole art pixels through the projection, so the art stays pixel-sharp and the
+        // edges show more of the scene instead of a gap; name tags projected through the camera move with it.
+        private void ApplyShake(int i)
+        {
+            var cam = chase[i];
+            Vector2Int offset = shakes[i].Advance(Time.unscaledDeltaTime);
+            cam.ResetProjectionMatrix();
+            if (offset == Vector2Int.zero) return;
+            var m = cam.projectionMatrix;
+            m.m02 += 2f * offset.x / Mathf.Max(1, cam.pixelWidth);
+            m.m12 += 2f * offset.y / Mathf.Max(1, cam.pixelHeight);
+            cam.projectionMatrix = m;
+        }
+
                 // A held item is a car child: capture its floor position before turning the parent for either
                 // camera. Otherwise the parent's billboard rotation moves it differently in P1, P2 and the map.
                 s.position = s.t.position;
@@ -360,6 +387,7 @@ namespace TNDA.Prototype
             if (cam == map) { LayFlat(); return; }
             int seat = cam == chase[0] ? 0 : cam == chase[1] ? 1 : -1;
             if (seat < 0) return;
+            foreach (var spark in game.sparks) if (spark != null) standing.Add(new Standing { t = spark.transform, lift = explosionLift });
             foreach (var group in standingGroups.Values) group.enabled = true;
             var rot = cam.transform.rotation;
             foreach (var s in standing)

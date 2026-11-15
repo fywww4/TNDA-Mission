@@ -1,0 +1,90 @@
+// Ticket 18 (Play Mode, GAME3_Mode7): impact feel. State in tmp/ticket18-state.txt:
+//   1p -> P1 side-rams a computer car at speed 3: P1's view shakes, sparks fly, the victim spins (tmp/ticket18-1p.png)
+//   2p -> two computer cars ram (no view shakes), then P2 wrecks a computer car: only P2's view shakes, big
+//         explosion (tmp/ticket18-2p.png)
+var state = System.IO.File.ReadAllText("tmp/ticket18-state.txt").Trim();
+var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
+var stage = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.Mode7Stage>();
+if (g == null || stage == null || !UnityEngine.Application.isPlaying) throw new System.InvalidOperationException("Play Mode required");
+UnityEngine.Application.runInBackground = true;
+g.enabled = false;
+float dt = 1f / 60;
+var idle = new TNDA.Prototype.ArcadeInput();
+var log = new System.Text.StringBuilder();
+int failed = 0, passed = 0;
+System.Action<string, bool> check = (name, ok) => { log.AppendLine((ok ? "PASS " : "FAIL ") + name); if (ok) passed++; else failed++; };
+var shakes = (TNDA.Prototype.ScreenShake[])typeof(TNDA.Prototype.Mode7Stage)
+    .GetField("shakes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(stage);
+System.Func<bool> sparking = () => System.Linq.Enumerable.Any(g.sparks, s => s.gameObject.activeSelf);
+int goldBefore = UnityEngine.PlayerPrefs.GetInt("TNDA.Gold"), bestBefore = UnityEngine.PlayerPrefs.GetInt("WreckBest");
+g.PreparePreview();
+g.SelectMode(TNDA.Prototype.CabinetMode.Normal);
+int players = state == "2p" ? 2 : 1;
+g.StartRun(players);
+while (g.Phase == TNDA.Prototype.ArcadePhase.Countdown) g.Advance(dt, idle, idle);
+// Past the 10 s grace, everyone unprotected, props out of the way.
+for (int f = 0; f < 60; f++) g.Advance(dt, idle, idle);
+foreach (var c in g.cars) { c.spawnProtection = 0; c.shieldSeconds = 0; }
+foreach (var p in g.props) p.point = new UnityEngine.Vector2(8, 4);
+foreach (var s in shakes) s.Stop();
+System.Action<TNDA.Prototype.ArcadeVehicle, UnityEngine.Vector2, float, float> place = (c, at, heading, speed) =>
+    { c.position = at; c.heading = heading; c.speed = speed; };
+if (state == "1p")
+{
+    var victim = g.cars[2];
+    for (int i = 3; i < g.cars.Length; i++) place(g.cars[i], new UnityEngine.Vector2(-7 + i, 3.5f), 0, 0);
+    place(g.cars[0], new UnityEngine.Vector2(-1, -1), 0, 3);
+    place(victim, new UnityEngine.Vector2(-.45f, -1), 90, 0);
+    victim.health = 1;
+    g.Advance(dt, idle, idle);
+    check("P1 view shakes 2 px", shakes[0].Pixels == 2);
+    check("sparks fly", sparking());
+    check("victim stunned for the spin", victim.stun > .3f);
+    var startHeading = victim.heading;
+    // Leave the victim mid-spin for the picture.
+    for (int f = 0; f < 6; f++) g.Advance(dt, idle, idle);
+    check("victim turning", UnityEngine.Mathf.Abs(UnityEngine.Mathf.DeltaAngle(startHeading, victim.heading)) > 20);
+}
+else if (state == "scrape")
+{
+    // P1 scrapes along a computer car heading the same way: sparks, no debris, light shake.
+    for (int i = 3; i < g.cars.Length; i++) place(g.cars[i], new UnityEngine.Vector2(-7 + i, 3.5f), 0, 0);
+    var other = g.cars[2];
+    place(g.cars[0], new UnityEngine.Vector2(-1, -1), 0, 3.5f);
+    place(other, new UnityEngine.Vector2(-.9f, -.45f), 8, 1);
+    other.health = 1;
+    g.Advance(dt, idle, idle);
+    check("sparks fly", sparking());
+    check("P1 view shakes", shakes[0].Pixels >= 1);
+    check("scraped car lost a little durability", other.health < 1 && other.health > .9f);
+    check("no stun from a scrape", other.stun == 0);
+    check("cars pushed apart", other.SlideVelocity.y > 0 && g.cars[0].SlideVelocity.y < 0);
+}
+else if (state == "2p")
+{
+    for (int i = 0; i < g.cars.Length; i++) place(g.cars[i], new UnityEngine.Vector2(-7 + i * 1.6f, 3.5f), 0, 0);
+    // Two computer cars collide hard far from both players.
+    place(g.cars[4], new UnityEngine.Vector2(5, -5), 0, 3);
+    place(g.cars[5], new UnityEngine.Vector2(5.55f, -5), 180, 3);
+    g.Advance(dt, idle, idle);
+    check("AI ram shakes no view", shakes[0].Pixels == 0 && shakes[1].Pixels == 0);
+    check("AI ram still sparks", sparking());
+    // P2 wrecks a computer car.
+    var victim = g.cars[3];
+    place(g.cars[1], new UnityEngine.Vector2(-1, -1), 0, 3);
+    place(victim, new UnityEngine.Vector2(-.45f, -1), 180, 0);
+    victim.health = .01f;
+    g.Advance(dt, idle, idle);
+    check("victim wrecked", !victim.alive);
+    check("only P2's view shakes, hardest", shakes[1].Pixels == 3 && shakes[0].Pixels == 0);
+    var blast = System.Linq.Enumerable.FirstOrDefault(g.explosions, e => e.gameObject.activeSelf);
+    check("explosion up", blast != null);
+    // A rocket's explosion reaches 1.15 at a quarter of its life; the wreck's is wreckExplosionScale times that.
+    for (int f = 0; f < 6; f++) g.Advance(dt, idle, idle);
+    check("wreck explosion bigger than a rocket's", blast != null && blast.transform.localScale.x > 1.3f);
+}
+UnityEngine.PlayerPrefs.SetInt("TNDA.Gold", goldBefore);
+UnityEngine.PlayerPrefs.SetInt("WreckBest", bestBefore);
+UnityEngine.PlayerPrefs.Save();
+UnityEngine.ScreenCapture.CaptureScreenshot("tmp/ticket18-" + state + ".png");
+return new { state, passed, failed, phase = g.Phase.ToString(), log = log.ToString() };
