@@ -101,7 +101,7 @@ namespace TNDA.Prototype.Tests
                 foreach (var prop in game.props) { prop.broken = true; prop.respawn = 100; }
                 game.Advance(1f / 60, gas, gas);
             }
-            for (int i = 0; i < players; i++) Assert.That(game.cars[i].speed, Is.EqualTo(3.36f).Within(.001f), "seat " + i);
+            for (int i = 0; i < players; i++) Assert.That(game.cars[i].speed, Is.EqualTo(4.2f).Within(.001f), "seat " + i);
             Assert.That(game.driveSpeed, Is.EqualTo(3.5f), "base speed stays unchanged");
         }
     }

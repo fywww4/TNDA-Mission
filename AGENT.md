@@ -334,3 +334,11 @@
 - **爆炸與火花**：撞毀（耐久歸零，任何原因）在車上播 `Explosion.png`，大小為火箭命中的 `wreckExplosionScale` 1.4 倍；火箭直接打爆時只播撞毀的大爆炸。撞擊速度 ≥ 2.1 或任何擦撞，在兩車中間冒程式畫的 9×9 四色（白／黃／橘／紅）星形火花 0.2 秒（`DemolitionGame` 執行期建立 6 個，Mode 7 立起來顯示）。
 - **測試**：EditMode `ImpactFeelTests`（11：彈開比例與上限、反彈、側撞打轉與硬直、種類判定、擦撞互推減速、擦撞傷害較低、同速並排不傷、防護罩不打轉、慢速只是接觸）與 `ImpactFeelPresentationTests`（8：只震相關真人、輕碰不震、強度與時間、撞毀最大、火花條件、整數像素與衰減）。`MatchCarCountTests` 的 4 車固定亂數紀錄因 3.5 最高速與本票單重新錄製。
 - **驗證**：全部 EditMode 184 個中 171 通過；13 個失敗都是 `GarageCabinetTests`／`UpgradeDrivingTests` 仍以舊最高速 2.8、加速 1.4 計算（commit 964e8a5 改了預設值但未更新測試），與本票單無關。Play Mode `Docs/Game3/impact-feel-play.cs.txt`（即 `tmp/ticket18-play.cs`）1P 側撞 4 項、擦撞 5 項、2P（AI 互撞不震、P2 撞毀只震 P2、大爆炸）6 項全部通過；截圖 `Docs/Game3/impact-side-1p.png`、`impact-scrape-1p.png`、`impact-wreck-2p.png`。重新編譯後 Console 零錯誤、零警告（Play 期間出現的兩筆為其他工作階段的 CLI 呼叫）。
+
+## Mode 7 票單 19：小地圖箭頭與圖層（2026-11-15）
+
+`Mode7Stage` 把 8 台車的小地圖方塊改成 16 方向（每格 22.5°）的 7×7 像素箭頭，依實際車頭選格，保留座位色、P3／P4 條紋與櫻桃配色。每個來源像素對齊小地圖格點，隨車輛打滑／淘汰飛出持續轉向，車隱藏時標記也隱藏。
+
+小地圖獨立畫入 72×48 Point Filter RenderTexture，以 144×96 RawImage 顯示於原位置 `(8,36)`；白框仍為 1 美術像素。圖層順序為追尾美術、碎片、小地圖與白框、HUD，2P 時仍在 P2 半邊左下角。關閉小地圖會連同白框隱藏；元件重啟會正確釋放／重建資源。
+
+驗證：完整 EditMode 184／184、PlayMode 4／4 通過；修正兩個既有升級測試中與目前速度數值不一致的基準，沒有修改遊戲速度。1P／2P 實際碎片移至小地圖背後，含白框 14,800 像素前後差異均為 0；截圖已檢視。主專案重新編譯與網域重新載入完成，Console 即時零錯誤、零警告，完成時停止 Play Mode。Standards／Spec 雙軸審查各 0 項發現。詳見 `Docs/Game3/minimap-arrows-verification.md` 與兩張 `minimap-arrows-1p.png`／`minimap-arrows-2p.png`。

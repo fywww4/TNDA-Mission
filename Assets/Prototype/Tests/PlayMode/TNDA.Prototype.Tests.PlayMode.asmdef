@@ -1,7 +1,7 @@
 {
     "name": "TNDA.Prototype.Tests.PlayMode",
     "rootNamespace": "TNDA.Prototype.Tests",
-    "references": ["TNDA.Prototype", "UnityEngine.TestRunner"],
+    "references": ["TNDA.Prototype", "UnityEngine.TestRunner", "Unity.TextMeshPro"],
     "overrideReferences": true,
     "precompiledReferences": ["nunit.framework.dll"],
     "autoReferenced": false,

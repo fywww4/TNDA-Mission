@@ -10,8 +10,8 @@ namespace TNDA.Prototype
     // - cars, crates, barrels, held items, crown and explosions stand up facing whichever camera is drawing;
     // - the original top-down camera becomes a corner minimap where everything lies flat again.
     // World "up" for the standing sprites is -Z (the side the top-down camera looks from).
-    // Hybrid resolution (Docs/adr/0001): every scene camera draws into one 256x224 art texture, shown at 2x2 coarse
-    // pixels under the 512x448 cabinet HUD, so the art looks like SFC 256x224 while text stays native and sharp.
+    // Hybrid resolution (Docs/adr/0001): chase views share a 256x224 art texture; the minimap has its own texture
+    // above debris. Both show at 2x2 coarse pixels under the native 512x448 cabinet HUD.
     // The cabinet is shown at a whole-number scale (2x = 1024x896 when the screen fits it, otherwise 1x).
     [DefaultExecutionOrder(100)]
     public sealed class Mode7Stage : MonoBehaviour, ICabinetProjection
@@ -48,7 +48,7 @@ namespace TNDA.Prototype
         public static readonly RectInt DefaultMinimapRect = new RectInt(4, 18, 72, 48);
         [Tooltip("A layer only the minimap draws (the car blips).")]
         [Range(8, 31)] public int minimapOnlyLayer = 30;
-        [Tooltip("Size of each car's square blip on the minimap, in world units (bigger than a crate, so the white P3/P4 read as cars).")]
+        [Tooltip("Size of each car's arrow on the minimap, in world units.")]
         public float blipSize = 1.6f;
 
         [Header("HUD lines that move with the split, in 512x448 cabinet pixels")]
@@ -75,12 +75,15 @@ namespace TNDA.Prototype
         private Camera map, backdrop;
         private Rect mapRectBefore;
         private float mapSizeBefore;
-        private RenderTexture art;
-        private UnityEngine.UI.RawImage artImage;
+        private RenderTexture mapTargetBefore;
+        private int mapMaskBefore;
+        private float mapDepthBefore;
+        private RenderTexture art, mapArt;
+        private UnityEngine.UI.RawImage artImage, mapImage;
         private UnityEngine.UI.CanvasScaler scaler;
         private (UnityEngine.UI.CanvasScaler.ScaleMode mode, float factor) scalerBefore;
         private readonly List<(SpriteRenderer view, ArcadeVehicle car)> blips = new List<(SpriteRenderer, ArcadeVehicle)>();
-        private Texture2D blipTexture;
+        private readonly Sprite[] blipFrames = new Sprite[16];
         private MaterialPropertyBlock blipPalette;
         private GameObject ground, floor;
         private readonly List<Standing> standing = new List<Standing>();
@@ -109,33 +112,41 @@ namespace TNDA.Prototype
                 if (behaviour != null && behaviour.GetType().Name.Contains("PixelPerfect")) behaviour.enabled = false;
             mapRectBefore = map.rect;
             mapSizeBefore = map.orthographicSize;
+            mapTargetBefore = map.targetTexture;
+            mapMaskBefore = map.cullingMask;
+            mapDepthBefore = map.depth;
             art = new RenderTexture(HybridResolution.ArtWidth, HybridResolution.ArtHeight, 24)
                 { name = "Mode7 art 256x224", filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
-            map.targetTexture = art;
+            mapArt = new RenderTexture(minimapRect.width, minimapRect.height, 24)
+                { name = "Mode7 minimap", filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
+            map.targetTexture = mapArt;
             for (int i = 0; i < chase.Length; i++) chase[i] = MakeChaseCamera(i);
             backdrop = MakeBackdrop();
             ShowArtUnderHud();
+            ShowMinimapOverDebris();
             MakeBlips();
             ground = MakeGround();
             floor = MakeArenaFloor();
             DemolitionGame.CabinetProjection = this;
             Camera.onPreCull += OnAnyPreCull;
+            game.ShakePresented += Shake;
         }
 
         private void OnDisable()
         {
+            game.ShakePresented -= Shake;
             Camera.onPreCull -= OnAnyPreCull;
             if (ReferenceEquals(DemolitionGame.CabinetProjection, this)) DemolitionGame.CabinetProjection = null;
             for (int i = 0; i < chase.Length; i++) if (chase[i] != null) Destroy(chase[i].gameObject);
             if (backdrop != null) Destroy(backdrop.gameObject);
             DestroyGround(ground);
-            game.ShakePresented += Shake;
             DestroyGround(floor);
             foreach (var blip in blips) if (blip.view != null) Destroy(blip.view.gameObject);
             blips.Clear();
-            if (blipTexture != null) Destroy(blipTexture);
-            game.ShakePresented -= Shake;
+            foreach (var sprite in blipFrames)
+                if (sprite != null) { Destroy(sprite.texture); Destroy(sprite); }
             if (artImage != null) Destroy(artImage.gameObject);
+            if (mapImage != null) Destroy(mapImage.gameObject);
             if (scaler != null)
             {
                 scaler.uiScaleMode = scalerBefore.mode;
@@ -144,12 +155,15 @@ namespace TNDA.Prototype
             }
             if (map != null)
             {
-                map.targetTexture = null;
+                map.targetTexture = mapTargetBefore;
                 map.rect = mapRectBefore;
                 map.orthographicSize = mapSizeBefore;
+                map.cullingMask = mapMaskBefore;
+                map.depth = mapDepthBefore;
                 map.enabled = true;
             }
             if (art != null) { art.Release(); Destroy(art); }
+            if (mapArt != null) { mapArt.Release(); Destroy(mapArt); }
             LayFlat();
             foreach (var group in standingGroups.Values) if (group != null) Destroy(group);
             standingGroups.Clear();
@@ -167,11 +181,12 @@ namespace TNDA.Prototype
                 if (game.Phase == ArcadePhase.Attract) shakes[i].Stop();
                 chase[i].rect = HybridResolution.ViewRect(i, two);
                 Follow(i, Target(i));
+                ApplyShake(i);
             }
             map.enabled = minimap;
+            mapImage.gameObject.SetActive(minimap);
             map.cullingMask = (map.cullingMask & ~(1 << chaseOnlyLayer)) | 1 << minimapOnlyLayer;
-            map.rect = new Rect((float)minimapRect.x / HybridResolution.ArtWidth, (float)minimapRect.y / HybridResolution.ArtHeight,
-                (float)minimapRect.width / HybridResolution.ArtWidth, (float)minimapRect.height / HybridResolution.ArtHeight);
+            map.rect = new Rect(0, 0, 1, 1);
             // The whole arena out to the fence, fitted to the minimap's shape.
             Vector2 fenced = game.arenaMax - game.arenaMin + Vector2.one * arenaMargin * 2;
             map.orthographicSize = HybridResolution.FitOrthographicSize(fenced, (float)minimapRect.width / minimapRect.height);
@@ -181,7 +196,6 @@ namespace TNDA.Prototype
             if (game.notice != null)
                 game.notice.rectTransform.anchoredPosition = two ? (Vector2)noticeAt2P : (Vector2)noticeAt1P;
             PlaceContinuePanels(two);
-                ApplyShake(i);
             if (game.cars.Length > 4 && game.hud != null)
                 game.hud.rectTransform.anchoredPosition = new Vector2(6, two ? 210 : 362);
             foreach (var blip in blips)
@@ -207,15 +221,37 @@ namespace TNDA.Prototype
             artImage = go.AddComponent<UnityEngine.UI.RawImage>();
             artImage.texture = art;
             artImage.raycastTarget = false;
+            scaler = cabinet.GetComponentInParent<UnityEngine.UI.CanvasScaler>();
+            if (scaler != null)
+            {
+                scalerBefore = (scaler.uiScaleMode, scaler.scaleFactor);
+                scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ConstantPixelSize;
+            }
+        }
+
+        private void ShowMinimapOverDebris()
+        {
+            var cabinet = game.header.transform.parent;
+            var go = new GameObject("Mode7 minimap (2x)", typeof(RectTransform)) { hideFlags = HideFlags.DontSave };
+            var rect = (RectTransform)go.transform;
+            rect.SetParent(cabinet, false);
+            // Debris inserts immediately after the art. Insert before the HUD, including when re-enabled while
+            // the debris layers already exist, so the order remains art / debris / map / HUD.
+            rect.SetSiblingIndex(game.header.transform.GetSiblingIndex());
+            rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.zero;
+            rect.anchoredPosition = (Vector2)minimapRect.position * HybridResolution.ArtScale;
+            rect.sizeDelta = (Vector2)minimapRect.size * HybridResolution.ArtScale;
+            mapImage = go.AddComponent<UnityEngine.UI.RawImage>();
+            mapImage.texture = mapArt;
+            mapImage.raycastTarget = false;
             // A white frame one art pixel wide round the minimap, so it reads apart from the black arena floor.
-            if (minimap)
             {
                 var m = minimapRect;
                 const int k = HybridResolution.ArtScale;
-                Edge(m.x - 1, m.y - 1, m.width + 2, 1);
-                Edge(m.x - 1, m.yMax, m.width + 2, 1);
-                Edge(m.x - 1, m.y, 1, m.height);
-                Edge(m.xMax, m.y, 1, m.height);
+                Edge(-1, -1, m.width + 2, 1);
+                Edge(-1, m.height, m.width + 2, 1);
+                Edge(-1, 0, 1, m.height);
+                Edge(m.width, 0, 1, m.height);
                 void Edge(int x, int y, int w, int h)
                 {
                     var edge = new GameObject("Minimap frame", typeof(RectTransform)) { hideFlags = HideFlags.DontSave };
@@ -228,12 +264,6 @@ namespace TNDA.Prototype
                     image.color = ArcadeGame.White;
                     image.raycastTarget = false;
                 }
-            }
-            scaler = cabinet.GetComponentInParent<UnityEngine.UI.CanvasScaler>();
-            if (scaler != null)
-            {
-                scalerBefore = (scaler.uiScaleMode, scaler.scaleFactor);
-                scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ConstantPixelSize;
             }
         }
 
@@ -261,16 +291,29 @@ namespace TNDA.Prototype
             return cam;
         }
 
-        // A square in each car's colour that only the minimap draws, so every car reads at minimap size.
+        // Bake the sixteen arrow directions into texels instead of rotating a square sprite on the pixel grid.
         private void MakeBlips()
         {
-            // Six texels give striped seats two three-pixel bands, matching the car palette shader. A non-white
-            // source texel is tinted by that shader; white texels are deliberately preserved on the car art.
-            blipTexture = new Texture2D(6, 6) { filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
-            for (int y = 0; y < 6; y++) for (int x = 0; x < 6; x++) blipTexture.SetPixel(x, y, Color.red);
-            blipTexture.Apply();
-            var sprite = Sprite.Create(blipTexture, new Rect(0, 0, 6, 6), new Vector2(.5f, .5f), 6);
-            sprite.hideFlags = HideFlags.DontSave;
+            const int side = 7;
+            for (int direction = 0; direction < blipFrames.Length; direction++)
+            {
+                var texture = new Texture2D(side, side, TextureFormat.RGBA32, false)
+                    { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave };
+                float angle = direction * 22.5f * Mathf.Deg2Rad;
+                var forward = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                for (int y = 0; y < side; y++) for (int x = 0; x < side; x++)
+                {
+                    var pixel = new Vector2(x - 3, y - 3);
+                    float along = Vector2.Dot(pixel, forward), across = Mathf.Abs(pixel.x * forward.y - pixel.y * forward.x);
+                    bool head = along >= -1 && across <= (3.5f - along) * .78f;
+                    bool shaft = along < -1 && along >= -3.5f && across <= 1;
+                    // Red is tinted by the car palette, including P3/P4's three-texel stripes.
+                    texture.SetPixel(x, y, head || shaft ? Color.red : Color.clear);
+                }
+                texture.Apply();
+                blipFrames[direction] = Sprite.Create(texture, new Rect(0, 0, side, side), Vector2.one * .5f, side);
+                blipFrames[direction].hideFlags = HideFlags.DontSave;
+            }
             foreach (var car in game.cars)
             {
                 if (car == null) continue;
@@ -278,7 +321,7 @@ namespace TNDA.Prototype
                 go.transform.SetParent(car.transform, false);
                 go.transform.localScale = Vector3.one * blipSize;
                 var renderer = go.AddComponent<SpriteRenderer>();
-                renderer.sprite = sprite;
+                renderer.sprite = blipFrames[0];
                 renderer.sharedMaterial = car.body.sharedMaterial;
                 renderer.sortingOrder = 1000;
                 blips.Add((renderer, car));
@@ -294,6 +337,27 @@ namespace TNDA.Prototype
             foreach (var car in game.cars)
                 if (!car.eliminated && car.gameObject.activeInHierarchy && (best.eliminated || car.score > best.score)) best = car;
             return best;
+        }
+
+        // Ticket 18: a player's own ram, or being rammed, shakes only that player's view.
+        private void Shake(ShakeKick kick)
+        {
+            int seat = kick.Car.index;
+            if (seat < shakes.Length && (seat == 0 || TwoViews)) shakes[seat].Kick(kick.Pixels, kick.Seconds);
+        }
+
+        // Shifts the view's picture by whole art pixels through the projection, so the art stays pixel-sharp and the
+        // edges show more of the scene instead of a gap; name tags projected through the camera move with it.
+        private void ApplyShake(int i)
+        {
+            var cam = chase[i];
+            Vector2Int offset = shakes[i].Advance(Time.unscaledDeltaTime);
+            cam.ResetProjectionMatrix();
+            if (offset == Vector2Int.zero) return;
+            var m = cam.projectionMatrix;
+            m.m02 += 2f * offset.x / Mathf.Max(1, cam.pixelWidth);
+            m.m12 += 2f * offset.y / Mathf.Max(1, cam.pixelHeight);
+            cam.projectionMatrix = m;
         }
 
         private void Follow(int i, ArcadeVehicle car)
@@ -323,6 +387,7 @@ namespace TNDA.Prototype
                 foreach (var item in game.itemViews) if (item != null) standing.Add(new Standing { t = item.transform, lift = itemLift });
             if (game.explosions != null)
                 foreach (var boom in game.explosions) if (boom != null) standing.Add(new Standing { t = boom.transform, lift = explosionLift });
+            foreach (var spark in game.sparks) if (spark != null) standing.Add(new Standing { t = spark.transform, lift = explosionLift });
             if (game.crownView != null)
             {
                 // The arena puts the crown crownHeight north of the leader; in the chase view it floats straight above.
@@ -339,27 +404,6 @@ namespace TNDA.Prototype
             for (int i = 0; i < standing.Count; i++)
             {
                 var s = standing[i];
-        // Ticket 18: a player's own ram, or being rammed, shakes only that player's view.
-        private void Shake(ShakeKick kick)
-        {
-            int seat = kick.Car.index;
-            if (seat < shakes.Length && (seat == 0 || TwoViews)) shakes[seat].Kick(kick.Pixels, kick.Seconds);
-        }
-
-        // Shifts the view's picture by whole art pixels through the projection, so the art stays pixel-sharp and the
-        // edges show more of the scene instead of a gap; name tags projected through the camera move with it.
-        private void ApplyShake(int i)
-        {
-            var cam = chase[i];
-            Vector2Int offset = shakes[i].Advance(Time.unscaledDeltaTime);
-            cam.ResetProjectionMatrix();
-            if (offset == Vector2Int.zero) return;
-            var m = cam.projectionMatrix;
-            m.m02 += 2f * offset.x / Mathf.Max(1, cam.pixelWidth);
-            m.m12 += 2f * offset.y / Mathf.Max(1, cam.pixelHeight);
-            cam.projectionMatrix = m;
-        }
-
                 // A held item is a car child: capture its floor position before turning the parent for either
                 // camera. Otherwise the parent's billboard rotation moves it differently in P1, P2 and the map.
                 s.position = s.t.position;
@@ -387,7 +431,6 @@ namespace TNDA.Prototype
             if (cam == map) { LayFlat(); return; }
             int seat = cam == chase[0] ? 0 : cam == chase[1] ? 1 : -1;
             if (seat < 0) return;
-            foreach (var spark in game.sparks) if (spark != null) standing.Add(new Standing { t = spark.transform, lift = explosionLift });
             foreach (var group in standingGroups.Values) group.enabled = true;
             var rot = cam.transform.rotation;
             foreach (var s in standing)
@@ -445,6 +488,20 @@ namespace TNDA.Prototype
                     s.car.body.sharedMaterial = top.material;
                     s.car.body.transform.localRotation = Quaternion.Euler(0, 0, s.car.heading - 90);
                 }
+            }
+            foreach (var blip in blips)
+            {
+                blip.view.sprite = blipFrames[Mathf.RoundToInt(Mathf.Repeat(blip.car.heading, 360) / 22.5f) % 16];
+                // Whole texels and pixel-aligned edges keep every baked direction and stripe intact on the map.
+                float pixel = map.orthographicSize * 2 / map.pixelHeight;
+                int pixels = 7 * Mathf.Max(1, Mathf.RoundToInt(blipSize / (7 * pixel)));
+                float halfPixel = pixels % 2 * .5f;
+                var at = map.WorldToViewportPoint(blip.car.position);
+                at.x = (Mathf.Round(at.x * map.pixelWidth - halfPixel) + halfPixel) / map.pixelWidth;
+                at.y = (Mathf.Round(at.y * map.pixelHeight - halfPixel) + halfPixel) / map.pixelHeight;
+                blip.view.transform.SetPositionAndRotation(map.ViewportToWorldPoint(at), Quaternion.identity);
+                var parentScale = blip.car.transform.lossyScale;
+                blip.view.transform.localScale = new Vector3(pixels * pixel / parentScale.x, pixels * pixel / parentScale.y, 1);
             }
             UnityEngine.Rendering.SortingGroup.UpdateAllSortingGroups();
         }

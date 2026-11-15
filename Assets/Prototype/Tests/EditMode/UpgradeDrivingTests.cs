@@ -29,6 +29,7 @@ namespace TNDA.Prototype.Tests
             car = root.AddComponent<ArcadeVehicle>();
             match = new DemolitionMatch(new[] { car }, Array.Empty<BreakableProp>(), Array.Empty<ArenaPickup>(),
                 Array.Empty<ArcadeProjectile>(), new MatchTuning {
+                    driveSpeed = 2.8f, accelerationPerSecond = 1.4f,
                     playerUpgrades = upgrades, arenaMin = Vector2.one * -1000, arenaMax = Vector2.one * 1000
                 });
             match.Reset(1, true);
