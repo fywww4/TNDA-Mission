@@ -92,6 +92,8 @@ namespace TNDA.Prototype.Tests
             FundCabinet();
             game.OpenGarage();
             for (int i = 0; i < 4; i++) Assert.That(game.TryBuySelectedUpgrade(), Is.True);
+            // This fixture measures the upgrade's speed on open floor; terrain contacts have their own tests.
+            game.obstacles = Array.Empty<ArenaObstacle>();
             game.StartRun(players, challenge ? Challenges.All[0] : null);
             game.Advance(4, new ArcadeInput(), new ArcadeInput());
             var gas = new ArcadeInput { throttle = 1 };

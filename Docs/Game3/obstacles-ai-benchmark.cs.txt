@@ -1,0 +1,46 @@
+var game = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
+var scene = UnityEditor.SceneManagement.EditorSceneManager.NewPreviewScene();
+var random = UnityEngine.Random.state;
+var results = new System.Collections.Generic.List<object>();
+try {
+    var cars = new TNDA.Prototype.ArcadeVehicle[8];
+    for (int i=0; i<8; i++) {
+        var go = new UnityEngine.GameObject("AI benchmark car"); UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go,scene);
+        cars[i]=go.AddComponent<TNDA.Prototype.ArcadeVehicle>(); cars[i].index=i;
+    }
+    for (int variant=0; variant<2; variant++) {
+        float still=0, alive=0; int flights=0, fences=0;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        for (int run=0; run<3; run++) {
+            var tuning = new TNDA.Prototype.MatchTuning { arenaMin=game.arenaMin, arenaMax=game.arenaMax,
+                eliminations=game.eliminationSchedule, driveSpeed=game.driveSpeed, accelerationPerSecond=game.accelerationPerSecond };
+            var props = System.Linq.Enumerable.Select(game.props,p=>new TNDA.Prototype.BreakableProp {point=p.point,points=p.points}).ToArray();
+            var pickups = System.Linq.Enumerable.Select(game.pickups,p=>new TNDA.Prototype.ArenaPickup {point=p.point}).ToArray();
+            var terrain= variant==0 ? new TNDA.Prototype.ArenaObstacle[0] : TNDA.Prototype.Editor.Mode7ObstacleArt.Layout((game.arenaMin+game.arenaMax)/2);
+            var match = new TNDA.Prototype.DemolitionMatch(cars,props,pickups,
+                new[] {new TNDA.Prototype.ArcadeProjectile(),new TNDA.Prototype.ArcadeProjectile(),new TNDA.Prototype.ArcadeProjectile(),new TNDA.Prototype.ArcadeProjectile()},tuning,terrain);
+            UnityEngine.Random.InitState(200+run); match.Reset(1);
+            var history=new System.Collections.Generic.Queue<UnityEngine.Vector2>[8];
+            var wasFlying=new bool[8];
+            for (int i=0; i<8; i++) history[i]=new System.Collections.Generic.Queue<UnityEngine.Vector2>();
+            for (int frame=0; frame<60*110; frame++) {
+                cars[0].score=5000; cars[0].health=1;
+                match.Tick(1f/60,default,default);
+                foreach(var e in match.Events) if(e is TNDA.Prototype.FenceSmashed) fences++;
+                match.ClearEvents();
+                for (int i=1;i<8;i++) {
+                    var c=cars[i];
+                    if(c.Airborne && !wasFlying[i]) flights++;
+                    wasFlying[i]=c.Airborne;
+                    if(!c.alive || c.IsSlipping) {history[i].Clear();continue;}
+                    history[i].Enqueue(c.position); if(history[i].Count>120)history[i].Dequeue();
+                    alive+=1f/60;
+                    if(history[i].Count==120 && UnityEngine.Vector2.Distance(history[i].Peek(),c.position)<.3f)still+=1f/60;
+                }
+            }
+        }
+        results.Add(new { terrain=variant==1,stillSeconds=still,aliveSeconds=alive,percent=100*still/alive,flights,fences,cpuSeconds=watch.Elapsed.TotalSeconds });
+    }
+} finally { UnityEngine.Random.state=random; UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(scene); }
+System.IO.File.WriteAllText("tmp/ticket20/ai-benchmark-results.json",Newtonsoft.Json.JsonConvert.SerializeObject(results,Newtonsoft.Json.Formatting.Indented));
+return results;

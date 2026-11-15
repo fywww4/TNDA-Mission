@@ -1,6 +1,6 @@
 # TNDA Mission：GAME3 整合版交接
 
-更新日期：2026-11-10（Asia/Taipei）。目前只製作 GAME3；使用者的新要求優先於先前三案規格。
+更新日期：2026-11-15（Asia/Taipei）。目前只製作 GAME3；使用者的新要求優先於先前三案規格。
 
 ## 最新需求與現況
 
@@ -342,3 +342,13 @@
 小地圖獨立畫入 72×48 Point Filter RenderTexture，以 144×96 RawImage 顯示於原位置 `(8,36)`；白框仍為 1 美術像素。圖層順序為追尾美術、碎片、小地圖與白框、HUD，2P 時仍在 P2 半邊左下角。關閉小地圖會連同白框隱藏；元件重啟會正確釋放／重建資源。
 
 驗證：完整 EditMode 184／184、PlayMode 4／4 通過；修正兩個既有升級測試中與目前速度數值不一致的基準，沒有修改遊戲速度。1P／2P 實際碎片移至小地圖背後，含白框 14,800 像素前後差異均為 0；截圖已檢視。主專案重新編譯與網域重新載入完成，Console 即時零錯誤、零警告，完成時停止 Play Mode。Standards／Spec 雙軸審查各 0 項發現。詳見 `Docs/Game3/minimap-arrows-verification.md` 與兩張 `minimap-arrows-1p.png`／`minimap-arrows-2p.png`。
+
+## Mode 7 票單 20：場內固定障礙物（2026-11-15）
+
+`GAME3_Mode7` 新增中心對稱的短牆、水管、柵欄、坡道各 2 個。柵欄速度 ≥ 2.1 撞碎、不加分，飛散 8 片木片，6 秒後且附近沒車才重生；水管與牆擋車、短暫硬直，不扣耐久。沿坡道箭頭以 ≥ 2.1 越過高端會起飛 0.7 秒（預設額外高度 0.85），車圖與車名抬高、地面留影；低速沿坡面開過。空中不碰撞車輛、地形、破壞物、油漬，不撿木箱，火箭略過空中車；落地繼續駕駛，重生／淘汰會清除飛行。
+
+規則在 `ArenaObstacle`／`DemolitionMatch`／`ArcadeVehicle`，AI 以 `ObstacleNavigation` 繞行轉角、高速撞穿柵欄；`Mode7Obstacles` 用固定方向的世界 Mesh 畫立面、管身與斜坡，兩個追尾畫面共用；小地圖另畫俯視色塊。位置與數值在 `DemolitionGame` Inspector。木箱／破壞物與出生／復活位置避開地形，破壞物隨機重生也避開尚未長回的柵欄。`Editor/Mode7ObstacleArt.Apply()`（TNDA / Mode 7 / Apply fixed obstacles）可重跑且保留既有配置，兩次套用皆為 153 個場景 Transform。
+
+素材使用本次提供的牆／坡道 64×32 原圖；柵欄與水管大型 RGBA 圖保存在 `Art/Source/ObstacleFenceSource.png`／`ObstaclePipeSource.png`，整理為 64×32 固定調色盤貼圖。四圖皆為 Point、無 Mipmap、無壓縮；材質與 Shader 經場景參照納入建置。
+
+驗證：新增 `ObstacleTests` 11／11（含精確 2.09／2.1 邊界與貼牆脫困），完整 EditMode 195／195、PlayMode 4／4 通過。三場同種子 1P 110 秒比較，AI 卡住比例為無地形 0.90%、有地形 1.60%（+0.70 個百分點），同三場有 10 次 AI 起飛、24 次撞破柵欄。1P／2P／待機／跳躍／碎裂截圖已檢視；跳躍影子同幀開關有 212 個美術像素差異，碎裂時 8 片木片可見。測試用存檔已還原。重新編譯與網域重新載入完成，Console 即時零錯誤、零警告，最後停止 Play Mode。Standards／Spec 雙軸審查各 0 項。詳見 `Docs/Game3/obstacles-verification.md`；未重建 Windows／Web 發行檔。

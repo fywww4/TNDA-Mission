@@ -46,6 +46,10 @@ namespace TNDA.Prototype
         public ArcadeVehicle[] cars;
         public BreakableProp[] props;
         public ArenaPickup[] pickups = Array.Empty<ArenaPickup>();
+        public ArenaObstacle[] obstacles = Array.Empty<ArenaObstacle>();
+        [Header("Fixed terrain")]
+        public float fenceRespawnSeconds = Defaults.fenceRespawnSeconds;
+        public float rampSpeed = Defaults.rampSpeed, jumpSeconds = Defaults.jumpSeconds, jumpHeight = Defaults.jumpHeight;
         public ArcadeProjectile[] rockets = Array.Empty<ArcadeProjectile>();
         public TMP_Text arenaBoard, leaderboard;
         public TMP_Text[] carLabels;
@@ -185,9 +189,9 @@ namespace TNDA.Prototype
             {
                 int count = ActiveChallenge == null ? cars.Length : Mathf.Min(cars.Length, ActiveChallenge.CarCount);
                 if (match == null || matchSource != cars || match.Cars.Length != count
-                    || match.Props != props || match.Pickups != pickups || match.Rockets != rockets)
+                    || match.Props != props || match.Pickups != pickups || match.Rockets != rockets || match.Obstacles != obstacles)
                 {
-                    match = new DemolitionMatch(count == cars.Length ? cars : cars.Take(count).ToArray(), props, pickups, rockets, new MatchTuning());
+                    match = new DemolitionMatch(count == cars.Length ? cars : cars.Take(count).ToArray(), props, pickups, rockets, new MatchTuning(), obstacles);
                     matchSource = cars;
                 }
                 var t = match.Tuning;
@@ -213,6 +217,8 @@ namespace TNDA.Prototype
                 t.scrapeAlignment = scrapeAlignment; t.scrapeSideways = scrapeSideways; t.scrapeMinSpeed = scrapeMinSpeed;
                 t.scrapeBump = scrapeBump; t.scrapeSlowdown = scrapeSlowdown; t.scrapeMultiplier = scrapeMultiplier;
                 t.arenaMin = arenaMin; t.arenaMax = arenaMax; t.randomPropSpots = randomPropSpots;
+                t.fenceRespawnSeconds = fenceRespawnSeconds; t.rampSpeed = rampSpeed;
+                t.jumpSeconds = jumpSeconds; t.jumpHeight = jumpHeight;
                 return match;
             }
         }
@@ -375,6 +381,7 @@ namespace TNDA.Prototype
 
         // Presentation-only listeners also receive wrecks in the silent attract demo.
         public event System.Action WreckPresented;
+        public event System.Action<ArenaObstacle> FencePresented;
         // A player's ram threw debris onto that player's screen (Mode7Debris). Never in the attract demo.
         public event System.Action<DebrisSplashed> DebrisPresented;
         // A player's chase view should shake (ticket 18). Never in the attract demo.
@@ -388,6 +395,7 @@ namespace TNDA.Prototype
             foreach (var e in Match.Events)
             {
                 if (e is VehicleWrecked) WreckPresented?.Invoke();
+                if (e is FenceSmashed fence) FencePresented?.Invoke(fence.Obstacle);
                 if (e is DebrisSplashed debris && !quiet && !demo) DebrisPresented?.Invoke(debris);
                 if (!quiet && !demo && ShakePresented != null)
                     foreach (var kick in ImpactFeel.Kicks(e, Match.Tuning.smashSpeed, impactFeel)) ShakePresented(kick);
@@ -429,6 +437,7 @@ namespace TNDA.Prototype
                     PlayHit(.2f);
                     break;
                 case PropSmashed _:
+                case FenceSmashed _:
                     Sound(2);
                     break;
                 case ItemPicked picked:
@@ -555,7 +564,11 @@ namespace TNDA.Prototype
                 prop.view.gameObject.SetActive(!prop.broken);
                 if (!prop.broken) prop.view.position = PixelPosition(prop.point);
             }
-            foreach (var pickup in pickups) pickup.view.gameObject.SetActive(pickup.available);
+            foreach (var pickup in pickups)
+            {
+                pickup.view.gameObject.SetActive(pickup.available);
+                pickup.view.position = PixelPosition(pickup.point);
+            }
             foreach (var rocket in rockets)
             {
                 if (rocket.slickView != null)

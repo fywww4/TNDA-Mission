@@ -1,0 +1,78 @@
+{
+  "editMode": {
+    "Total": 195,
+    "Passed": 195,
+    "Failed": 0,
+    "Skipped": 0,
+    "Inconclusive": 0
+  },
+  "editor": {
+    "status": "ready",
+    "compiling": false,
+    "domainReloadInProgress": false,
+    "playMode": "stopped",
+    "lastHeartbeat": "2026-11-15T13:57:20.8024015Z",
+    "projectPath": "C:\\Users\\a0900\\Desktop\\TNDA Mission",
+    "unityVersion": "6000.6.4f1"
+  },
+  "review": {
+    "spec": 0,
+    "standards": 0
+  },
+  "date": "2026-11-15",
+  "base": "3a7bac6acca0e26cee9511f8ace01c771319454e",
+  "compile": {
+    "status": "completed",
+    "failed": false,
+    "errors": [],
+    "compilationFailed": false
+  },
+  "ai": [
+    {
+      "terrain": false,
+      "stillSeconds": 10.5000114,
+      "aliveSeconds": 1164.72339,
+      "percent": 0.9015026,
+      "flights": 0,
+      "fences": 0,
+      "cpuSeconds": 0.2100087
+    },
+    {
+      "terrain": true,
+      "stillSeconds": 18.9332161,
+      "aliveSeconds": 1180.27637,
+      "percent": 1.60413408,
+      "flights": 10,
+      "fences": 24,
+      "cpuSeconds": 4.1077214
+    }
+  ],
+  "shadow": {
+    "changed": 212,
+    "minX": 112,
+    "minY": 75,
+    "maxX": 143,
+    "maxY": 83,
+    "active": true,
+    "position": "(-6.00, 0.81, -0.03)",
+    "airHeight": 0.775113344,
+    "viewport": "(0.50, 0.34, 3.38)"
+  },
+  "console": {
+    "sampledUtc": "2026-11-15T13:57:18.3133225Z",
+    "ageMs": 160,
+    "compilationFailed": false,
+    "compiling": false,
+    "consoleErrors": 0,
+    "consoleWarnings": 0,
+    "consoleLogs": 6,
+    "seeded": true
+  },
+  "playMode": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  }
+}

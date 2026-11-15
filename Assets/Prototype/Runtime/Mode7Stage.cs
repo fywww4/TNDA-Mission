@@ -379,7 +379,7 @@ namespace TNDA.Prototype
                 if (car != null)
                 {
                     if (!topDown.ContainsKey(car)) topDown[car] = (car.body.sprite, car.body.sharedMaterial);
-                    standing.Add(new Standing { t = car.transform, lift = UseFrames ? carFrameLift : carLift, car = car });
+                    standing.Add(new Standing { t = car.transform, lift = (UseFrames ? carFrameLift : carLift) + VehicleLift(car), car = car });
                 }
             foreach (var prop in game.props) if (prop.view != null) standing.Add(new Standing { t = prop.view, lift = propLift });
             foreach (var pickup in game.pickups) if (pickup.view != null) standing.Add(new Standing { t = pickup.view, lift = pickupLift });
@@ -506,6 +506,16 @@ namespace TNDA.Prototype
             UnityEngine.Rendering.SortingGroup.UpdateAllSortingGroups();
         }
 
+        private float VehicleLift(ArcadeVehicle car)
+        {
+            if (car.Airborne) return car.AirHeight;
+            if (!car.alive) return 0;
+            foreach (var obstacle in game.obstacles)
+                if (obstacle.kind == ObstacleKind.Ramp && obstacle.Contains(car.position))
+                    return obstacle.height * Mathf.Clamp01(obstacle.ToLocal(car.position).y / obstacle.size.y + .5f);
+            return 0;
+        }
+
         // Each player's continue panel sits on that player's own road; GAME OVER (first panel) is centred on the screen.
         private void PlaceContinuePanels(bool two)
         {
@@ -533,7 +543,9 @@ namespace TNDA.Prototype
             if (view < 0 || view >= chase.Length || chase[view] == null) return false;
             var cam = chase[view];
             var foot = world - new Vector2(0, TagOffset);
-            Vector3 s = cam.WorldToScreenPoint(new Vector3(foot.x, foot.y, -TagLift));
+            float air = 0;
+            foreach (var car in game.cars) if ((car.position - foot).sqrMagnitude < .01f) air = VehicleLift(car);
+            Vector3 s = cam.WorldToScreenPoint(new Vector3(foot.x, foot.y, -TagLift - air));
             return HybridResolution.TagOnView(s, cam.pixelRect, out cabinet);
         }
 

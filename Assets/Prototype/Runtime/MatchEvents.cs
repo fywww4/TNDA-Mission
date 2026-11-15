@@ -6,6 +6,14 @@ namespace TNDA.Prototype
     // turns them into notices, sounds and effects, and tests read them directly.
     public abstract class MatchEvent { }
 
+    // Terrain has no points; the adapter scatters wood pieces at this fixed fence.
+    public sealed class FenceSmashed : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public readonly ArenaObstacle Obstacle;
+        public FenceSmashed(ArcadeVehicle car, ArenaObstacle obstacle) { Car = car; Obstacle = obstacle; }
+    }
+
     // A rocket struck a car (even one whose shield blocked it), at the car's position.
     public sealed class RocketHit : MatchEvent
     {

@@ -6,7 +6,7 @@ namespace TNDA.Prototype
         // All AI attack types share the opening grace period; human attacks are always eligible.
         public static bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim, float elapsed, float graceSeconds)
         {
-            return victim != null && victim != attacker && victim.alive && !victim.eliminated
+            return victim != null && victim != attacker && victim.alive && !victim.eliminated && !victim.Airborne
                 && (!attacker.computer || victim.computer || elapsed >= graceSeconds);
         }
     }

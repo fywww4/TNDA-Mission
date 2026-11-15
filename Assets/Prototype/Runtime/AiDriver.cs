@@ -35,6 +35,7 @@ namespace TNDA.Prototype
         // 不被撞毀: a 追王's chase and a cherry hunt go only for players, and ramming one does not spare it next chase.
         bool HuntersChasePlayersOnly { get; }
         bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim);
+        Vector2 Navigate(ArcadeVehicle driver, Vector2 destination);
     }
 
     // One car's AI: its personality picks where to drive and when to use the held item. Every personality flees cherry
@@ -104,7 +105,7 @@ namespace TNDA.Prototype
                 || (target != null && !arena.CanHarm(car, target)))) ChooseDestination(arena);
             if (target != null) destination = target.position;
             FollowDetour(dt);
-            Vector2 delta = destination - car.position;
+            Vector2 delta = arena.Navigate(car, destination) - car.position;
             float desired = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
             var hunter = car.HasCherry ? null : arena.Cars.FirstOrDefault(c => c != car && c.HasCherry
                 && Vector2.Distance(c.position, car.position) < 2.2f);
@@ -186,8 +187,7 @@ namespace TNDA.Prototype
             {
                 escapeLeft -= dt;
                 if (escapeLeft <= 0) { think = 0; stuckAnchor = car.position; stuckClock = 0; }
-                float turn = Mathf.DeltaAngle(car.heading, escapeHeading);
-                input = new ArcadeInput { steer = -Mathf.Clamp(turn / 38, -1, 1), throttle = 1 };
+                input = EscapeInput(arena);
                 return true;
             }
             stuckClock += dt;
@@ -204,8 +204,16 @@ namespace TNDA.Prototype
             target = null;
             detourLeft = chargeLeft = 0;
             charging = null;
-            input = new ArcadeInput { steer = -Mathf.Clamp(Mathf.DeltaAngle(car.heading, heading) / 38, -1, 1), throttle = 1 };
+            input = EscapeInput(arena);
             return true;
+        }
+
+        private ArcadeInput EscapeInput(IAiArena arena)
+        {
+            Vector2 forward = new Vector2(Mathf.Cos(escapeHeading * Mathf.Deg2Rad), Mathf.Sin(escapeHeading * Mathf.Deg2Rad));
+            Vector2 delta = arena.Navigate(car, car.position + forward * 2) - car.position;
+            float desired = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+            return new ArcadeInput { steer = -Mathf.Clamp(Mathf.DeltaAngle(car.heading, desired) / 38, -1, 1), throttle = 1 };
         }
 
         // A slow bump into an unbroken prop (the match bounced the car back). Heading for it: back off for a run-up and

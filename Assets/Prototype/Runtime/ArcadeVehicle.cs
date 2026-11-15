@@ -24,6 +24,10 @@ namespace TNDA.Prototype
         // Spinning on an oil slick: no control, no speed, no damage.
         public float SlipSeconds { get; private set; }
         public bool IsSlipping => alive && SlipSeconds > 0;
+        public bool Airborne => alive && flightLeft > 0;
+        public float AirHeight => Airborne ? flightBase * (flightLeft / flightSeconds)
+            + 4 * flightHeight * (flightLeft / flightSeconds) * (1 - flightLeft / flightSeconds) : 0;
+        private float flightLeft, flightSeconds, flightHeight, flightBase;
         public bool HasCherry => alive && CherrySeconds > 0;
         public Vector2 SlideVelocity { get; private set; }
         public bool IsSpinningOut => spinSpeed > 0;
@@ -75,6 +79,7 @@ namespace TNDA.Prototype
             Gear = 1;
             speed = stun = cooldown = respawn = shieldSeconds = spawnProtection = CherrySeconds = SlipSeconds = spinSpeed = 0;
             hitSpinRate = hitSpinSeconds = 0;
+            flightLeft = flightSeconds = flightHeight = flightBase = 0;
             item = ArenaItem.None;
             FinalPlace = 0;
             SlideVelocity = spinDirection = Vector2.zero;
@@ -130,6 +135,15 @@ namespace TNDA.Prototype
             shieldSeconds = Mathf.Max(0, shieldSeconds - dt);
             spawnProtection = Mathf.Max(0, spawnProtection - dt);
             CherrySeconds = Mathf.Max(0, CherrySeconds - dt);
+            flightLeft = Mathf.Max(0, flightLeft - dt);
+        }
+
+        public void Launch(float seconds, float height, float takeoffHeight = 0)
+        {
+            if (!alive || Airborne || seconds <= 0) return;
+            flightLeft = flightSeconds = seconds;
+            flightHeight = height;
+            flightBase = takeoffHeight;
         }
 
         public void RecordCollision() => Collisions++;
