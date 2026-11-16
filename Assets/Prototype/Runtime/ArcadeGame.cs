@@ -17,6 +17,8 @@ namespace TNDA.Prototype
         public bool shiftUpPressed, shiftDownPressed;
         // This seat's START (P1: Space or the first pad's Start; P2: Numpad Enter or the second pad's Start).
         public bool startPressed;
+        // Hold SELECT to see this seat's standings: Right Shift / Numpad 0, or its pad's Back/View.
+        public bool selectHeld;
     }
 
     // The console shell around GAME3: title (demo) -> START, pick 1P/2P -> 3-2-1 countdown -> match -> results, which
@@ -373,7 +375,8 @@ namespace TNDA.Prototype
             return false;
         }
 
-        private static ArcadeInput ReadInput(int index)
+        // The live input boundary: each seat combines its keyboard keys with its own gamepad.
+        public static ArcadeInput ReadInput(int index)
         {
             // P1: arrows (Up = gas) + Left Ctrl item. P2: A/D/W + Numpad Enter item.
             var k = Keyboard.current;
@@ -392,6 +395,7 @@ namespace TNDA.Prototype
                 input.shiftDownPressed = k[index == 0 ? Key.E : Key.NumpadMinus].wasPressedThisFrame;
                 input.shiftUpPressed = k[index == 0 ? Key.Q : Key.NumpadPlus].wasPressedThisFrame;
                 input.startPressed = k[index == 0 ? Key.Space : Key.NumpadEnter].wasPressedThisFrame;
+                input.selectHeld = k[index == 0 ? Key.RightShift : Key.Numpad0].isPressed;
             }
             if (Gamepad.all.Count > index)
             {
@@ -406,6 +410,7 @@ namespace TNDA.Prototype
                 input.shiftDownPressed |= pad.leftShoulder.wasPressedThisFrame;
                 input.shiftUpPressed |= pad.rightShoulder.wasPressedThisFrame;
                 input.startPressed |= pad.startButton.wasPressedThisFrame;
+                input.selectHeld |= pad.selectButton.isPressed;
             }
             return input;
         }

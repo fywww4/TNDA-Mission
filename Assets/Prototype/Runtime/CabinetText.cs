@@ -145,6 +145,14 @@ namespace TNDA.Prototype
         public const string Spectating = "觀戰中";
         public const string Champion = "冠軍 {0}";
         public const string NextElimination = "{0:00}秒後淘汰／剩{1}車";
+        public const string RacePlace = "{0}<size=11>/{1}</size>";
+        public const string RaceEliminatedPlace = "淘汰<size=11> 第{0}名</size>";
+        public const string RaceScore = "P{0}　分數 {1:00000}";
+        public const string RaceTime = "P{0}　時間 {1:000}　撞毀 {2}";
+        public const string P1StandingsHint = "按住右Shift／SELECT 看排行";
+        public const string P2StandingsHint = "按住數字0／SELECT 看排行";
+        public const string RaceStanding = "{0} {1} {2:00000} 耐久{3}";
+        public const string RaceStandingEliminated = "{0}　淘汰";
 
         // Every string above (templates included), for building the pixel font's character set.
         public static IEnumerable<string> All => typeof(CabinetText).GetFields(BindingFlags.Public | BindingFlags.Static)

@@ -1,6 +1,6 @@
 # TNDA Mission：GAME3 整合版交接
 
-更新日期：2026-11-15（Asia/Taipei）。目前只製作 GAME3；使用者的新要求優先於先前三案規格。
+更新日期：2026-11-16（Asia/Taipei）。目前只製作 GAME3；使用者的新要求優先於先前三案規格。
 
 ## 最新需求與現況
 
@@ -365,3 +365,11 @@
 - **生成**：`randomPropSpots` 開時每局隨機（避開地形、出生／復活點 1.6、木箱與破壞物 1、兩球互離 2），方向隨機；關閉時用 Inspector 的 `point`／`heading`。
 - **美術**：使用者 GPT 產生的刺球圖（原圖 `Art/Source/SpikeBallSource.png`）依原像素格取樣為 `Art/SpikeBall.png` 128×32（4 格 32×32，球約 28 px，底部貼齊），比提示詞的 96×24 大，因原圖約 30 px 縮成 22 px 會糊；以 44 px／單位顯示，約 0.64 單位寬。`Editor/Mode7SpikeBallArt.Apply()`（TNDA / Mode 7 / Apply spike balls）設定匯入並接上場景，可重跑；未接圖時用程式畫的 16×16 占位圖。
 - **測試**：EditMode `SpikeBallTests`。
+
+## Mode 7 票單 23：按住 SELECT 顯示排行榜（2026-11-16）
+
+一般畫面各自顯示大字名次、目前存活車數分母及自己的分數，完整八車排行榜改為按住 SELECT 展開、放開收起：P1 右 Shift／第 1 支手把 Back（View），P2 數字鍵盤 0／第 2 支手把 Back。兩人各在自己的半邊顯示，時間與淘汰倒數各一份，提示列保留。排行榜列出名次、車名、分數、耐久，淘汰者灰顯並保留最終名次。淘汰前 5 秒預設自動展開，可在 `Mode7StandingsHud` Inspector 關閉或調整秒數。
+
+邏輯在 `Runtime/Mode7StandingsHud.cs`，增量接線為 `Editor/Mode7StandingsLayout.cs`（`Mode7Layout` 會沿用），所有新文字集中於 `CabinetText`。`ArcadeInput.selectHeld` 與公開 `ArcadeGame.ReadInput` 為票單 24 可共用的 SELECT 定義；尚未改動其他 SFC 操作或加入暫停。
+
+驗證：新增公開輸入／HUD 測試 6 項，完整整合 EditMode 212／212、PlayMode 4／4；1P／2P、雙人獨立按住／放開、35 秒自動展開及開關、淘汰後分母 8→4 與灰顯均已確認，字型無缺字。主專案重新編譯及網域重新載入完成，Console 即時零錯誤、零警告，最後停止 Play Mode。Standards／Spec 各 0 項。保留票單 21 共用程式的正確區塊與場景接線，原未提交的換檔鍵修正留在工作區。詳見 `Docs/Game3/standings-verification.md` 與三張 `standings-*.png`；未重建 Windows／Web 發行檔。

@@ -71,6 +71,7 @@ namespace TNDA.Prototype
         private Sprite spikePlaceholder;
         public ArcadeProjectile[] rockets = Array.Empty<ArcadeProjectile>();
         public TMP_Text arenaBoard, leaderboard;
+        public Mode7StandingsHud standingsHud;
         public TMP_Text[] carLabels;
         public Transform[] healthBars, shieldViews;
 
@@ -238,9 +239,9 @@ namespace TNDA.Prototype
                 t.arenaMin = arenaMin; t.arenaMax = arenaMax; t.randomPropSpots = randomPropSpots;
                 t.fenceRespawnSeconds = fenceRespawnSeconds; t.rampSpeed = rampSpeed;
                 t.jumpSeconds = jumpSeconds; t.jumpHeight = jumpHeight;
-                return match;
                 t.spikeRollSpeed = spikeRollSpeed; t.spikeDamage = spikeDamage; t.spikeLaunchPerSpeed = spikeLaunchPerSpeed;
                 t.spikeLaunchMax = spikeLaunchMax; t.spikeFlyImpact = spikeFlyImpact; t.spikeFlyFriction = spikeFlyFriction;
+                return match;
             }
         }
 
@@ -305,6 +306,7 @@ namespace TNDA.Prototype
 
         protected override void Tick(float dt, ArcadePhase startPhase, ArcadeInput p1, ArcadeInput p2)
         {
+            if (standingsHud != null) standingsHud.ReadInput(p1, p2);
             UpdateSaveReset(dt, p1.resetSaveHeld);
             if (startPhase == ArcadePhase.Playing && victoryLeft >= 0)
             {
@@ -355,6 +357,7 @@ namespace TNDA.Prototype
 
         protected override void ResetMatch()
         {
+            if (standingsHud != null) standingsHud.ReadInput(default, default);
             demo = startingDemo;
             goldAwarded = false;
             RoundGold = 0;
@@ -373,10 +376,10 @@ namespace TNDA.Prototype
             if (explosions != null) foreach (var blast in explosions) if (blast != null) blast.gameObject.SetActive(false);
             explosionScale = new float[explosionAge.Length];
             MakeSparks();
+            MakeSpikeBallViews();
             for (int i = 0; i < sparks.Length; i++) { sparkAge[i] = -1; sparks[i].gameObject.SetActive(false); }
             int popups = scorePopups == null ? 0 : scorePopups.Length;
             popupAge = new float[popups];
-            MakeSpikeBallViews();
             popupAmount = new int[popups];
             popupOrigin = new Vector2[popups];
             for (int i = 0; i < popups; i++)
@@ -455,14 +458,14 @@ namespace TNDA.Prototype
                 case CherryStrike _:
                     PlayHit(.9f);
                     break;
-                case WallHit _:
-                    PlayHit(.2f);
-                    break;
                 case SpikeBallHit spiked:
                     PlayHit(Mathf.Clamp(.4f + spiked.Impact * .1f, .4f, .8f));
                     break;
                 case SpikeBallStruck _:
                     PlayHit(.9f);
+                    break;
+                case WallHit _:
+                    PlayHit(.2f);
                     break;
                 case PropSmashed _:
                 case FenceSmashed _:
@@ -597,9 +600,6 @@ namespace TNDA.Prototype
                 pickup.view.gameObject.SetActive(pickup.available);
                 pickup.view.position = PixelPosition(pickup.point);
             }
-            foreach (var rocket in rockets)
-            {
-                if (rocket.slickView != null)
             for (int i = 0; i < spikeBallViews.Length && i < spikeBalls.Length; i++)
             {
                 var view = spikeBallViews[i];
@@ -608,6 +608,9 @@ namespace TNDA.Prototype
                 if (spikeBallFrames.Length > 0)
                     view.sprite = spikeBallFrames[Mathf.FloorToInt(spikeBalls[i].rolled / Mathf.Max(.01f, spikeFrameDistance)) % spikeBallFrames.Length];
             }
+            foreach (var rocket in rockets)
+            {
+                if (rocket.slickView != null)
                 {
                     rocket.slickView.gameObject.SetActive(rocket.active && rocket.slick);
                     if (rocket.active && rocket.slick) rocket.slickView.transform.position = PixelPosition(rocket.position);
@@ -684,9 +687,6 @@ namespace TNDA.Prototype
             "R...O...R",
         };
 
-        private void MakeSparks()
-        {
-            if (sparks.Length > 0 || explosions == null || explosions.Length == 0 || explosions[0] == null) return;
         // One sprite per spike ball, on the explosions' parent, layer and sorting (like the sparks).
         private void MakeSpikeBallViews()
         {
@@ -741,6 +741,9 @@ namespace TNDA.Prototype
             return spikePlaceholder;
         }
 
+        private void MakeSparks()
+        {
+            if (sparks.Length > 0 || explosions == null || explosions.Length == 0 || explosions[0] == null) return;
             var template = explosions[0];
             int size = SparkPicture.Length;
             var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
@@ -911,11 +914,11 @@ namespace TNDA.Prototype
         {
             base.OnDestroy();
             engine.Dispose();
+            if (spikePlaceholder != null) { Destroy(spikePlaceholder.texture); Destroy(spikePlaceholder); }
+            foreach (var frame in spikeBallFrames) if (frame != null) Destroy(frame);
             if (sparks.Length > 0 && sparks[0] != null && sparks[0].sprite != null)
             {
                 Destroy(sparks[0].sprite.texture);
-            if (spikePlaceholder != null) { Destroy(spikePlaceholder.texture); Destroy(spikePlaceholder); }
-            foreach (var frame in spikeBallFrames) if (frame != null) Destroy(frame);
                 Destroy(sparks[0].sprite);
             }
         }
@@ -1044,7 +1047,8 @@ namespace TNDA.Prototype
                 : Phase == ArcadePhase.Results ? string.Format(CabinetText.Champion, cars[Champion].DriverName)
                 : string.Format(CabinetText.NextElimination, Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)), Contenders);
             var order = Phase == ArcadePhase.Results ? Match.Cars.OrderBy(c => c.FinalPlace)
-                : Match.Cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? c.FinalPlace : -c.score);
+                : Match.Cars.OrderBy(c => c.eliminated).ThenBy(c => c.eliminated ? c.FinalPlace : -c.score)
+                    .ThenByDescending(c => c.health).ThenBy(c => c.index);
             if (leaderboard != null)
             {
                 var lines = order.Select((c, rank) =>
@@ -1067,6 +1071,8 @@ namespace TNDA.Prototype
             ShowStartMessages();
             ShowContinue();
             RefreshTransmissionHud();
+            if (standingsHud != null)
+                standingsHud.Render(this, order.ToArray(), victoryLeft < 0 && gameOverLeft < 0);
         }
 
         private void RefreshTransmissionHud()
