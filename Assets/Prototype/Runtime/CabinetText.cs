@@ -11,20 +11,23 @@ namespace TNDA.Prototype
     {
         public const string Title = "廢車場大亂鬥";
         // Simplified rules (user request): only the two players' controls.
-        public const string P1Controls = "P1　↑油門　←→轉向　左Ctrl道具";
-        public const string P2Controls = "P2　數字8油門　4 6轉向　數字Enter道具";
-        public const string P1ManualControls = P1Controls + "　E降檔　Q升檔";
+        public const string P1Controls = "P1　↑油門　↓煞車　←→轉向　左Ctrl道具";
+        public const string P1TypeAControls = "P1　Z油門　X道具　A煞車　←→轉向";
+        public const string P1TypeAManualControls = P1TypeAControls + "　Q降檔　E升檔";
+        public const string P2Controls = "P2　數字8油門　2煞車　4 6轉向　Enter道具";
+        public const string P1ManualControls = P1Controls + "　Q降檔　E升檔";
         public const string P2ManualControls = P2Controls + "　-降檔　+升檔";
         public const string ManualTransmission = "手排";
         public const string AutomaticTransmission = "自排";
-        public const string TransmissionOption = "{0}　T／手把Y切換　LB降檔 RB升檔";
+        public const string TransmissionOption = "{0}　S／手把上鍵 切換";
+        public const string ControlsOption = "Type {0}　Q／E・LB／RB 切換操作";
         public const string PlayerGear = "P{0} {1} {2}檔";
         public const string ReverseGear = "R";
         public const string Instructions = P1Controls + "\n" + P2Controls;
 
         // Title screen (the demo plays behind it). START is Space or the pad's Start.
         public const string NormalRule = "1～2 人　8 台車淘汰賽";
-        public const string StartPrompt = "按 START（空白鍵）開始";
+        public const string StartPrompt = "按 START（Enter／空白鍵）開始";
         // The player-count menu: the two choices (the chosen one tinted) and how to start.
         public const string PlayerMenu = "←　{0}　{1}　→　START 開始";
         public const string OnePlayer = "1 人";
@@ -42,7 +45,7 @@ namespace TNDA.Prototype
         public const string SaveCleared = "存檔已清除，請放開 Delete";
 
         public const string GarageTitle = "車庫";
-        public const string GarageEntry = "G／手把B 車庫";
+        public const string GarageEntry = "SELECT（右Shift／Back）車庫　G捷徑";
         public const string GarageAbilityTab = "←　能力　→";
         public const string GarageShared = "P1・P2 共用能力";
         public const string GarageTopSpeed = "最高速";
@@ -55,7 +58,8 @@ namespace TNDA.Prototype
         public const string GarageMaxed = "已滿";
         public const string GarageBought = "升級完成！";
         public const string GarageGoldShort = "金幣不足";
-        public const string GarageControls = "↑↓選擇　左Ctrl／手把A 購買　Esc／手把B 返回";
+        public const string GarageControls = "↑↓選擇　左Ctrl／手把下鍵 購買　Esc／手把右鍵 返回";
+        public const string GarageTypeAControls = "↑↓選擇　X／手把右鍵 購買　Z／手把下鍵 返回";
         public const string GarageStep = "每級 +5%　最多 +20%";
         public const string GarageStrengthStep = "強度：減少受到的傷害";
 

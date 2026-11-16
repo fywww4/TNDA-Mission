@@ -293,7 +293,7 @@ namespace TNDA.Prototype
         [Header("Title: mode tabs and the challenge list")]
         public TMP_Text attractRule, attractModes, attractChallenges;
         [Header("Transmission HUD")]
-        public TMP_Text attractTransmission;
+        public TMP_Text attractTransmission, attractControlsType;
         public TMP_Text[] attractControls, gearLabels;
         [Tooltip("Backing and list shown only while the title is on challenge mode.")]
         public GameObject attractChallengePanel;
@@ -577,6 +577,7 @@ namespace TNDA.Prototype
             Upgrades.Clear();
             PlayerPrefs.DeleteKey("WreckBest");
             PlayerPrefs.DeleteKey(TransmissionSaveKey);
+            PlayerPrefs.DeleteKey(ControlsSaveKey);
             PlayerPrefs.Save();
             resetSaveLatched = true;
         }
@@ -1079,6 +1080,7 @@ namespace TNDA.Prototype
         {
             string mode = ManualTransmission ? CabinetText.ManualTransmission : CabinetText.AutomaticTransmission;
             if (attractTransmission != null) attractTransmission.text = string.Format(CabinetText.TransmissionOption, mode);
+            if (attractControlsType != null) attractControlsType.text = string.Format(CabinetText.ControlsOption, Controls == ControlType.TypeA ? "A" : "B");
             if (attractControls != null)
                 for (int i = 0; i < attractControls.Length; i++)
                     if (attractControls[i] != null) attractControls[i].text = ControlsFor(i);
@@ -1099,7 +1101,9 @@ namespace TNDA.Prototype
         }
 
         private string ControlsFor(int player) => player == 0
-            ? ManualTransmission ? CabinetText.P1ManualControls : CabinetText.P1Controls
+            ? Controls == ControlType.TypeA
+                ? ManualTransmission ? CabinetText.P1TypeAManualControls : CabinetText.P1TypeAControls
+                : ManualTransmission ? CabinetText.P1ManualControls : CabinetText.P1Controls
             : ManualTransmission ? CabinetText.P2ManualControls : CabinetText.P2Controls;
 
         private static string Tinted(Color color, string text) => "<color=#" + ColorUtility.ToHtmlStringRGB(color) + ">" + text + "</color>";

@@ -17,9 +17,9 @@ namespace TNDA.Prototype.Tests
         [SetUp]
         public void OpenCabinetWithACleanIsolatedSave()
         {
-            var keys = new[] { "TNDA.Gold", ArcadeGame.TransmissionSaveKey, "WreckBest" }
+            var keys = new[] { "TNDA.Gold", ArcadeGame.TransmissionSaveKey, ArcadeGame.ControlsSaveKey, "WreckBest" }
                 .Concat(Enum.GetValues(typeof(VehicleAbility)).Cast<VehicleAbility>().Select(a => "TNDA.Upgrades." + a))
-                .Concat(Challenges.All.SelectMany(c => new[] { "TNDA.Challenge.Best." + c.Id, "TNDA.Challenge.Unlocked." + c.Id }));
+                .Concat(Challenges.All.SelectMany(c => new[] { "TNDA.Challenge." + c.Id + ".Best", "TNDA.Challenge." + c.Id + ".Unlocked" }));
             foreach (string key in keys) { save[key] = (PlayerPrefs.HasKey(key), PlayerPrefs.GetInt(key)); PlayerPrefs.DeleteKey(key); }
             PlayerPrefs.Save();
             Open();
@@ -82,6 +82,21 @@ namespace TNDA.Prototype.Tests
             Assert.That(game.Gold, Is.Zero);
             Assert.That(game.Upgrades.Level(VehicleAbility.TopSpeed), Is.Zero);
             Assert.That(new VehicleUpgrades().Level(VehicleAbility.TopSpeed), Is.Zero);
+        }
+
+        [Test]
+        public void ControlTypePersistsAcrossReopeningAndLongDeleteRestoresTypeA()
+        {
+            Assert.That(game.Controls, Is.EqualTo(ControlType.TypeA));
+            game.SelectControls(ControlType.TypeB);
+            EditorSceneManager.ClosePreviewScene(scene);
+            Open();
+            Assert.That(game.Controls, Is.EqualTo(ControlType.TypeB));
+            game.Advance(3.01f, new ArcadeInput { resetSaveHeld = true }, default);
+            Assert.That(game.Controls, Is.EqualTo(ControlType.TypeA));
+            EditorSceneManager.ClosePreviewScene(scene);
+            Open();
+            Assert.That(game.Controls, Is.EqualTo(ControlType.TypeA));
         }
 
         [TestCase(1, false)]

@@ -8,14 +8,16 @@ namespace TNDA.Prototype
     public enum ArcadePhase { Attract, Playing, Results, Countdown, Garage }
     // What the title screen offers: the normal 1P/2P elimination match, or single-player challenges.
     public enum CabinetMode { Normal, Challenge }
+    public enum ControlType { TypeA, TypeB }
 
     public struct ArcadeInput
     {
         public float steer, throttle;
+        public bool brake;
         public bool action, actionPressed;
         public bool resetSaveHeld;
         public bool shiftUpPressed, shiftDownPressed;
-        // This seat's START (P1: Space or the first pad's Start; P2: Numpad Enter or the second pad's Start).
+        // This seat's START (P1: Space/Enter or pad 1; P2: Numpad Enter or pad 2).
         public bool startPressed;
         // Hold SELECT to see this seat's standings: Right Shift / Numpad 0, or its pad's Back/View.
         public bool selectHeld;
@@ -58,6 +60,14 @@ namespace TNDA.Prototype
         public bool ChoosingPlayers { get; private set; }
         public int PlayerChoice { get; private set; } = 1;
         public const string TransmissionSaveKey = "TNDA.ManualTransmission";
+        public const string ControlsSaveKey = "TNDA.ControlType";
+        private static ControlType SavedControls => PlayerPrefs.GetInt(ControlsSaveKey, 0) == 1 ? ControlType.TypeB : ControlType.TypeA;
+        public ControlType Controls => SavedControls;
+        public void SelectControls(ControlType controls)
+        {
+            PlayerPrefs.SetInt(ControlsSaveKey, controls == ControlType.TypeB ? 1 : 0);
+            PlayerPrefs.Save();
+        }
         public bool ManualTransmission => PlayerPrefs.GetInt(TransmissionSaveKey, 0) == 1;
         public void SelectTransmission(bool manual)
         {
@@ -108,19 +118,19 @@ namespace TNDA.Prototype
         private void Update()
         {
             AudioListener.volume = masterVolume;
-            bool padBack = Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame;
-            // Esc backs out from anywhere (a match in progress included); the pad's B only on menus and results. On the
-            // bare title B has nothing to back out of: it opens the garage instead.
-            bool padBackOut = padBack && Phase != ArcadePhase.Playing && Phase != ArcadePhase.Countdown
-                && !(Phase == ArcadePhase.Attract && !ChoosingPlayers);
-            if (Pressed(Key.Escape) || padBackOut) Back();
-            else if (Phase == ArcadePhase.Attract) NavigateTitle();
-            else if (Phase == ArcadePhase.Garage) NavigateGarage();
-            if (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
+            bool menu = Phase == ArcadePhase.Attract || Phase == ArcadePhase.Garage || Phase == ArcadePhase.Results;
+            bool back = Controls == ControlType.TypeA
+                ? Pressed(Key.Z) || PadPressed(p => p.buttonSouth.wasPressedThisFrame)
+                : PadPressed(p => p.buttonEast.wasPressedThisFrame);
+            if (Pressed(Key.Escape) || (menu && back)) Back();
+            else
             {
-                bool start = Pressed(Key.Space);
-                foreach (var pad in Gamepad.all) start |= pad.startButton.wasPressedThisFrame;
-                if (start) PressStart();
+                var phase = Phase;
+                if (Phase == ArcadePhase.Attract) NavigateTitle();
+                else if (Phase == ArcadePhase.Garage) NavigateGarage();
+                if (Phase == phase && (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
+                    && (PressedAny(Key.Space, Key.Enter, Key.NumpadEnter)
+                        || PadPressed(p => p.startButton.wasPressedThisFrame) || ConfirmPressed())) PressStart();
             }
             Advance(Mathf.Min(Time.deltaTime, .05f), ReadInput(0), ReadInput(1));
         }
@@ -176,7 +186,7 @@ namespace TNDA.Prototype
             else StartRun(PlayerChoice);
         }
 
-        // Esc (or the pad's B): closes the player menu, leaves the garage, or ends a match or its results for the
+        // Esc (or the layout's menu-back button): closes the player menu, leaves the garage, or ends a match or its results for the
         // title (a challenge comes back to its list, as the title keeps challenge mode selected).
         public void Back()
         {
@@ -191,23 +201,25 @@ namespace TNDA.Prototype
         // player menu is open, left/right pick 1P or 2P instead.
         private void NavigateTitle()
         {
-            bool sideways = PressedAny(Key.LeftArrow, Key.RightArrow, Key.Numpad4, Key.Numpad6, Key.Tab) || DpadPressed(pad => pad.dpad.left, pad => pad.dpad.right);
+            if (PressedAny(Key.Q, Key.E) || PadPressed(p => p.leftShoulder.wasPressedThisFrame || p.rightShoulder.wasPressedThisFrame))
+                SelectControls(Controls == ControlType.TypeA ? ControlType.TypeB : ControlType.TypeA);
+            if (PressedAny(Key.S, Key.T) || PadPressed(p => p.buttonNorth.wasPressedThisFrame))
+                SelectTransmission(!ManualTransmission);
+            if (PressedAny(Key.G, Key.RightShift, Key.Numpad0) || PadPressed(p => p.selectButton.wasPressedThisFrame))
+            {
+                OpenGarage();
+                return;
+            }
+            bool sideways = PressedAny(Key.LeftArrow, Key.RightArrow, Key.Numpad4, Key.Numpad6, Key.Tab) || DirectionPressed(pad => pad.dpad.left, pad => pad.dpad.right);
             if (ChoosingPlayers)
             {
                 if (sideways) PickPlayers(3 - PlayerChoice);
                 return;
             }
-            if (Pressed(Key.G) || (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame))
-            {
-                OpenGarage();
-                return;
-            }
-            if (Pressed(Key.T) || (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame))
-                SelectTransmission(!ManualTransmission);
             if (sideways) Mode = Mode == CabinetMode.Normal ? CabinetMode.Challenge : CabinetMode.Normal;
             if (Mode != CabinetMode.Challenge) return;
-            if (PressedAny(Key.UpArrow, Key.Numpad8) || DpadPressed(pad => pad.dpad.up)) MoveChallengeCursor(-1);
-            if (PressedAny(Key.DownArrow, Key.Numpad2) || DpadPressed(pad => pad.dpad.down)) MoveChallengeCursor(1);
+            if (PressedAny(Key.UpArrow, Key.Numpad8) || DirectionPressed(pad => pad.dpad.up)) MoveChallengeCursor(-1);
+            if (PressedAny(Key.DownArrow, Key.Numpad2) || DirectionPressed(pad => pad.dpad.down)) MoveChallengeCursor(1);
         }
 
         public void SelectMode(CabinetMode mode) => Mode = mode;
@@ -242,9 +254,9 @@ namespace TNDA.Prototype
 
         private void NavigateGarage()
         {
-            if (PressedAny(Key.UpArrow, Key.Numpad8) || DpadPressed(pad => pad.dpad.up)) MoveGarageCursor(-1);
-            if (PressedAny(Key.DownArrow, Key.Numpad2) || DpadPressed(pad => pad.dpad.down)) MoveGarageCursor(1);
-            if (Pressed(Key.LeftCtrl) || (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)) TryBuySelectedUpgrade();
+            if (PressedAny(Key.UpArrow, Key.Numpad8) || DirectionPressed(pad => pad.dpad.up)) MoveGarageCursor(-1);
+            if (PressedAny(Key.DownArrow, Key.Numpad2) || DirectionPressed(pad => pad.dpad.down)) MoveGarageCursor(1);
+            if (ConfirmPressed()) TryBuySelectedUpgrade();
         }
 
         public void MoveChallengeCursor(int delta)
@@ -368,45 +380,68 @@ namespace TNDA.Prototype
             return false;
         }
 
-        private static bool DpadPressed(params System.Func<Gamepad, UnityEngine.InputSystem.Controls.ButtonControl>[] directions)
+        private static bool DirectionPressed(params Func<Gamepad, UnityEngine.InputSystem.Controls.ButtonControl>[] directions)
         {
-            if (Gamepad.current == null) return false;
-            foreach (var direction in directions) if (direction(Gamepad.current).wasPressedThisFrame) return true;
+            return PadPressed(pad =>
+            {
+                foreach (var direction in directions)
+                {
+                    var button = direction(pad);
+                    var stick = pad.leftStick[button.name] as UnityEngine.InputSystem.Controls.ButtonControl;
+                    if (button.wasPressedThisFrame || (stick != null && stick.wasPressedThisFrame))
+                        return true;
+                }
+                return false;
+            });
+        }
+
+        private static bool PadPressed(Func<Gamepad, bool> pressed)
+        {
+            foreach (var pad in Gamepad.all) if (pressed(pad)) return true;
             return false;
         }
+
+        private bool ConfirmPressed() => Controls == ControlType.TypeA
+            ? Pressed(Key.X) || PadPressed(p => p.buttonEast.wasPressedThisFrame)
+            : Pressed(Key.LeftCtrl) || PadPressed(p => p.buttonSouth.wasPressedThisFrame);
 
         // The live input boundary: each seat combines its keyboard keys with its own gamepad.
         public static ArcadeInput ReadInput(int index)
         {
-            // P1: arrows (Up = gas) + Left Ctrl item. P2: A/D/W + Numpad Enter item.
+            bool typeA = SavedControls == ControlType.TypeA;
+            // P2's keyboard stays on the numpad; both pads follow the shared title-screen setting.
             var k = Keyboard.current;
             Key left = index == 0 ? Key.LeftArrow : Key.Numpad4;
             Key right = index == 0 ? Key.RightArrow : Key.Numpad6;
-            Key gas = index == 0 ? Key.UpArrow : Key.Numpad8;
-            Key button = index == 0 ? Key.LeftCtrl : Key.NumpadEnter;
+            Key gas = index == 0 ? typeA ? Key.Z : Key.UpArrow : Key.Numpad8;
+            Key button = index == 0 ? typeA ? Key.X : Key.LeftCtrl : Key.NumpadEnter;
+            Key brake = index == 0 ? typeA ? Key.A : Key.DownArrow : Key.Numpad2;
             var input = new ArcadeInput();
             if (k != null)
             {
                 input.steer = (k[right].isPressed ? 1 : 0) - (k[left].isPressed ? 1 : 0);
                 input.throttle = k[gas].isPressed ? 1 : 0;
+                input.brake = k[brake].isPressed;
                 input.action = k[button].isPressed;
                 input.actionPressed = k[button].wasPressedThisFrame;
                 input.resetSaveHeld = index == 0 && k.deleteKey.isPressed;
-                input.shiftDownPressed = k[index == 0 ? Key.E : Key.NumpadMinus].wasPressedThisFrame;
-                input.shiftUpPressed = k[index == 0 ? Key.Q : Key.NumpadPlus].wasPressedThisFrame;
-                input.startPressed = k[index == 0 ? Key.Space : Key.NumpadEnter].wasPressedThisFrame;
+                input.shiftDownPressed = k[index == 0 ? Key.Q : Key.NumpadMinus].wasPressedThisFrame;
+                input.shiftUpPressed = k[index == 0 ? Key.E : Key.NumpadPlus].wasPressedThisFrame;
+                input.startPressed = index == 0 ? k.spaceKey.wasPressedThisFrame || k.enterKey.wasPressedThisFrame
+                    : k.numpadEnterKey.wasPressedThisFrame;
                 input.selectHeld = k[index == 0 ? Key.RightShift : Key.Numpad0].isPressed;
             }
             if (Gamepad.all.Count > index)
             {
-                // Stick or d-pad up is the gas; the South button uses the item.
                 var pad = Gamepad.all[index];
                 Vector2 stick = pad.leftStick.ReadValue();
                 if (pad.dpad.ReadValue().sqrMagnitude > .01f) stick = pad.dpad.ReadValue();
                 if (stick.sqrMagnitude > .03f) input.steer = stick.x;
-                if (stick.y > .4f) input.throttle = 1;
-                input.action |= pad.buttonSouth.isPressed;
-                input.actionPressed |= pad.buttonSouth.wasPressedThisFrame;
+                if (typeA ? pad.buttonSouth.isPressed : stick.y > .4f) input.throttle = 1;
+                input.brake |= typeA ? pad.buttonWest.isPressed : stick.y < -.4f;
+                var item = typeA ? pad.buttonEast : pad.buttonSouth;
+                input.action |= item.isPressed;
+                input.actionPressed |= item.wasPressedThisFrame;
                 input.shiftDownPressed |= pad.leftShoulder.wasPressedThisFrame;
                 input.shiftUpPressed |= pad.rightShoulder.wasPressedThisFrame;
                 input.startPressed |= pad.startButton.wasPressedThisFrame;

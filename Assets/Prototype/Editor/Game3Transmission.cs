@@ -13,6 +13,7 @@ namespace TNDA.Prototype.Editor
             var title = (RectTransform)game.attractScreen.transform;
             Undo.RecordObject(game, "Transmission HUD");
             game.attractTransmission = Label(title, "Transmission option", 0, height - 79, width, 13, ArcadeGame.Yellow);
+            game.attractControlsType = Label(title, "Controls option", 0, height - 97, width, 13, ArcadeGame.Yellow);
             game.attractControls = new[] {
                 title.Find("P1 controls").GetComponent<TMP_Text>(),
                 title.Find("P2 controls").GetComponent<TMP_Text>()

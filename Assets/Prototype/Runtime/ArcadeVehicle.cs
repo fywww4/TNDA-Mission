@@ -233,12 +233,19 @@ namespace TNDA.Prototype
             }
             // No gas means coasting to a stop.
             float target = input.throttle > .1f ? maxSpeed * Mathf.Clamp01(input.throttle) : 0;
+            if (input.brake)
+            {
+                // Automatic brakes to zero first; continuing to hold then backs up at the manual R limit.
+                // In manual, the brake only stops the car, even with R selected.
+                if (!manual && speed <= 0) target = -maxSpeed / 2.8f;
+                else { target = 0; acceleration = 8; }
+            }
             speed = Mathf.MoveTowards(speed, target, dt * acceleration);
             if (!manual)
             {
                 // Automatic is the original one-button speed curve; the gear readout follows it without changing it.
                 float roadSpeed = maxSpeed > 0 ? Mathf.Abs(speed) * 2.8f / maxSpeed : 0;
-                Gear = roadSpeed >= 1.9f ? 3 : roadSpeed >= 1.2f ? 2 : 1;
+                Gear = speed < 0 ? 0 : roadSpeed >= 1.9f ? 3 : roadSpeed >= 1.2f ? 2 : 1;
             }
             heading -= input.steer * 155 * turnScale * dt * Mathf.Clamp(Mathf.Abs(speed), .9f, 1.4f) * (speed < 0 ? -1 : 1);
             position += Forward * speed * dt;

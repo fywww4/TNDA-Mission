@@ -73,7 +73,8 @@ namespace TNDA.Prototype.Editor
             Label(root, "Step rule", CabinetText.GarageStep, 292, 102, 202, 13, ArcadeGame.White).alignment = TextAlignmentOptions.Center;
             Label(root, "Strength rule", CabinetText.GarageStrengthStep, 18, 82, 476, 13, ArcadeGame.White);
             view.message = Label(root, "Message", "", 18, 57, 476, 13, ArcadeGame.Yellow);
-            Label(root, "Controls", CabinetText.GarageControls, 18, 18, 476, 13, ArcadeGame.White).alignment = TextAlignmentOptions.Center;
+            view.controls = Label(root, "Controls", CabinetText.GarageTypeAControls, 18, 18, 476, 13, ArcadeGame.White);
+            view.controls.alignment = TextAlignmentOptions.Center;
             var entry = Label((RectTransform)game.attractScreen.transform, "Garage option", CabinetText.GarageEntry,
                 0, 46, 512, 13, ArcadeGame.Yellow);
             entry.alignment = TextAlignmentOptions.Center;

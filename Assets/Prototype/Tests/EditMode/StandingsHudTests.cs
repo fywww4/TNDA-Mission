@@ -18,7 +18,7 @@ namespace TNDA.Prototype.Tests
         [SetUp]
         public void OpenCabinetWithAnIsolatedSave()
         {
-            var keys = new[] { "TNDA.Gold", "WreckBest", ArcadeGame.TransmissionSaveKey }
+            var keys = new[] { "TNDA.Gold", "WreckBest", ArcadeGame.TransmissionSaveKey, ArcadeGame.ControlsSaveKey }
                 .Concat(Enum.GetValues(typeof(VehicleAbility)).Cast<VehicleAbility>().Select(a => "TNDA.Upgrades." + a));
             foreach (var key in keys)
             {

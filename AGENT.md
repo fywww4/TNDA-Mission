@@ -373,3 +373,15 @@
 邏輯在 `Runtime/Mode7StandingsHud.cs`，增量接線為 `Editor/Mode7StandingsLayout.cs`（`Mode7Layout` 會沿用），所有新文字集中於 `CabinetText`。`ArcadeInput.selectHeld` 與公開 `ArcadeGame.ReadInput` 為票單 24 可共用的 SELECT 定義；尚未改動其他 SFC 操作或加入暫停。
 
 驗證：新增公開輸入／HUD 測試 6 項，完整整合 EditMode 212／212、PlayMode 4／4；1P／2P、雙人獨立按住／放開、35 秒自動展開及開關、淘汰後分母 8→4 與灰顯均已確認，字型無缺字。主專案重新編譯及網域重新載入完成，Console 即時零錯誤、零警告，最後停止 Play Mode。Standards／Spec 各 0 項。保留票單 21 共用程式的正確區塊與場景接線，原未提交的換檔鍵修正留在工作區。詳見 `Docs/Game3/standings-verification.md` 與三張 `standings-*.png`；未重建 Windows／Web 發行檔。
+
+## Mode 7 票單 24：SFC 操作、Type A／B 與煞車（2026-11-16）
+
+預設 Type A：P1 方向鍵轉向、Z 油門、X 道具／確認、A 煞車、S 切換手排／自排（只在標題）、Q 降檔／E 升檔。手把依 SFC 位置：下鍵油門／返回、右鍵道具／確認、左鍵煞車、上鍵於標題切換手排／自排、LB 降檔／RB 升檔。Enter／空白鍵／Start 開始，START 在比賽中不暫停；Esc 沿用返回標題功能。
+
+Type B 保留 ↑ 油門、左 Ctrl 道具、手把左類比／十字鍵往上油門、下鍵道具，新增 ↓／類比往下煞車；選單手把下鍵確認、右鍵返回。標題 Q／E 或 LB／RB 切換 Type，兩位真人共用並保存於 `TNDA.ControlType`，長按 Delete 清存檔回 Type A。P2 鍵盤維持數字 8 油門、2 煞車、4／6 轉向、Enter 道具、−／＋換檔；兩支手把各自依 Type 讀鍵。舊 T 切換手排捷徑保留。
+
+車庫改為 SELECT（P1 右 Shift、P2 數字 0、手把 Back／View）或 G；面板按鈕不再開車庫。比賽中 SELECT 繼續顯示各自排行榜。`CabinetText`、標題 Type 選項、車庫與比賽底部提示同步更新；`Game3Transmission.Apply`／`Game3Garage.Apply`／`Mode7Layout.Apply` 保留接線。
+
+煞車優先於油門，每秒減速 8，快於滑行；自排先煞到零速、繼續按住才倒車，最高速同手排 R 檔。手排煞車只減速、不自動換 R；AI 不受影響。既有 Q 降檔／E 升檔的未提交修正與本票一致，已整合。
+
+驗證：新增 14 項公開介面測試，完整 EditMode 226／226、PlayMode 4／4；鍵盤與兩支模擬手把實際 Update 流程共 57 項通過，480 幀持續前進。Type A／B 標題、車庫、比賽與結算截圖已檢視，無缺字。修正車庫測試既有的挑戰存檔備份鍵名，測試後逐鍵確認金幣、紀錄、升級與操作設定已還原。重新編譯及網域重載完成，Console 即時零錯誤、零警告，停止 Play Mode、正式場景無未儲存變更。Standards／Spec 各 0 項未解。詳見 `Docs/Game3/sfc-controls-verification.md`；未測實體手把，未重建 Windows／Web 發行檔。

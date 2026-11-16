@@ -6,7 +6,7 @@ namespace TNDA.Prototype
     // Pixel cabinet view only. Purchases and their save belong to VehicleUpgrades; the cabinet owns navigation.
     public sealed class GarageScreen : MonoBehaviour
     {
-        public TMP_Text gold, message;
+        public TMP_Text gold, message, controls;
         public TMP_Text[] names, bonuses, prices;
         public UnityEngine.UI.Image[] rows, bars;
         public UnityEngine.UI.Image car;
@@ -22,6 +22,7 @@ namespace TNDA.Prototype
             if (carFrames != null && carFrames.Length == 16) car.sprite = carFrames[Mathf.FloorToInt(spinAge * 2) % 16];
             gold.text = string.Format(CabinetText.GoldTotal, game.Gold);
             message.text = game.GarageMessage;
+            if (controls != null) controls.text = game.Controls == ControlType.TypeA ? CabinetText.GarageTypeAControls : CabinetText.GarageControls;
             for (int i = 0; i < 4; i++)
             {
                 var ability = (VehicleAbility)i;
