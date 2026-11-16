@@ -93,6 +93,28 @@ namespace TNDA.Prototype
         public readonly bool Wrecked;
         public CherryStrike(ArcadeVehicle attacker, ArcadeVehicle victim, bool wrecked) { Attacker = attacker; Victim = victim; Wrecked = wrecked; }
     }
+    // Ticket 21: Car drove into a spike ball (or the ball rolled into it). Hurt: it lost durability (no shield or
+    // protection); Wrecked: that finished it.
+    public sealed class SpikeBallHit : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public readonly float Impact;
+        public readonly bool Hurt, Wrecked;
+        public readonly Vector2 Point;
+        public SpikeBallHit(ArcadeVehicle car, float impact, bool hurt, bool wrecked, Vector2 point)
+        { Car = car; Impact = impact; Hurt = hurt; Wrecked = wrecked; Point = point; }
+    }
+
+    // Ticket 21: a spike ball Launcher knocked flying reached Victim; Wrecked unless something protected it.
+    public sealed class SpikeBallStruck : MatchEvent
+    {
+        public readonly ArcadeVehicle Launcher, Victim;
+        public readonly bool Wrecked;
+        public readonly Vector2 Point;
+        public SpikeBallStruck(ArcadeVehicle launcher, ArcadeVehicle victim, bool wrecked, Vector2 point)
+        { Launcher = launcher; Victim = victim; Wrecked = wrecked; Point = point; }
+    }
+
 
     // A car hit the arena wall fast enough to be heard.
     public sealed class WallHit : MatchEvent

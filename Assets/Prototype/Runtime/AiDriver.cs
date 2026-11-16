@@ -23,6 +23,7 @@ namespace TNDA.Prototype
         IReadOnlyList<ArcadeVehicle> Cars { get; }
         IReadOnlyList<BreakableProp> Props { get; }
         IReadOnlyList<ArenaPickup> Pickups { get; }
+        IReadOnlyList<SpikeBall> SpikeBalls { get; }
         float Elapsed { get; }
         Vector2 ArenaMin { get; }
         Vector2 ArenaMax { get; }
@@ -104,6 +105,9 @@ namespace TNDA.Prototype
             else if (detourLeft <= 0 && chargeLeft <= 0 && (think <= 0 || Vector2.Distance(car.position, destination) < .4f
                 || (target != null && !arena.CanHarm(car, target)))) ChooseDestination(arena);
             if (target != null) destination = target.position;
+            // 碰碰 and 追王 knock a spike ball lying on the way into the car they are after.
+            if (target != null && !car.HasCherry && Personality != AiPersonality.Wanderer)
+                destination = SpikeShot(arena, target) ?? destination;
             FollowDetour(dt);
             Vector2 delta = arena.Navigate(car, destination) - car.position;
             float desired = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
@@ -127,6 +131,17 @@ namespace TNDA.Prototype
                     break;
                 }
             }
+            // A 迷糊 steers away from a spike ball just ahead.
+            if (Personality == AiPersonality.Wanderer && hunter == null)
+                foreach (var ball in arena.SpikeBalls)
+                {
+                    Vector2 toBall = ball.position - car.position;
+                    if (toBall.magnitude >= 1.4f || Vector2.Dot(car.Forward, toBall.normalized) <= .2f) continue;
+                    Vector2 side = new Vector2(-car.Forward.y, car.Forward.x);
+                    if (Vector2.Dot(side, toBall) > 0) side = -side;
+                    desired = Mathf.Atan2(side.y, side.x) * Mathf.Rad2Deg;
+                    break;
+                }
             float error = Mathf.DeltaAngle(car.heading, desired);
             return new ArcadeInput {
                 steer = -Mathf.Clamp(error / 38, -1, 1),
@@ -368,6 +383,27 @@ namespace TNDA.Prototype
             var spots = arena.Props.Where(p => !p.broken).Select(p => p.point);
             if (car.item == ArenaItem.None) spots = spots.Concat(arena.Pickups.Where(p => p.available).Select(p => p.point));
             return spots.Where(Ahead).Select(p => (Vector2?)p).FirstOrDefault();
+        }
+
+        // A rolling spike ball nearer than the quarry and roughly in line with it: line up behind the ball, then drive
+        // through it so it flies at the quarry. Null when no ball makes a shot.
+        private Vector2? SpikeShot(IAiArena arena, ArcadeVehicle quarry)
+        {
+            Vector2? best = null;
+            float bestDistance = 3.5f;
+            foreach (var ball in arena.SpikeBalls)
+            {
+                if (ball.Flying) continue;
+                Vector2 toBall = ball.position - car.position, line = quarry.position - ball.position;
+                float distance = toBall.magnitude;
+                if (distance >= bestDistance || distance >= Vector2.Distance(car.position, quarry.position) || line.sqrMagnitude < .01f) continue;
+                Vector2 aim = line.normalized;
+                float lined = Vector2.Dot(toBall.normalized, aim);
+                if (lined < .3f) continue;
+                best = lined > .85f ? ball.position + aim * .3f : Inside(arena, ball.position - aim * .9f);
+                bestDistance = distance;
+            }
+            return best;
         }
 
         private Vector2 Roam(IAiArena arena)

@@ -7403,6 +7403,20 @@ SpriteRenderer:
   m_LightProbeVolumeOverride: {fileID: 0}
   m_ScaleInLightmap: 1
   m_ReceiveGI: 1
+  spikeBalls:
+  - point: {x: -1.5, y: -1.8999999}
+    heading: 30
+  - point: {x: 1.5, y: -0.2999999}
+    heading: 210
+  spikeRollSpeed: 0.6
+  spikeDamage: 0.25
+  spikeLaunchPerSpeed: 2
+  spikeLaunchMax: 7
+  spikeFlyImpact: 1
+  spikeFlyFriction: 4
+  spikeBallSheet: {fileID: 2800000, guid: c055aa6d710c05147af8bcf2097cbe2d, type: 3}
+  spikeBallPixelsPerUnit: 44
+  spikeFrameDistance: 0.2
   m_PreserveUVs: 0
   m_IgnoreNormalsForChartDetection: 0
   m_ImportantGI: 0
@@ -7664,6 +7678,7 @@ GameObject:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
+  spikeDotPixels: 2
   m_Component:
   - component: {fileID: 554939935}
   - component: {fileID: 554939936}

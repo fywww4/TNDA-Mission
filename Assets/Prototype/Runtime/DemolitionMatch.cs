@@ -54,6 +54,11 @@ namespace TNDA.Prototype
         public float smashSpeed = 2.1f;
         public float fenceRespawnSeconds = 6;
         public float rampSpeed = 2.1f, jumpSeconds = .7f, jumpHeight = .85f;
+        // Spike balls (ticket 21): roll at spikeRollSpeed; a car driving into one loses spikeDamage of its durability and
+        // knocks it away at spikeLaunchPerSpeed per unit of impact (up to spikeLaunchMax). From spikeFlyImpact the ball
+        // flies, wrecking the next car it reaches, and slows by spikeFlyFriction per second back to a roll.
+        public float spikeRollSpeed = .6f, spikeRadius = .28f, spikeDamage = .25f;
+        public float spikeLaunchPerSpeed = 2f, spikeLaunchMax = 7f, spikeFlyImpact = 1f, spikeFlyFriction = 4f;
         public Vector2 arenaMin = new Vector2(-4.35f, -3.85f), arenaMax = new Vector2(4.35f, 1.65f);
         public bool randomPropSpots = true;
         // Challenge switches (default = the arcade match): crates give only rockets; rams earn no points or wreck bonus.
@@ -74,7 +79,7 @@ namespace TNDA.Prototype
 
     // The elimination match rules: driving, props, crates, contacts, rockets, wrecks, timed eliminations and the
     // champion. It needs no scene objects besides the cars, and reports what happened as Events for an adapter to show.
-    public sealed class DemolitionMatch : IItemArena, IAiArena
+    public sealed partial class DemolitionMatch : IItemArena, IAiArena
     {
         public readonly ArcadeVehicle[] Cars;
         public readonly BreakableProp[] Props;
@@ -88,10 +93,11 @@ namespace TNDA.Prototype
         private bool demo;
 
         public DemolitionMatch(ArcadeVehicle[] cars, BreakableProp[] props, ArenaPickup[] pickups, ArcadeProjectile[] rockets, MatchTuning tuning,
-            ArenaObstacle[] obstacles = null)
+            ArenaObstacle[] obstacles = null, SpikeBall[] spikeBalls = null)
         {
             Cars = cars; Props = props; Pickups = pickups; Rockets = rockets; Tuning = tuning;
             Obstacles = obstacles ?? System.Array.Empty<ArenaObstacle>();
+            SpikeBalls = spikeBalls ?? System.Array.Empty<SpikeBall>();
         }
 
         // Everything reported since the last ClearEvents (or Reset), oldest first.
@@ -186,6 +192,7 @@ namespace TNDA.Prototype
                 else if (!TerrainClear(prop.point, .65f)) prop.point = ClearFloor(prop.point, .65f);
             }
             foreach (var rocket in Rockets) rocket.Hide();
+            ResetSpikeBalls();
             contactCooldowns.Clear();
         }
 
@@ -226,6 +233,7 @@ namespace TNDA.Prototype
                 CollectPickup(car);
             }
             ResolveContacts(dt);
+            MoveSpikeBalls(dt);
             MoveRockets(dt);
             UpdateSlicks(dt);
             while (!demo && !Finished && Elapsed >= NextElimination) EliminateNextStep();
@@ -306,6 +314,7 @@ namespace TNDA.Prototype
         IReadOnlyList<ArcadeVehicle> IAiArena.Cars => Cars;
         IReadOnlyList<BreakableProp> IAiArena.Props => Props;
         IReadOnlyList<ArenaPickup> IAiArena.Pickups => Pickups;
+        IReadOnlyList<SpikeBall> IAiArena.SpikeBalls => SpikeBalls;
         float IAiArena.LeaderBias => Tuning.leaderBias;
         float IAiArena.HunterChaseSeconds => Tuning.hunterChaseSeconds;
         float IAiArena.HunterScatterSeconds => Tuning.hunterScatterSeconds;

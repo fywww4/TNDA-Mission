@@ -208,6 +208,7 @@
 | 檔案 | 用途 |
 | --- | --- |
 | `Assets/Prototype/Runtime/DemolitionMatch.cs` | 比賽規則模擬（不需場景物件）：駕駛、破壞物、木箱、碰撞、火箭、撞毀、計時淘汰與冠軍；`MatchTuning` 為規則數值，以 `IAiArena`／`IItemArena` 提供局面給 AI 駕駛與道具 module，發生的事記錄為 `Events`。 |
+| `Assets/Prototype/Runtime/SpikeBall.cs` | 刺球（票單 21）：`SpikeBall` 資料，以及 `DemolitionMatch` 的 partial（滾動、反彈、車撞刺球、飛行刺球撞毀）；事件 `SpikeBallHit`／`SpikeBallStruck` 在 `MatchEvents.cs`。 |
 | `Assets/Prototype/Runtime/ImpactFeel.cs` | 撞擊手感的呈現規則（票單 18）：`ImpactFeel.Kicks` 把撞擊事件換成各真人畫面的震動（`ShakeKick`），`TrySparks` 決定火花；`ScreenShake` 產生整數美術像素的震動位移；`ImpactFeelTuning` 為 Inspector 調整值。 |
 | `Assets/Prototype/Runtime/MatchEvents.cs` | 比賽事件：火箭命中、撞擊（`CarRammed` 含 `ImpactKind` 正面／追撞／側撞／擦撞與 `VictimWrecked`）、櫻桃撞車、撞牆、撞碎破壞物、撿到／使用道具、火箭仍在飛、防護罩擋下、撞毀、撞毀獎勵、每次得分變化（`ScoreChanged`，供加分文字）、淘汰、比賽結束。規則只記錄事件，提示文字、顏色、停留時間與音效都由 `DemolitionGame.Cue` 決定。 |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | GAME3 場景 adapter：BreakableProp／ArenaPickup、Inspector 調整值與輸入送進 `DemolitionMatch`，再把狀態與事件轉成車輛／破壞物／木箱／火箭顯示、爆炸特效、提示文字與音效。 |
@@ -352,3 +353,15 @@
 素材使用本次提供的牆／坡道 64×32 原圖；柵欄與水管大型 RGBA 圖保存在 `Art/Source/ObstacleFenceSource.png`／`ObstaclePipeSource.png`，整理為 64×32 固定調色盤貼圖。四圖皆為 Point、無 Mipmap、無壓縮；材質與 Shader 經場景參照納入建置。
 
 驗證：新增 `ObstacleTests` 11／11（含精確 2.09／2.1 邊界與貼牆脫困），完整 EditMode 195／195、PlayMode 4／4 通過。三場同種子 1P 110 秒比較，AI 卡住比例為無地形 0.90%、有地形 1.60%（+0.70 個百分點），同三場有 10 次 AI 起飛、24 次撞破柵欄。1P／2P／待機／跳躍／碎裂截圖已檢視；跳躍影子同幀開關有 212 個美術像素差異，碎裂時 8 片木片可見。測試用存檔已還原。重新編譯與網域重新載入完成，Console 即時零錯誤、零警告，最後停止 Play Mode。Standards／Spec 雙軸審查各 0 項。詳見 `Docs/Game3/obstacles-verification.md`；未重建 Windows／Web 發行檔。
+
+## Mode 7 票單 21：刺球陷阱（2026-11-16）
+
+場上 2 顆刺球（`DemolitionGame.spikeBalls`），慢慢直線滾（`spikeRollSpeed` 0.6），碰到場邊或實心地形（牆、水管、未碎柵欄；坡道與碎掉的柵欄可穿過）反彈。規則在 `Runtime/SpikeBall.cs`（`SpikeBall` 資料與 `DemolitionMatch` 的 partial），事件 `SpikeBallHit`／`SpikeBallStruck`。
+
+- **車撞刺球**（真人、AI 相同；刺球滾進車也算）：扣 `spikeDamage` 25% 耐久（車體強化可減、防護罩與重生保護擋下），車速減半、短暫硬直。刺球依撞擊速度 × `spikeLaunchPerSpeed` 2 飛出（上限 `spikeLaunchMax` 7）；撞擊速度 ≥ `spikeFlyImpact` 1 才算「被撞飛」（較輕的碰撞只把刺球推開，仍是慢滾；撞刺球而撞毀的車不算撞飛者），以 `spikeFlyFriction` 4／秒減速回慢滾。同一台車貼著刺球只算一次。
+- **飛行中的刺球打到另一台車**：直接撞毀（同櫻桃；防護罩、重生保護、開局 AI 緩衝期可擋），撞飛的車拿 300 撞毀獎勵，被撞毀者照常扣 250。打到車後刺球回到慢滾。慢滾的刺球只算「撞到刺球」。
+- **呈現**：撞毀播票單 18 爆炸；刺球打到真人時震該真人的畫面（撞毀 3 像素、撞到刺球受傷 2 像素、被防護罩等擋下 1 像素），每次接觸冒火花、播撞擊音。追尾畫面立起 4 格滾動動畫（依該畫面左右方向翻面），小地圖畫 2×2 白點。
+- **AI**：碰碰、追王有目標時，若有慢滾的刺球比目標近且大致在同一直線上，先繞到刺球後方再穿過去把它撞向目標；迷糊會避開前方 1.4 內的刺球。
+- **生成**：`randomPropSpots` 開時每局隨機（避開地形、出生／復活點 1.6、木箱與破壞物 1、兩球互離 2），方向隨機；關閉時用 Inspector 的 `point`／`heading`。
+- **美術**：使用者 GPT 產生的刺球圖（原圖 `Art/Source/SpikeBallSource.png`）依原像素格取樣為 `Art/SpikeBall.png` 128×32（4 格 32×32，球約 28 px，底部貼齊），比提示詞的 96×24 大，因原圖約 30 px 縮成 22 px 會糊；以 44 px／單位顯示，約 0.64 單位寬。`Editor/Mode7SpikeBallArt.Apply()`（TNDA / Mode 7 / Apply spike balls）設定匯入並接上場景，可重跑；未接圖時用程式畫的 16×16 占位圖。
+- **測試**：EditMode `SpikeBallTests`。

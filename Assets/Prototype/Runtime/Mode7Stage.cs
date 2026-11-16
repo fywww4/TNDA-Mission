@@ -50,6 +50,8 @@ namespace TNDA.Prototype
         [Range(8, 31)] public int minimapOnlyLayer = 30;
         [Tooltip("Size of each car's arrow on the minimap, in world units.")]
         public float blipSize = 1.6f;
+        [Tooltip("Side of each spike ball's white dot on the minimap, in minimap pixels.")]
+        public int spikeDotPixels = 2;
 
         [Header("HUD lines that move with the split, in 512x448 cabinet pixels")]
         [Tooltip("The feedback line: under the top HUD in 1P; in P2's sky in 2P (P1's sky holds the scores).")]
@@ -84,6 +86,9 @@ namespace TNDA.Prototype
         private (UnityEngine.UI.CanvasScaler.ScaleMode mode, float factor) scalerBefore;
         private readonly List<(SpriteRenderer view, ArcadeVehicle car)> blips = new List<(SpriteRenderer, ArcadeVehicle)>();
         private readonly Sprite[] blipFrames = new Sprite[16];
+        // Ticket 21: a white dot per spike ball, drawn only by the minimap (the ball sprite itself is chase-only).
+        private readonly List<SpriteRenderer> spikeDots = new List<SpriteRenderer>();
+        private Sprite spikeDot;
         private MaterialPropertyBlock blipPalette;
         private GameObject ground, floor;
         private readonly List<Standing> standing = new List<Standing>();
@@ -145,6 +150,9 @@ namespace TNDA.Prototype
             blips.Clear();
             foreach (var sprite in blipFrames)
                 if (sprite != null) { Destroy(sprite.texture); Destroy(sprite); }
+            foreach (var dot in spikeDots) if (dot != null) Destroy(dot.gameObject);
+            spikeDots.Clear();
+            if (spikeDot != null) { Destroy(spikeDot.texture); Destroy(spikeDot); }
             if (artImage != null) Destroy(artImage.gameObject);
             if (mapImage != null) Destroy(mapImage.gameObject);
             if (scaler != null)
@@ -388,6 +396,14 @@ namespace TNDA.Prototype
             if (game.explosions != null)
                 foreach (var boom in game.explosions) if (boom != null) standing.Add(new Standing { t = boom.transform, lift = explosionLift });
             foreach (var spark in game.sparks) if (spark != null) standing.Add(new Standing { t = spark.transform, lift = explosionLift });
+            foreach (var ball in game.spikeBallViews)
+                if (ball != null)
+                {
+                    // The ball stands on the floor (pivot at its bottom); the minimap shows its white dot instead.
+                    ball.gameObject.layer = chaseOnlyLayer;
+                    standing.Add(new Standing { t = ball.transform, lift = 0 });
+                }
+            KeepSpikeDots();
             if (game.crownView != null)
             {
                 // The arena puts the crown crownHeight north of the leader; in the chase view it floats straight above.
@@ -456,7 +472,36 @@ namespace TNDA.Prototype
                     // screen when the car drives straight away from this camera.
                     s.t.rotation = s.car != null ? rot * Quaternion.Euler(0, 0, 90 - chaseYaw[seat]) : rot;
             }
+            // The rolling frames roll to the right; flip them for a ball rolling leftwards across this view.
+            for (int i = 0; i < game.spikeBallViews.Length && i < game.spikeBalls.Length; i++)
+                if (game.spikeBallViews[i] != null)
+                    game.spikeBallViews[i].flipX = Vector2.Dot(game.spikeBalls[i].velocity, cam.transform.right) < 0;
             UnityEngine.Rendering.SortingGroup.UpdateAllSortingGroups();
+        }
+
+        // One white minimap dot per spike ball.
+        private void KeepSpikeDots()
+        {
+            if (spikeDot == null)
+            {
+                var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+                    { filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
+                texture.SetPixel(0, 0, Color.white);
+                texture.Apply();
+                spikeDot = Sprite.Create(texture, new Rect(0, 0, 1, 1), Vector2.one * .5f, 1);
+                spikeDot.hideFlags = HideFlags.DontSave;
+            }
+            while (spikeDots.Count < game.spikeBalls.Length)
+            {
+                var go = new GameObject("Minimap spike ball") { hideFlags = HideFlags.DontSave, layer = minimapOnlyLayer };
+                go.transform.SetParent(transform, false);
+                var dot = go.AddComponent<SpriteRenderer>();
+                dot.sprite = spikeDot;
+                dot.color = ArcadeGame.White;
+                dot.sortingOrder = 999; // under the car arrows
+                spikeDots.Add(dot);
+            }
+            for (int i = 0; i < spikeDots.Count; i++) spikeDots[i].gameObject.SetActive(i < game.spikeBalls.Length);
         }
 
         // The crown floats clear above the leader's name tag. The tag is cabinet text, the same height in pixels at
@@ -502,6 +547,19 @@ namespace TNDA.Prototype
                 blip.view.transform.SetPositionAndRotation(map.ViewportToWorldPoint(at), Quaternion.identity);
                 var parentScale = blip.car.transform.lossyScale;
                 blip.view.transform.localScale = new Vector3(pixels * pixel / parentScale.x, pixels * pixel / parentScale.y, 1);
+            }
+            for (int i = 0; i < spikeDots.Count && i < game.spikeBalls.Length; i++)
+            {
+                // Whole minimap pixels, edges on the pixel grid.
+                float pixel = map.orthographicSize * 2 / map.pixelHeight;
+                float halfPixel = spikeDotPixels % 2 * .5f;
+                var at = map.WorldToViewportPoint(game.spikeBalls[i].position);
+                at.x = (Mathf.Round(at.x * map.pixelWidth - halfPixel) + halfPixel) / map.pixelWidth;
+                at.y = (Mathf.Round(at.y * map.pixelHeight - halfPixel) + halfPixel) / map.pixelHeight;
+                var t = spikeDots[i].transform;
+                t.SetPositionAndRotation(map.ViewportToWorldPoint(at), Quaternion.identity);
+                var parentScale = transform.lossyScale;
+                t.localScale = new Vector3(spikeDotPixels * pixel / parentScale.x, spikeDotPixels * pixel / parentScale.y, 1);
             }
             UnityEngine.Rendering.SortingGroup.UpdateAllSortingGroups();
         }

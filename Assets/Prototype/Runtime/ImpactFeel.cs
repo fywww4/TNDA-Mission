@@ -36,6 +36,12 @@ namespace TNDA.Prototype
     {
         public static IEnumerable<ShakeKick> Kicks(MatchEvent e, float smashSpeed, ImpactFeelTuning t)
         {
+            // Ticket 21: a spike ball shakes the player it hits, hardest when it wrecks.
+            if (e is SpikeBallHit hit && !hit.Car.computer)
+                yield return hit.Wrecked ? new ShakeKick(hit.Car, t.wreckPixels, t.wreckSeconds)
+                    : hit.Hurt ? new ShakeKick(hit.Car, t.smashPixels, t.smashSeconds) : new ShakeKick(hit.Car, t.lightPixels, t.lightSeconds);
+            if (e is SpikeBallStruck struck && !struck.Victim.computer)
+                yield return struck.Wrecked ? new ShakeKick(struck.Victim, t.wreckPixels, t.wreckSeconds) : new ShakeKick(struck.Victim, t.lightPixels, t.lightSeconds);
             if (!(e is CarRammed ram)) yield break;
             int pixels; float seconds;
             if (ram.VictimWrecked) { pixels = t.wreckPixels; seconds = t.wreckSeconds; }
@@ -46,9 +52,11 @@ namespace TNDA.Prototype
             if (!ram.Victim.computer) yield return new ShakeKick(ram.Victim, pixels, seconds);
         }
 
-        // Sparks fly, between the two cars, from rams at smashing speed and from every scrape.
+        // Sparks fly, between the two cars, from rams at smashing speed and from every scrape, and off every spike-ball hit.
         public static bool TrySparks(MatchEvent e, float smashSpeed, out Vector2 point)
         {
+            if (e is SpikeBallHit hit) { point = hit.Point; return true; }
+            if (e is SpikeBallStruck struck) { point = struck.Point; return true; }
             bool sparks = e is CarRammed ram && (ram.Kind == ImpactKind.Scrape || ram.Impact >= smashSpeed);
             point = sparks ? ((CarRammed)e).Point : Vector2.zero;
             return sparks;

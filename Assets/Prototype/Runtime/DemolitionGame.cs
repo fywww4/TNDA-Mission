@@ -50,6 +50,25 @@ namespace TNDA.Prototype
         [Header("Fixed terrain")]
         public float fenceRespawnSeconds = Defaults.fenceRespawnSeconds;
         public float rampSpeed = Defaults.rampSpeed, jumpSeconds = Defaults.jumpSeconds, jumpHeight = Defaults.jumpHeight;
+        [Header("Spike balls (ticket 21)")]
+        [Tooltip("Rolling spike balls: where and which way each starts while randomPropSpots is off (otherwise a random clear spot and direction).")]
+        public SpikeBall[] spikeBalls = Array.Empty<SpikeBall>();
+        [Tooltip("Rolling speed, and the share of durability a car loses when it drives into a ball (or one rolls into it).")]
+        public float spikeRollSpeed = Defaults.spikeRollSpeed;
+        [Range(0, 1)] public float spikeDamage = Defaults.spikeDamage;
+        [Tooltip("A knocked ball's speed per unit of impact and its cap; from spikeFlyImpact it flies and wrecks the next car it reaches, slowing by spikeFlyFriction per second back to a roll.")]
+        public float spikeLaunchPerSpeed = Defaults.spikeLaunchPerSpeed, spikeLaunchMax = Defaults.spikeLaunchMax;
+        public float spikeFlyImpact = Defaults.spikeFlyImpact, spikeFlyFriction = Defaults.spikeFlyFriction;
+        [Tooltip("SpikeBall.png: one row of square rolling frames (rolling to the right, ball on the bottom row). Empty = a code-drawn placeholder.")]
+        public Texture2D spikeBallSheet;
+        [Tooltip("Sheet pixels per world unit (44: the 28-pixel ball is about 0.64 wide, a little over half a car).")]
+        public float spikeBallPixelsPerUnit = 44;
+        private Sprite[] spikeBallFrames = Array.Empty<Sprite>();
+        [Tooltip("Distance a ball rolls per animation frame.")]
+        public float spikeFrameDistance = .2f;
+        // One view per spike ball, made at runtime like the sparks; Mode7Stage stands them up.
+        [NonSerialized] public SpriteRenderer[] spikeBallViews = Array.Empty<SpriteRenderer>();
+        private Sprite spikePlaceholder;
         public ArcadeProjectile[] rockets = Array.Empty<ArcadeProjectile>();
         public TMP_Text arenaBoard, leaderboard;
         public TMP_Text[] carLabels;
@@ -189,9 +208,9 @@ namespace TNDA.Prototype
             {
                 int count = ActiveChallenge == null ? cars.Length : Mathf.Min(cars.Length, ActiveChallenge.CarCount);
                 if (match == null || matchSource != cars || match.Cars.Length != count
-                    || match.Props != props || match.Pickups != pickups || match.Rockets != rockets || match.Obstacles != obstacles)
+                    || match.Props != props || match.Pickups != pickups || match.Rockets != rockets || match.Obstacles != obstacles || match.SpikeBalls != spikeBalls)
                 {
-                    match = new DemolitionMatch(count == cars.Length ? cars : cars.Take(count).ToArray(), props, pickups, rockets, new MatchTuning(), obstacles);
+                    match = new DemolitionMatch(count == cars.Length ? cars : cars.Take(count).ToArray(), props, pickups, rockets, new MatchTuning(), obstacles, spikeBalls);
                     matchSource = cars;
                 }
                 var t = match.Tuning;
@@ -220,6 +239,8 @@ namespace TNDA.Prototype
                 t.fenceRespawnSeconds = fenceRespawnSeconds; t.rampSpeed = rampSpeed;
                 t.jumpSeconds = jumpSeconds; t.jumpHeight = jumpHeight;
                 return match;
+                t.spikeRollSpeed = spikeRollSpeed; t.spikeDamage = spikeDamage; t.spikeLaunchPerSpeed = spikeLaunchPerSpeed;
+                t.spikeLaunchMax = spikeLaunchMax; t.spikeFlyImpact = spikeFlyImpact; t.spikeFlyFriction = spikeFlyFriction;
             }
         }
 
@@ -355,6 +376,7 @@ namespace TNDA.Prototype
             for (int i = 0; i < sparks.Length; i++) { sparkAge[i] = -1; sparks[i].gameObject.SetActive(false); }
             int popups = scorePopups == null ? 0 : scorePopups.Length;
             popupAge = new float[popups];
+            MakeSpikeBallViews();
             popupAmount = new int[popups];
             popupOrigin = new Vector2[popups];
             for (int i = 0; i < popups; i++)
@@ -435,6 +457,12 @@ namespace TNDA.Prototype
                     break;
                 case WallHit _:
                     PlayHit(.2f);
+                    break;
+                case SpikeBallHit spiked:
+                    PlayHit(Mathf.Clamp(.4f + spiked.Impact * .1f, .4f, .8f));
+                    break;
+                case SpikeBallStruck _:
+                    PlayHit(.9f);
                     break;
                 case PropSmashed _:
                 case FenceSmashed _:
@@ -572,6 +600,14 @@ namespace TNDA.Prototype
             foreach (var rocket in rockets)
             {
                 if (rocket.slickView != null)
+            for (int i = 0; i < spikeBallViews.Length && i < spikeBalls.Length; i++)
+            {
+                var view = spikeBallViews[i];
+                if (view == null) continue;
+                view.transform.position = PixelPosition(spikeBalls[i].position);
+                if (spikeBallFrames.Length > 0)
+                    view.sprite = spikeBallFrames[Mathf.FloorToInt(spikeBalls[i].rolled / Mathf.Max(.01f, spikeFrameDistance)) % spikeBallFrames.Length];
+            }
                 {
                     rocket.slickView.gameObject.SetActive(rocket.active && rocket.slick);
                     if (rocket.active && rocket.slick) rocket.slickView.transform.position = PixelPosition(rocket.position);
@@ -651,6 +687,60 @@ namespace TNDA.Prototype
         private void MakeSparks()
         {
             if (sparks.Length > 0 || explosions == null || explosions.Length == 0 || explosions[0] == null) return;
+        // One sprite per spike ball, on the explosions' parent, layer and sorting (like the sparks).
+        private void MakeSpikeBallViews()
+        {
+            if (spikeBallFrames.Length == 0 && spikeBallSheet != null)
+            {
+                int side = spikeBallSheet.height, count = Mathf.Max(1, spikeBallSheet.width / side);
+                spikeBallFrames = new Sprite[count];
+                for (int i = 0; i < count; i++)
+                {
+                    spikeBallFrames[i] = Sprite.Create(spikeBallSheet, new Rect(i * side, 0, side, side), new Vector2(.5f, 0), spikeBallPixelsPerUnit);
+                    spikeBallFrames[i].hideFlags = HideFlags.DontSave;
+                }
+            }
+            if (spikeBallViews.Length == spikeBalls.Length && spikeBallViews.All(v => v != null)) return;
+            foreach (var old in spikeBallViews) if (old != null) Destroy(old.gameObject);
+            var template = explosions != null && explosions.Length > 0 ? explosions[0] : null;
+            spikeBallViews = new SpriteRenderer[spikeBalls.Length];
+            for (int i = 0; i < spikeBalls.Length; i++)
+            {
+                var view = new GameObject("Spike ball " + i, typeof(SpriteRenderer)).GetComponent<SpriteRenderer>();
+                view.gameObject.hideFlags = HideFlags.DontSave;
+                if (template != null)
+                {
+                    view.transform.SetParent(template.transform.parent, false);
+                    view.gameObject.layer = template.gameObject.layer;
+                    view.sharedMaterial = template.sharedMaterial;
+                    view.sortingLayerID = template.sortingLayerID;
+                    view.sortingOrder = template.sortingOrder;
+                }
+                view.sprite = spikeBallFrames.Length > 0 ? spikeBallFrames[0] : SpikePlaceholder();
+                spikeBallViews[i] = view;
+            }
+        }
+
+        // Until SpikeBall.png is wired in: a 16x16 grey ball with four yellow spike tips, standing on its bottom edge.
+        private Sprite SpikePlaceholder()
+        {
+            if (spikePlaceholder != null) return spikePlaceholder;
+            const int size = 16;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave };
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float d = new Vector2(x - 7.5f, y - 7.5f).magnitude;
+                    bool tip = (x == 7 || x == 8) && (y == 0 || y == 15) || (y == 7 || y == 8) && (x == 0 || x == 15);
+                    texture.SetPixel(x, y, tip ? Yellow : d < 5 ? new Color32(150, 158, 160, 255) : d < 6.5f ? new Color32(24, 24, 24, 255) : Color.clear);
+                }
+            texture.Apply();
+            spikePlaceholder = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(.5f, 0), 26);
+            spikePlaceholder.hideFlags = HideFlags.DontSave;
+            return spikePlaceholder;
+        }
+
             var template = explosions[0];
             int size = SparkPicture.Length;
             var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
@@ -824,6 +914,8 @@ namespace TNDA.Prototype
             if (sparks.Length > 0 && sparks[0] != null && sparks[0].sprite != null)
             {
                 Destroy(sparks[0].sprite.texture);
+            if (spikePlaceholder != null) { Destroy(spikePlaceholder.texture); Destroy(spikePlaceholder); }
+            foreach (var frame in spikeBallFrames) if (frame != null) Destroy(frame);
                 Destroy(sparks[0].sprite);
             }
         }
