@@ -20,7 +20,7 @@ namespace TNDA.Prototype
         public bool shiftUpPressed, shiftDownPressed;
         // This seat's START (P1: Space/Enter or pad 1; P2: Numpad Enter or pad 2).
         public bool startPressed;
-        // Hold SELECT to see this seat's standings: Right Shift / Numpad 0, or its pad's Back/View.
+        // Hold SELECT to see this seat's standings: Tab / Numpad 0, or its pad's Back/View.
         public bool selectHeld;
     }
 
@@ -489,7 +489,7 @@ namespace TNDA.Prototype
                 input.shiftUpPressed = k[index == 0 ? Key.E : Key.NumpadPlus].wasPressedThisFrame;
                 input.startPressed = index == 0 ? k.spaceKey.wasPressedThisFrame || k.enterKey.wasPressedThisFrame
                     : k.numpadEnterKey.wasPressedThisFrame;
-                input.selectHeld = k[index == 0 ? Key.RightShift : Key.Numpad0].isPressed;
+                input.selectHeld = k[index == 0 ? Key.Tab : Key.Numpad0].isPressed;
             }
             if (Gamepad.all.Count > index)
             {

@@ -7,13 +7,13 @@ namespace TNDA.Prototype.Tests
     public class SelectInputTests : InputTestFixture
     {
         [Test]
-        public void RightShiftAndNumpadZeroHoldSelectForTheirOwnSeat()
+        public void TabAndNumpadZeroHoldSelectForTheirOwnSeat()
         {
             var keyboard = InputSystem.AddDevice<Keyboard>();
-            Press(keyboard.rightShiftKey);
+            Press(keyboard.tabKey);
             Assert.That(ArcadeGame.ReadInput(0).selectHeld, Is.True);
             Assert.That(ArcadeGame.ReadInput(1).selectHeld, Is.False);
-            Release(keyboard.rightShiftKey);
+            Release(keyboard.tabKey);
             Assert.That(ArcadeGame.ReadInput(0).selectHeld, Is.False);
             Press(keyboard.numpad0Key);
             Assert.That(ArcadeGame.ReadInput(0).selectHeld, Is.False);

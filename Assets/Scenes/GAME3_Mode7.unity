@@ -6141,7 +6141,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u6309\u4F4F\u53F3Shift\uFF0FSELECT \u770B\u6392\u884C"
+  m_text: "\u6309\u4F4FTab\uFF0FSELECT \u770B\u6392\u884C"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0a23fdc6e87b9754aaab2f49a53adf8e, type: 2}
   m_sharedMaterial: {fileID: -4850519556620565953, guid: 0a23fdc6e87b9754aaab2f49a53adf8e, type: 2}
@@ -28015,7 +28015,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4282963199
   m_fontColor: {r: 1, g: 0.83137256, b: 0.28235295, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3

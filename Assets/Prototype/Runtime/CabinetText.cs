@@ -165,7 +165,7 @@ namespace TNDA.Prototype
         public const string RaceEliminatedPlace = "淘汰<size=11> 第{0}名</size>";
         public const string RaceScore = "P{0}　分數 {1:00000}";
         public const string RaceTime = "P{0}　時間 {1:000}　撞毀 {2}";
-        public const string P1StandingsHint = "按住右Shift／SELECT 看排行";
+        public const string P1StandingsHint = "按住Tab／SELECT 看排行";
         public const string P2StandingsHint = "按住數字0／SELECT 看排行";
         public const string RaceStanding = "{0} {1} {2:00000} 耐久{3}";
         public const string RaceStandingEliminated = "{0}　淘汰";

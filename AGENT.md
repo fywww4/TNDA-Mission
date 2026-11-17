@@ -368,7 +368,7 @@
 
 ## Mode 7 票單 23：按住 SELECT 顯示排行榜（2026-11-16）
 
-一般畫面各自顯示大字名次、目前存活車數分母及自己的分數，完整八車排行榜改為按住 SELECT 展開、放開收起：P1 右 Shift／第 1 支手把 Back（View），P2 數字鍵盤 0／第 2 支手把 Back。兩人各在自己的半邊顯示，時間與淘汰倒數各一份，提示列保留。排行榜列出名次、車名、分數、耐久，淘汰者灰顯並保留最終名次。淘汰前 5 秒預設自動展開，可在 `Mode7StandingsHud` Inspector 關閉或調整秒數。
+一般畫面各自顯示大字名次、目前存活車數分母及自己的分數，完整八車排行榜改為按住 SELECT 展開、放開收起：P1 Tab／第 1 支手把 Back（View），P2 數字鍵盤 0／第 2 支手把 Back。兩人各在自己的半邊顯示，時間與淘汰倒數各一份，提示列保留。排行榜列出名次、車名、分數、耐久，淘汰者灰顯並保留最終名次。淘汰前 5 秒預設自動展開，可在 `Mode7StandingsHud` Inspector 關閉或調整秒數。 2026-11-17：P1 排行榜鍵由右 Shift 改為 Tab（標題畫面開車庫仍為右 Shift）。
 
 邏輯在 `Runtime/Mode7StandingsHud.cs`，增量接線為 `Editor/Mode7StandingsLayout.cs`（`Mode7Layout` 會沿用），所有新文字集中於 `CabinetText`。`ArcadeInput.selectHeld` 與公開 `ArcadeGame.ReadInput` 為票單 24 可共用的 SELECT 定義；尚未改動其他 SFC 操作或加入暫停。
 
