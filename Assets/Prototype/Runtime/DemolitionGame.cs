@@ -24,6 +24,10 @@ namespace TNDA.Prototype
         public int points = 100;
         public float respawn;
         public bool broken;
+        // A bump too slow to smash it dents the prop until it breaks; art (when set) shows intact or dented.
+        public bool dented;
+        public SpriteRenderer art;
+        public Sprite intactSprite, dentedSprite;
     }
 
     [Serializable]
@@ -599,6 +603,8 @@ namespace TNDA.Prototype
             {
                 prop.view.gameObject.SetActive(!prop.broken);
                 if (!prop.broken) prop.view.position = PixelPosition(prop.point);
+                if (prop.art != null && prop.intactSprite != null)
+                    prop.art.sprite = prop.dented && prop.dentedSprite != null ? prop.dentedSprite : prop.intactSprite;
             }
             foreach (var pickup in pickups)
             {

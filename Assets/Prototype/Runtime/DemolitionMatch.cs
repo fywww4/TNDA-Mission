@@ -187,6 +187,7 @@ namespace TNDA.Prototype
             foreach (var prop in Props)
             {
                 prop.broken = false;
+                prop.dented = false;
                 prop.respawn = 0;
                 if (Tuning.randomPropSpots) prop.point = RandomPropSpot(prop, prop.point);
                 else if (!TerrainClear(prop.point, .65f)) prop.point = ClearFloor(prop.point, .65f);
@@ -260,7 +261,7 @@ namespace TNDA.Prototype
                 prop.respawn -= dt;
                 if (prop.respawn > 0) continue;
                 if (Tuning.randomPropSpots) prop.point = RandomPropSpot(prop, prop.point);
-                if (SpawnClear(prop.point, .9f)) prop.broken = false;
+                if (SpawnClear(prop.point, .9f)) prop.broken = prop.dented = false;
             }
             foreach (var pickup in Pickups)
             {
@@ -410,6 +411,7 @@ namespace TNDA.Prototype
                     car.position = prop.point + away * .65f;
                     car.speed *= -.3f;
                     car.stun = .15f;
+                    prop.dented = true;
                     car.RecordCollision();
                 }
             }

@@ -39,19 +39,8 @@ namespace TNDA.Prototype.Editor
             // The supplied crate photo turns into noise at 16px, so the crate is redrawn from its design:
             // a wooden frame around vertical planks (no diagonal brace, which the breakable X box already uses).
             // White and 12px since 2026-10-15 (was yellow, 16px).
-            var crate = DrawSprite("ItemCrate", new[] {
-                "############",
-                "#WWWWWWWWWW#",
-                "#W########W#",
-                "#W#W#WW#W#W#",
-                "#W#W#WW#W#W#",
-                "#W#W#WW#W#W#",
-                "#W#W#WW#W#W#",
-                "#W#W#WW#W#W#",
-                "#W#W#WW#W#W#",
-                "#W########W#",
-                "#WWWWWWWWWW#",
-                "############" });
+            // Since 2026-11-17 ItemCrate.png is the supplied 20px star crate (Mode7PropArt imports it); no longer redrawn here.
+            var crate = Mode7PropArt.ItemCrate();
             var cherry = CherrySprite();
             Undo.RecordObject(game, "GAME3 crates and cherry");
             // Breakable obstacles are white (2026-10-15).
