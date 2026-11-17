@@ -1,0 +1,641 @@
+fileFormatVersion: 2
+guid: 9f7a2fe153669a340b3509556f3db47b
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 2528933355428936778
+    second: DecalChecker_0
+  - first:
+      213: -2961703940675688421
+    second: DecalChecker_1
+  - first:
+      213: -6773697805786548720
+    second: DecalChecker_2
+  - first:
+      213: -3448131848617036569
+    second: DecalChecker_3
+  - first:
+      213: -5891482367838905175
+    second: DecalChecker_4
+  - first:
+      213: -2102636032471494442
+    second: DecalChecker_5
+  - first:
+      213: -4795599332816007428
+    second: DecalChecker_6
+  - first:
+      213: -3889576257802998778
+    second: DecalChecker_7
+  - first:
+      213: -4552234507150721498
+    second: DecalChecker_8
+  - first:
+      213: -4421348778959799468
+    second: DecalChecker_9
+  - first:
+      213: -2972189168120680936
+    second: DecalChecker_10
+  - first:
+      213: 4405586809592608136
+    second: DecalChecker_11
+  - first:
+      213: 1953928836109571619
+    second: DecalChecker_12
+  - first:
+      213: 3071164885126641086
+    second: DecalChecker_13
+  - first:
+      213: -6199195767355096717
+    second: DecalChecker_14
+  - first:
+      213: -4087131326946724690
+    second: DecalChecker_15
+  - first:
+      213: -9021192981515061492
+    second: DecalChecker_16
+  - first:
+      213: 7628745750297313176
+    second: DecalChecker_17
+  - first:
+      213: 8331467014313132187
+    second: DecalChecker_18
+  - first:
+      213: -7312509162856094676
+    second: DecalChecker_19
+  - first:
+      213: -2467244521017401668
+    second: DecalChecker_20
+  - first:
+      213: -7924083332501315109
+    second: DecalChecker_21
+  - first:
+      213: -7184281804935355237
+    second: DecalChecker_22
+  - first:
+      213: 4745858562885090154
+    second: DecalChecker_23
+  - first:
+      213: -1271909365949303314
+    second: DecalChecker_24
+  - first:
+      213: -11896969401142462
+    second: DecalChecker_25
+  - first:
+      213: -1985067653987647371
+    second: DecalChecker_00
+  - first:
+      213: 9059191751268458158
+    second: DecalChecker_01
+  - first:
+      213: -1863075595282519498
+    second: DecalChecker_02
+  - first:
+      213: 8699061216132069260
+    second: DecalChecker_03
+  - first:
+      213: -8738843526526789642
+    second: DecalChecker_04
+  - first:
+      213: 313236933213911310
+    second: DecalChecker_05
+  - first:
+      213: 6535677857538038179
+    second: DecalChecker_06
+  - first:
+      213: -5001823527687240739
+    second: DecalChecker_07
+  - first:
+      213: -8963184255708582403
+    second: DecalChecker_08
+  - first:
+      213: -5044854258016790824
+    second: DecalChecker_09
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: DecalChecker_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 570c2fc6c7f9374e0800000000000000
+      internalID: -1985067653987647371
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_01
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eae518e66e6b8bd70800000000000000
+      internalID: 9059191751268458158
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_02
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63a6c79fd960526e0800000000000000
+      internalID: -1863075595282519498
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_03
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c87fde2261649b870800000000000000
+      internalID: 8699061216132069260
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_04
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f716adec1469b680800000000000000
+      internalID: -8738843526526789642
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_05
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e097fb6c457d85400800000000000000
+      internalID: 313236933213911310
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_06
+      rect:
+        serializedVersion: 2
+        x: 288
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a9d0f8426463ba50800000000000000
+      internalID: 6535677857538038179
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_07
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd3c20b9004f59ab0800000000000000
+      internalID: -5001823527687240739
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_08
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dfdad1e886f5c9380800000000000000
+      internalID: -8963184255708582403
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_09
+      rect:
+        serializedVersion: 2
+        x: 432
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d6da47f7c31df9b0800000000000000
+      internalID: -5044854258016790824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_10
+      rect:
+        serializedVersion: 2
+        x: 480
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81e27ece2b9a0c6d0800000000000000
+      internalID: -2972189168120680936
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_11
+      rect:
+        serializedVersion: 2
+        x: 528
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 885f9ec8cd9c32d30800000000000000
+      internalID: 4405586809592608136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_12
+      rect:
+        serializedVersion: 2
+        x: 576
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 32614b09cefbd1b10800000000000000
+      internalID: 1953928836109571619
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_13
+      rect:
+        serializedVersion: 2
+        x: 624
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb570a8f038fe9a20800000000000000
+      internalID: 3071164885126641086
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_14
+      rect:
+        serializedVersion: 2
+        x: 672
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 371c1b95b4808f9a0800000000000000
+      internalID: -6199195767355096717
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalChecker_15
+      rect:
+        serializedVersion: 2
+        x: 720
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea438f276b79747c0800000000000000
+      internalID: -4087131326946724690
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      DecalChecker_0: 2528933355428936778
+      DecalChecker_00: -1985067653987647371
+      DecalChecker_01: 9059191751268458158
+      DecalChecker_02: -1863075595282519498
+      DecalChecker_03: 8699061216132069260
+      DecalChecker_04: -8738843526526789642
+      DecalChecker_05: 313236933213911310
+      DecalChecker_06: 6535677857538038179
+      DecalChecker_07: -5001823527687240739
+      DecalChecker_08: -8963184255708582403
+      DecalChecker_09: -5044854258016790824
+      DecalChecker_1: -2961703940675688421
+      DecalChecker_10: -2972189168120680936
+      DecalChecker_11: 4405586809592608136
+      DecalChecker_12: 1953928836109571619
+      DecalChecker_13: 3071164885126641086
+      DecalChecker_14: -6199195767355096717
+      DecalChecker_15: -4087131326946724690
+      DecalChecker_16: -9021192981515061492
+      DecalChecker_17: 7628745750297313176
+      DecalChecker_18: 8331467014313132187
+      DecalChecker_19: -7312509162856094676
+      DecalChecker_2: -6773697805786548720
+      DecalChecker_20: -2467244521017401668
+      DecalChecker_21: -7924083332501315109
+      DecalChecker_22: -7184281804935355237
+      DecalChecker_23: 4745858562885090154
+      DecalChecker_24: -1271909365949303314
+      DecalChecker_25: -11896969401142462
+      DecalChecker_3: -3448131848617036569
+      DecalChecker_4: -5891482367838905175
+      DecalChecker_5: -2102636032471494442
+      DecalChecker_6: -4795599332816007428
+      DecalChecker_7: -3889576257802998778
+      DecalChecker_8: -4552234507150721498
+      DecalChecker_9: -4421348778959799468
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

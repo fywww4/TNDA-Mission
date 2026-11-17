@@ -1,0 +1,55 @@
+// Ticket 16 check, step 1 (edit mode): back up the user's gold and decal save, fund 2000 gold, enter Play Mode.
+string[] keys = { "TNDA.Gold", "TNDA.Decals.P1", "TNDA.Decals.P2", "TNDA.Decals.Owned.TwinStripes", "TNDA.Decals.Owned.Flames",
+  "TNDA.Decals.Owned.Lightning", "TNDA.Decals.Owned.Checker" };
+var lines = new System.Collections.Generic.List<string>();
+foreach (var k in keys) lines.Add(k + "=" + (UnityEngine.PlayerPrefs.HasKey(k) ? UnityEngine.PlayerPrefs.GetInt(k).ToString() : "-"));
+if (!System.IO.File.Exists("tmp/ticket16-save-backup.txt")) System.IO.File.WriteAllLines("tmp/ticket16-save-backup.txt", lines);
+foreach (var k in keys) UnityEngine.PlayerPrefs.DeleteKey(k);
+UnityEngine.PlayerPrefs.SetInt("TNDA.Gold", 2000);
+UnityEngine.PlayerPrefs.Save();
+UnityEditor.EditorApplication.EnterPlaymode();
+return string.Join(" ", lines);
+// Ticket 16 check, step 2 (play): garage 外觀 tab — P1 buys checker, P2 buys flames, cursor rests on unowned lightning.
+var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
+UnityEngine.Application.runInBackground = true;
+g.OpenGarage();
+g.SwitchGarageTab();
+while (g.GarageCursor != 4) g.MoveGarageCursor(1);
+bool a = g.UseSelectedDecal(0);
+while (g.GarageCursor != 2) g.MoveGarageCursor(1);
+bool b = g.UseSelectedDecal(1);
+g.MoveGarageCursor(1);
+UnityEngine.ScreenCapture.CaptureScreenshot("tmp/ticket16-garage.png");
+return g.Phase + " " + g.GarageTab + " a=" + a + " b=" + b + " gold=" + g.Gold + " msg=" + g.GarageMessage
+  + " P1=" + g.Decals.Equipped(0) + " P2=" + g.Decals.Equipped(1);
+// Ticket 16 check, step 3 (play): start a 2P match.
+var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
+g.ShowAttract();
+g.StartRun(2);
+return g.Phase + " p1=" + g.ShownDecal(g.cars[0]) + " p2=" + g.ShownDecal(g.cars[1]) + " ai=" + g.ShownDecal(g.cars[2]);
+// Ticket 16 check, step 4 (play): capture the 2P race, P1 then given a cherry.
+var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
+UnityEngine.ScreenCapture.CaptureScreenshot(System.IO.File.Exists("tmp/ticket16-race.png") ? "tmp/ticket16-cherry.png" : "tmp/ticket16-race.png");
+var decal = g.cars[0].body.transform.Find("Decal");
+string info = g.Phase + " t=" + g.Elapsed.ToString("0.0") + " p1=" + g.ShownDecal(g.cars[0]) + " p2=" + g.ShownDecal(g.cars[1])
+  + " overlay=" + (decal != null) + " sprite=" + (decal != null ? decal.GetComponent<UnityEngine.SpriteRenderer>().sprite?.name : "-");
+g.cars[0].GiveCherry(6);
+return info;
+// Ticket 16 check, step 5 (play): after the cherry runs out, P1's pattern is back.
+var g = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.DemolitionGame>();
+UnityEngine.ScreenCapture.CaptureScreenshot("tmp/ticket16-after-cherry.png");
+var r = g.cars[0].body.transform.Find("Decal").GetComponent<UnityEngine.SpriteRenderer>();
+return "cherry=" + g.cars[0].CherrySeconds.ToString("0.0") + " p1=" + g.ShownDecal(g.cars[0]) + " sprite=" + r.sprite.name + " order=" + r.sortingOrder + " body=" + g.cars[0].body.sortingOrder;
+// Ticket 16 check, last step (edit mode): put the user's gold and decal save back as it was before the check.
+if (UnityEditor.EditorApplication.isPlaying) { UnityEditor.EditorApplication.ExitPlaymode(); return "exiting play mode, run again"; }
+UnityEngine.Application.runInBackground = false;
+var restored = new System.Collections.Generic.List<string>();
+foreach (var line in System.IO.File.ReadAllLines("tmp/ticket16-save-backup.txt"))
+{
+  var kv = line.Split('=');
+  if (kv[1] == "-") UnityEngine.PlayerPrefs.DeleteKey(kv[0]); else UnityEngine.PlayerPrefs.SetInt(kv[0], int.Parse(kv[1]));
+  restored.Add(kv[0] + "=" + (UnityEngine.PlayerPrefs.HasKey(kv[0]) ? UnityEngine.PlayerPrefs.GetInt(kv[0]).ToString() : "-"));
+}
+UnityEngine.PlayerPrefs.Save();
+System.IO.File.Delete("tmp/ticket16-save-backup.txt");
+return string.Join(" ", restored);

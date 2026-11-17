@@ -1,0 +1,701 @@
+fileFormatVersion: 2
+guid: 92fcf4f065b6d464183c317551b43917
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -799915567246175446
+    second: DecalFlames_0
+  - first:
+      213: -2849793051649186943
+    second: DecalFlames_1
+  - first:
+      213: 3387626620003842840
+    second: DecalFlames_2
+  - first:
+      213: 3612447179831984361
+    second: DecalFlames_3
+  - first:
+      213: -5739726048348171359
+    second: DecalFlames_4
+  - first:
+      213: 8247304424810967625
+    second: DecalFlames_5
+  - first:
+      213: -8983430114396627965
+    second: DecalFlames_6
+  - first:
+      213: 1946946737116017704
+    second: DecalFlames_7
+  - first:
+      213: -121631104934806281
+    second: DecalFlames_8
+  - first:
+      213: -5661534494986013775
+    second: DecalFlames_9
+  - first:
+      213: -4002591939891152565
+    second: DecalFlames_10
+  - first:
+      213: -2257363509019876808
+    second: DecalFlames_11
+  - first:
+      213: 2353595453455949268
+    second: DecalFlames_12
+  - first:
+      213: -365421261626493299
+    second: DecalFlames_13
+  - first:
+      213: 4545284417022607391
+    second: DecalFlames_14
+  - first:
+      213: -2123848993434016989
+    second: DecalFlames_15
+  - first:
+      213: -4790248106370459166
+    second: DecalFlames_16
+  - first:
+      213: -7121189252894232616
+    second: DecalFlames_17
+  - first:
+      213: 3732983176478635510
+    second: DecalFlames_18
+  - first:
+      213: -824023982661287474
+    second: DecalFlames_19
+  - first:
+      213: -7531336053645120057
+    second: DecalFlames_20
+  - first:
+      213: -7090836145466495889
+    second: DecalFlames_21
+  - first:
+      213: -3005937877503673312
+    second: DecalFlames_22
+  - first:
+      213: -4404060515620940002
+    second: DecalFlames_23
+  - first:
+      213: 5626878280541897264
+    second: DecalFlames_24
+  - first:
+      213: -2053623422274071890
+    second: DecalFlames_25
+  - first:
+      213: 9046829897964057965
+    second: DecalFlames_26
+  - first:
+      213: 9103608557685077926
+    second: DecalFlames_27
+  - first:
+      213: 7282100596405126044
+    second: DecalFlames_28
+  - first:
+      213: 6888448699012785941
+    second: DecalFlames_29
+  - first:
+      213: -5567692511992918621
+    second: DecalFlames_30
+  - first:
+      213: -3662407535245236362
+    second: DecalFlames_31
+  - first:
+      213: -4932440474081238207
+    second: DecalFlames_32
+  - first:
+      213: -4705349504371743354
+    second: DecalFlames_33
+  - first:
+      213: -4437627850395381166
+    second: DecalFlames_34
+  - first:
+      213: -3452842658172096069
+    second: DecalFlames_35
+  - first:
+      213: -4672114595673398963
+    second: DecalFlames_36
+  - first:
+      213: -8785701684524113025
+    second: DecalFlames_37
+  - first:
+      213: -369239279584729618
+    second: DecalFlames_38
+  - first:
+      213: -4912684144453014215
+    second: DecalFlames_39
+  - first:
+      213: 1952605544414463818
+    second: DecalFlames_40
+  - first:
+      213: -4186756032695333857
+    second: DecalFlames_00
+  - first:
+      213: 5983918075437322479
+    second: DecalFlames_01
+  - first:
+      213: 3258440380548151863
+    second: DecalFlames_02
+  - first:
+      213: 1846121583749813572
+    second: DecalFlames_03
+  - first:
+      213: 3961791667948902866
+    second: DecalFlames_04
+  - first:
+      213: -7560263420752237044
+    second: DecalFlames_05
+  - first:
+      213: -2518873595138210853
+    second: DecalFlames_06
+  - first:
+      213: -8267037998271643574
+    second: DecalFlames_07
+  - first:
+      213: 7169754115969016411
+    second: DecalFlames_08
+  - first:
+      213: 5036840207418021307
+    second: DecalFlames_09
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: DecalFlames_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1c88f51297a5e5c0800000000000000
+      internalID: -4186756032695333857
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_01
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe01b7319c52b0350800000000000000
+      internalID: 5983918075437322479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_02
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73a7c5c134e483d20800000000000000
+      internalID: 3258440380548151863
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_03
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 445d69b9ccdbe9910800000000000000
+      internalID: 1846121583749813572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_04
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d95232188c1bf630800000000000000
+      internalID: 3961791667948902866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_05
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0eeead897c841790800000000000000
+      internalID: -7560263420752237044
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_06
+      rect:
+        serializedVersion: 2
+        x: 288
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd30daf8fc92b0dd0800000000000000
+      internalID: -2518873595138210853
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_07
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a40cc50cdb4954d80800000000000000
+      internalID: -8267037998271643574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_08
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b526a39a165108360800000000000000
+      internalID: 7169754115969016411
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_09
+      rect:
+        serializedVersion: 2
+        x: 432
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb55e897b7376e540800000000000000
+      internalID: 5036840207418021307
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_10
+      rect:
+        serializedVersion: 2
+        x: 480
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4932f956dfe378c0800000000000000
+      internalID: -4002591939891152565
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_11
+      rect:
+        serializedVersion: 2
+        x: 528
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 832e0fb39db3ca0e0800000000000000
+      internalID: -2257363509019876808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_12
+      rect:
+        serializedVersion: 2
+        x: 576
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4dd57345896a9a020800000000000000
+      internalID: 2353595453455949268
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_13
+      rect:
+        serializedVersion: 2
+        x: 624
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d86b0637c43cdeaf0800000000000000
+      internalID: -365421261626493299
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_14
+      rect:
+        serializedVersion: 2
+        x: 672
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1040c76818141f30800000000000000
+      internalID: 4545284417022607391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalFlames_15
+      rect:
+        serializedVersion: 2
+        x: 720
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3236bc5d7929682e0800000000000000
+      internalID: -2123848993434016989
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      DecalFlames_0: -799915567246175446
+      DecalFlames_00: -4186756032695333857
+      DecalFlames_01: 5983918075437322479
+      DecalFlames_02: 3258440380548151863
+      DecalFlames_03: 1846121583749813572
+      DecalFlames_04: 3961791667948902866
+      DecalFlames_05: -7560263420752237044
+      DecalFlames_06: -2518873595138210853
+      DecalFlames_07: -8267037998271643574
+      DecalFlames_08: 7169754115969016411
+      DecalFlames_09: 5036840207418021307
+      DecalFlames_1: -2849793051649186943
+      DecalFlames_10: -4002591939891152565
+      DecalFlames_11: -2257363509019876808
+      DecalFlames_12: 2353595453455949268
+      DecalFlames_13: -365421261626493299
+      DecalFlames_14: 4545284417022607391
+      DecalFlames_15: -2123848993434016989
+      DecalFlames_16: -4790248106370459166
+      DecalFlames_17: -7121189252894232616
+      DecalFlames_18: 3732983176478635510
+      DecalFlames_19: -824023982661287474
+      DecalFlames_2: 3387626620003842840
+      DecalFlames_20: -7531336053645120057
+      DecalFlames_21: -7090836145466495889
+      DecalFlames_22: -3005937877503673312
+      DecalFlames_23: -4404060515620940002
+      DecalFlames_24: 5626878280541897264
+      DecalFlames_25: -2053623422274071890
+      DecalFlames_26: 9046829897964057965
+      DecalFlames_27: 9103608557685077926
+      DecalFlames_28: 7282100596405126044
+      DecalFlames_29: 6888448699012785941
+      DecalFlames_3: 3612447179831984361
+      DecalFlames_30: -5567692511992918621
+      DecalFlames_31: -3662407535245236362
+      DecalFlames_32: -4932440474081238207
+      DecalFlames_33: -4705349504371743354
+      DecalFlames_34: -4437627850395381166
+      DecalFlames_35: -3452842658172096069
+      DecalFlames_36: -4672114595673398963
+      DecalFlames_37: -8785701684524113025
+      DecalFlames_38: -369239279584729618
+      DecalFlames_39: -4912684144453014215
+      DecalFlames_4: -5739726048348171359
+      DecalFlames_40: 1952605544414463818
+      DecalFlames_5: 8247304424810967625
+      DecalFlames_6: -8983430114396627965
+      DecalFlames_7: 1946946737116017704
+      DecalFlames_8: -121631104934806281
+      DecalFlames_9: -5661534494986013775
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

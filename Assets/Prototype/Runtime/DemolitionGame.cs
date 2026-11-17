@@ -194,6 +194,9 @@ namespace TNDA.Prototype
         private float[] sparkAge = Array.Empty<float>();
         private const int SparkSlots = 6;
         public bool HasCherry(ArcadeVehicle car) => car.HasCherry;
+        // Ticket 16: the pattern drawn over this car. Only P1/P2 driven by a person wear one; cherry stripes cover it.
+        public CarDecal ShownDecal(ArcadeVehicle car) =>
+            car == null || car.computer || car.HasCherry ? CarDecal.None : Decals.Equipped(car.index);
         public Vector2 arenaMin = Defaults.arenaMin;
         public Vector2 arenaMax = Defaults.arenaMax;
         public AudioClip engineClip;
@@ -575,6 +578,7 @@ namespace TNDA.Prototype
             Wallet.Clear();
             Records.Clear();
             Upgrades.Clear();
+            Decals.Clear();
             PlayerPrefs.DeleteKey("WreckBest");
             PlayerPrefs.DeleteKey(TransmissionSaveKey);
             PlayerPrefs.DeleteKey(ControlsSaveKey);

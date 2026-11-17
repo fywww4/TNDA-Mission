@@ -41,14 +41,20 @@ namespace TNDA.Prototype.Editor
             Label(root, "Title", CabinetText.GarageTitle, 18, 407, 100, 26, ArcadeGame.Yellow, 22);
             view.gold = Label(root, "Gold", "", 206, 412, 288, 13, ArcadeGame.Yellow);
             view.gold.alignment = TextAlignmentOptions.Right;
-            Label(root, "Ability tab", CabinetText.GarageAbilityTab, 18, 362, 264, 13, ArcadeGame.Yellow);
-            Label(root, "Shared", CabinetText.GarageShared, 292, 362, 202, 13, ArcadeGame.Cyan).alignment = TextAlignmentOptions.Center;
+            view.tab = Label(root, "Ability tab", CabinetText.GarageAbilityTab, 18, 362, 264, 13, ArcadeGame.Yellow);
+            view.shared = Label(root, "Shared", CabinetText.GarageShared, 292, 362, 202, 13, ArcadeGame.Cyan);
+            view.shared.alignment = TextAlignmentOptions.Center;
+            // Ticket 16: the ability rows live in their own panel so the 外觀 tab can swap them out.
+            var abilities = Rect(root, "Ability panel", 0, 0, 512, 448);
+            view.abilityPanel = abilities.gameObject;
             view.rows = new UnityEngine.UI.Image[4];
             view.bars = new UnityEngine.UI.Image[16];
             view.names = new TMP_Text[4]; view.bonuses = new TMP_Text[4]; view.prices = new TMP_Text[4];
             for (int i = 0; i < 4; i++)
             {
-                var row = Rect(root, "Ability " + i, 18, 284 - i * 58, 264, 54);
+                var moved = root.Find("Ability " + i);
+                if (moved != null) Undo.SetTransformParent(moved, abilities, "Garage HUD");
+                var row = Rect(abilities, "Ability " + i, 18, 284 - i * 58, 264, 54);
                 view.rows[i] = Image(row, "Border", 0, 0, 264, 54, ArcadeGame.White);
                 Image(row, "Inset", 2, 2, 260, 50, new Color32(18, 25, 44, 255));
                 view.names[i] = Label(row, "Name", "", 10, 33, 150, 13, ArcadeGame.White);
@@ -58,6 +64,25 @@ namespace TNDA.Prototype.Editor
                 view.prices[i] = Label(row, "Price", "", 158, 10, 96, 13, ArcadeGame.Yellow);
                 view.prices[i].alignment = TextAlignmentOptions.Right;
             }
+            var decals = Rect(root, "Decal panel", 0, 0, 512, 448);
+            view.decalPanel = decals.gameObject;
+            int decalRows = CarDecals.Count + 1;
+            view.decalRows = new UnityEngine.UI.Image[decalRows];
+            view.decalNames = new TMP_Text[decalRows]; view.decalPrices = new TMP_Text[decalRows];
+            view.decalP1 = new TMP_Text[decalRows]; view.decalP2 = new TMP_Text[decalRows];
+            for (int i = 0; i < decalRows; i++)
+            {
+                var row = Rect(decals, "Decal " + i, 18, 298 - i * 44, 264, 40);
+                view.decalRows[i] = Image(row, "Border", 0, 0, 264, 40, ArcadeGame.White);
+                Image(row, "Inset", 2, 2, 260, 36, new Color32(18, 25, 44, 255));
+                view.decalNames[i] = Label(row, "Name", "", 10, 14, 90, 13, ArcadeGame.White);
+                view.decalP1[i] = Label(row, "P1", "", 100, 14, 24, 13, ArcadeGame.Cyan);
+                view.decalP2[i] = Label(row, "P2", "", 128, 14, 24, 13, ArcadeGame.Yellow);
+                view.decalPrices[i] = Label(row, "Price", "", 158, 14, 96, 13, ArcadeGame.Yellow);
+                view.decalPrices[i].alignment = TextAlignmentOptions.Right;
+            }
+            Undo.RecordObject(decals.gameObject, "Garage HUD");
+            decals.gameObject.SetActive(false);
             // Two-pixel steps and a solid shadow form a small SFC-style turntable. All art stays on the coarse grid.
             var platform = Rect(root, "Display platform", 292, 126, 202, 212);
             Image(platform, "Frame", 0, 0, 202, 212, new Color32(53, 73, 114, 255));
@@ -70,8 +95,19 @@ namespace TNDA.Prototype.Editor
             view.carFrames = stage.carFrames;
             if (view.carFrames != null && view.carFrames.Length == 16) view.car.sprite = view.carFrames[0];
             view.car.preserveAspect = true;
-            Label(root, "Step rule", CabinetText.GarageStep, 292, 102, 202, 13, ArcadeGame.White).alignment = TextAlignmentOptions.Center;
-            Label(root, "Strength rule", CabinetText.GarageStrengthStep, 18, 82, 476, 13, ArcadeGame.White);
+            // The pattern sits on the car's own rect, unpaletted, so the seat colour shows through around it.
+            var decalFrames = Game3Decals.LoadFrames();
+            Undo.RecordObject(stage, "Garage HUD");
+            stage.decalFrames = decalFrames;
+            EditorUtility.SetDirty(stage);
+            view.decalFrames = decalFrames;
+            view.carDecal = Image((RectTransform)view.car.transform, "Decal", 0, 0, 192, 192, Color.white);
+            view.carDecal.preserveAspect = true;
+            view.carDecal.sprite = decalFrames[0];
+            view.carDecal.enabled = false;
+            view.rule = Label(root, "Step rule", CabinetText.GarageStep, 292, 102, 202, 13, ArcadeGame.White);
+            view.rule.alignment = TextAlignmentOptions.Center;
+            view.note = Label(root, "Strength rule", CabinetText.GarageStrengthStep, 18, 82, 476, 13, ArcadeGame.White);
             view.message = Label(root, "Message", "", 18, 57, 476, 13, ArcadeGame.Yellow);
             view.controls = Label(root, "Controls", CabinetText.GarageTypeAControls, 18, 18, 476, 13, ArcadeGame.White);
             view.controls.alignment = TextAlignmentOptions.Center;

@@ -6,6 +6,7 @@ using UnityEngine.InputSystem;
 namespace TNDA.Prototype
 {
     public enum ArcadePhase { Attract, Playing, Results, Countdown, Garage }
+    public enum GarageTab { Abilities, Decals }
     // What the title screen offers: the normal 1P/2P elimination match, or single-player challenges.
     public enum CabinetMode { Normal, Challenge }
     public enum ControlType { TypeA, TypeB }
@@ -83,7 +84,12 @@ namespace TNDA.Prototype
         public GarageScreen garage;
         private VehicleUpgrades upgrades;
         public VehicleUpgrades Upgrades => upgrades ?? (upgrades = new VehicleUpgrades());
+        private CarDecals decals;
+        public CarDecals Decals => decals ?? (decals = new CarDecals());
+        public GarageTab GarageTab { get; private set; }
+        // Abilities: the ability row. Decals: the CarDecal row (0 = no pattern, then the four for sale).
         public int GarageCursor { get; private set; }
+        private int GarageRows => GarageTab == GarageTab.Abilities ? 4 : CarDecals.Count + 1;
         public string GarageMessage { get; private set; } = "";
         private ChallengeRecords records;
         public ChallengeRecords Records => records ?? (records = new ChallengeRecords());
@@ -228,6 +234,8 @@ namespace TNDA.Prototype
         {
             if (Phase != ArcadePhase.Attract || garage == null) return;
             Phase = ArcadePhase.Garage;
+            GarageTab = GarageTab.Abilities;
+            GarageCursor = 0;
             GarageMessage = "";
             overlay.SetActive(false);
             RefreshHud();
@@ -236,13 +244,46 @@ namespace TNDA.Prototype
 
         public void MoveGarageCursor(int delta)
         {
-            GarageCursor = ((GarageCursor + delta) % 4 + 4) % 4;
+            GarageCursor = ((GarageCursor + delta) % GarageRows + GarageRows) % GarageRows;
             GarageMessage = "";
+        }
+
+        // Left/right in the garage: 能力 <-> 外觀.
+        public void SwitchGarageTab()
+        {
+            GarageTab = GarageTab == GarageTab.Abilities ? GarageTab.Decals : GarageTab.Abilities;
+            GarageCursor = 0;
+            GarageMessage = "";
+        }
+
+        // 外觀 tab, for P1 (seat 0) or P2 (seat 1): buys the selected pattern into the shared collection if needed, then
+        // puts it on that seat's car. The "no pattern" row takes it off.
+        public bool UseSelectedDecal(int seat)
+        {
+            if (Phase != ArcadePhase.Garage || GarageTab != GarageTab.Decals) return false;
+            var decal = (CarDecal)GarageCursor;
+            bool bought = false;
+            if (!Decals.Owns(decal))
+            {
+                bought = Decals.TryBuy(decal, Wallet);
+                if (!bought)
+                {
+                    GarageMessage = CabinetText.GarageGoldShort;
+                    garage?.Render(this, 0);
+                    return false;
+                }
+            }
+            Decals.Equip(seat, decal);
+            GarageMessage = string.Format(bought ? CabinetText.GarageDecalBought : CabinetText.GarageDecalEquipped,
+                seat + 1, CabinetText.GarageDecalNames[(int)decal]);
+            Sound(bought ? 2 : 0);
+            garage?.Render(this, 0);
+            return true;
         }
 
         public bool TryBuySelectedUpgrade()
         {
-            if (Phase != ArcadePhase.Garage) return false;
+            if (Phase != ArcadePhase.Garage || GarageTab != GarageTab.Abilities) return false;
             var ability = (VehicleAbility)GarageCursor;
             bool bought = Upgrades.TryBuy(ability, Wallet);
             GarageMessage = bought ? CabinetText.GarageBought
@@ -256,7 +297,16 @@ namespace TNDA.Prototype
         {
             if (PressedAny(Key.UpArrow, Key.Numpad8) || DirectionPressed(pad => pad.dpad.up)) MoveGarageCursor(-1);
             if (PressedAny(Key.DownArrow, Key.Numpad2) || DirectionPressed(pad => pad.dpad.down)) MoveGarageCursor(1);
-            if (ConfirmPressed()) TryBuySelectedUpgrade();
+            if (PressedAny(Key.LeftArrow, Key.RightArrow, Key.Numpad4, Key.Numpad6) || DirectionPressed(pad => pad.dpad.left, pad => pad.dpad.right))
+                SwitchGarageTab();
+            if (GarageTab == GarageTab.Abilities)
+            {
+                if (ConfirmPressed()) TryBuySelectedUpgrade();
+            }
+            else
+                // Each seat equips its own car: P1 on its item key or pad 1, P2 on Numpad Enter or pad 2.
+                for (int seat = 0; seat < 2; seat++)
+                    if (SeatConfirmPressed(seat)) UseSelectedDecal(seat);
         }
 
         public void MoveChallengeCursor(int delta)
@@ -404,6 +454,16 @@ namespace TNDA.Prototype
         private bool ConfirmPressed() => Controls == ControlType.TypeA
             ? Pressed(Key.X) || PadPressed(p => p.buttonEast.wasPressedThisFrame)
             : Pressed(Key.LeftCtrl) || PadPressed(p => p.buttonSouth.wasPressedThisFrame);
+
+        private bool SeatConfirmPressed(int seat)
+        {
+            bool typeA = Controls == ControlType.TypeA;
+            bool key = seat == 0 ? Pressed(typeA ? Key.X : Key.LeftCtrl) : Pressed(Key.NumpadEnter);
+            if (key) return true;
+            if (Gamepad.all.Count <= seat) return false;
+            var pad = Gamepad.all[seat];
+            return (typeA ? pad.buttonEast : pad.buttonSouth).wasPressedThisFrame;
+        }
 
         // The live input boundary: each seat combines its keyboard keys with its own gamepad.
         public static ArcadeInput ReadInput(int index)

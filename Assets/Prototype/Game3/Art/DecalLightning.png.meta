@@ -1,0 +1,661 @@
+fileFormatVersion: 2
+guid: 8ee973d54cb4cb7488116d7e7398c5d1
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 4320848492379177239
+    second: DecalLightning_0
+  - first:
+      213: -503902000337135293
+    second: DecalLightning_1
+  - first:
+      213: -4236433130642403678
+    second: DecalLightning_2
+  - first:
+      213: -331744690973865497
+    second: DecalLightning_3
+  - first:
+      213: 1955667255221894059
+    second: DecalLightning_4
+  - first:
+      213: 8498961854474761257
+    second: DecalLightning_5
+  - first:
+      213: 159866776955799235
+    second: DecalLightning_6
+  - first:
+      213: 937112986608061951
+    second: DecalLightning_7
+  - first:
+      213: -2347797163569063473
+    second: DecalLightning_8
+  - first:
+      213: 7371502774333682346
+    second: DecalLightning_9
+  - first:
+      213: 4125757518680742786
+    second: DecalLightning_10
+  - first:
+      213: -8938885405912240848
+    second: DecalLightning_11
+  - first:
+      213: -6646300674186065721
+    second: DecalLightning_12
+  - first:
+      213: -8647315743330577767
+    second: DecalLightning_13
+  - first:
+      213: -5810633143625424772
+    second: DecalLightning_14
+  - first:
+      213: -5401723294139386870
+    second: DecalLightning_15
+  - first:
+      213: 70323153492969063
+    second: DecalLightning_16
+  - first:
+      213: -3235561176888282489
+    second: DecalLightning_17
+  - first:
+      213: 2190431397218914718
+    second: DecalLightning_18
+  - first:
+      213: 1935933823130103128
+    second: DecalLightning_19
+  - first:
+      213: -6875206732042458171
+    second: DecalLightning_20
+  - first:
+      213: -4272701291077731161
+    second: DecalLightning_21
+  - first:
+      213: -6258421778685894043
+    second: DecalLightning_22
+  - first:
+      213: -1118660522338773057
+    second: DecalLightning_23
+  - first:
+      213: 5764686974764825790
+    second: DecalLightning_24
+  - first:
+      213: -8350335182660052261
+    second: DecalLightning_25
+  - first:
+      213: -3687991392821594360
+    second: DecalLightning_26
+  - first:
+      213: 8086826906870615372
+    second: DecalLightning_27
+  - first:
+      213: -8037662448027694163
+    second: DecalLightning_28
+  - first:
+      213: 6067559524952509649
+    second: DecalLightning_29
+  - first:
+      213: 1259231734859857035
+    second: DecalLightning_30
+  - first:
+      213: 1378922815814893444
+    second: DecalLightning_00
+  - first:
+      213: -7597439248503179941
+    second: DecalLightning_01
+  - first:
+      213: -5772296416125697825
+    second: DecalLightning_02
+  - first:
+      213: 714541077319586645
+    second: DecalLightning_03
+  - first:
+      213: -6730198974193936828
+    second: DecalLightning_04
+  - first:
+      213: 5877449695671208931
+    second: DecalLightning_05
+  - first:
+      213: 9035518258619568408
+    second: DecalLightning_06
+  - first:
+      213: -7642418183064557361
+    second: DecalLightning_07
+  - first:
+      213: -6428324672949025756
+    second: DecalLightning_08
+  - first:
+      213: 1686670326608780020
+    second: DecalLightning_09
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: DecalLightning_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48ff351cefae22310800000000000000
+      internalID: 1378922815814893444
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_01
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b557b56a149709690800000000000000
+      internalID: -7597439248503179941
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_02
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd041921efea4efa0800000000000000
+      internalID: -5772296416125697825
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_03
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5531f03f25f8ae900800000000000000
+      internalID: 714541077319586645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_04
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 446d87be0b78992a0800000000000000
+      internalID: -6730198974193936828
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_05
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ebc5bfab55e09150800000000000000
+      internalID: 5877449695671208931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_06
+      rect:
+        serializedVersion: 2
+        x: 288
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8115396ebfb946d70800000000000000
+      internalID: 9035518258619568408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_07
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc8637d572da0f590800000000000000
+      internalID: -7642418183064557361
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_08
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4248ef7c4c00ac6a0800000000000000
+      internalID: -6428324672949025756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_09
+      rect:
+        serializedVersion: 2
+        x: 432
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4fa55b6c9b1486710800000000000000
+      internalID: 1686670326608780020
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_10
+      rect:
+        serializedVersion: 2
+        x: 480
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28bdc52aa92a14930800000000000000
+      internalID: 4125757518680742786
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_11
+      rect:
+        serializedVersion: 2
+        x: 528
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03d6da46513b2f380800000000000000
+      internalID: -8938885405912240848
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_12
+      rect:
+        serializedVersion: 2
+        x: 576
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c843bc10c893c3a0800000000000000
+      internalID: -6646300674186065721
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_13
+      rect:
+        serializedVersion: 2
+        x: 624
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 992532a95209ef780800000000000000
+      internalID: -8647315743330577767
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_14
+      rect:
+        serializedVersion: 2
+        x: 672
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c70681221fb7c5fa0800000000000000
+      internalID: -5810633143625424772
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DecalLightning_15
+      rect:
+        serializedVersion: 2
+        x: 720
+        y: 0
+        width: 48
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.14583333}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a047ed598493905b0800000000000000
+      internalID: -5401723294139386870
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      DecalLightning_0: 4320848492379177239
+      DecalLightning_00: 1378922815814893444
+      DecalLightning_01: -7597439248503179941
+      DecalLightning_02: -5772296416125697825
+      DecalLightning_03: 714541077319586645
+      DecalLightning_04: -6730198974193936828
+      DecalLightning_05: 5877449695671208931
+      DecalLightning_06: 9035518258619568408
+      DecalLightning_07: -7642418183064557361
+      DecalLightning_08: -6428324672949025756
+      DecalLightning_09: 1686670326608780020
+      DecalLightning_1: -503902000337135293
+      DecalLightning_10: 4125757518680742786
+      DecalLightning_11: -8938885405912240848
+      DecalLightning_12: -6646300674186065721
+      DecalLightning_13: -8647315743330577767
+      DecalLightning_14: -5810633143625424772
+      DecalLightning_15: -5401723294139386870
+      DecalLightning_16: 70323153492969063
+      DecalLightning_17: -3235561176888282489
+      DecalLightning_18: 2190431397218914718
+      DecalLightning_19: 1935933823130103128
+      DecalLightning_2: -4236433130642403678
+      DecalLightning_20: -6875206732042458171
+      DecalLightning_21: -4272701291077731161
+      DecalLightning_22: -6258421778685894043
+      DecalLightning_23: -1118660522338773057
+      DecalLightning_24: 5764686974764825790
+      DecalLightning_25: -8350335182660052261
+      DecalLightning_26: -3687991392821594360
+      DecalLightning_27: 8086826906870615372
+      DecalLightning_28: -8037662448027694163
+      DecalLightning_29: 6067559524952509649
+      DecalLightning_3: -331744690973865497
+      DecalLightning_30: 1259231734859857035
+      DecalLightning_4: 1955667255221894059
+      DecalLightning_5: 8498961854474761257
+      DecalLightning_6: 159866776955799235
+      DecalLightning_7: 937112986608061951
+      DecalLightning_8: -2347797163569063473
+      DecalLightning_9: 7371502774333682346
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,8 @@
+// Ticket 16: generate/import the pattern sheets and patch the garage's 外觀 tab into GAME3_Mode7.
+TNDA.Prototype.Editor.Game3Garage.PatchScene();
+var scene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
+var stage = UnityEngine.Object.FindAnyObjectByType<TNDA.Prototype.Mode7Stage>();
+var g = stage.game.garage;
+int frames = System.Linq.Enumerable.Count(stage.decalFrames, f => f != null);
+return "scene=" + scene.path + " stageFrames=" + frames + " garageFrames=" + g.decalFrames.Length + " rows=" + g.decalRows.Length
+  + " panel=" + (g.decalPanel != null) + " decal=" + (g.carDecal != null) + " dirty=" + scene.isDirty;

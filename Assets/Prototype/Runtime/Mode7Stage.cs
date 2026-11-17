@@ -69,6 +69,9 @@ namespace TNDA.Prototype
         public Material carSheetMaterial;
         [Tooltip("Ground line height off the floor for the sheet frames (their pivot is on the wheels).")]
         public float carFrameLift = 0;
+        [Tooltip("Ticket 16: the four pattern sheets (DecalTwinStripes, DecalFlames, DecalLightning, DecalChecker), 16 frames each "
+            + "in carFrames' order, drawn unpaletted over a P1/P2 car (DemolitionGame.ShownDecal).")]
+        public Sprite[] decalFrames;
 
         private readonly Camera[] chase = new Camera[2];
         private readonly float[] chaseYaw = new float[2];
@@ -100,6 +103,9 @@ namespace TNDA.Prototype
         // Each car's own top-down sprite and material, put back for the minimap.
         private readonly Dictionary<ArcadeVehicle, (Sprite sprite, Material material)> topDown =
             new Dictionary<ArcadeVehicle, (Sprite, Material)>();
+
+        // One pattern overlay per car, a child of its body; only the chase cameras ever see it switched on.
+        private readonly Dictionary<ArcadeVehicle, SpriteRenderer> decalViews = new Dictionary<ArcadeVehicle, SpriteRenderer>();
 
         private bool UseFrames => carFrames != null && carFrames.Length == 16 && carSheetMaterial != null;
 
@@ -148,6 +154,8 @@ namespace TNDA.Prototype
             DestroyGround(floor);
             foreach (var blip in blips) if (blip.view != null) Destroy(blip.view.gameObject);
             blips.Clear();
+            foreach (var view in decalViews.Values) if (view != null) Destroy(view.gameObject);
+            decalViews.Clear();
             foreach (var sprite in blipFrames)
                 if (sprite != null) { Destroy(sprite.texture); Destroy(sprite); }
             foreach (var dot in spikeDots) if (dot != null) Destroy(dot.gameObject);
@@ -466,6 +474,7 @@ namespace TNDA.Prototype
                     s.car.body.sharedMaterial = carSheetMaterial;
                     s.car.body.transform.localRotation = Quaternion.identity;
                     s.t.rotation = rot;
+                    ShowDecal(s.car, frame);
                 }
                 else
                     // A car's body keeps its own heading roll (heading - 90); turn the root so the nose points up on
@@ -477,6 +486,33 @@ namespace TNDA.Prototype
                 if (game.spikeBallViews[i] != null)
                     game.spikeBallViews[i].flipX = Vector2.Dot(game.spikeBalls[i].velocity, cam.transform.right) < 0;
             UnityEngine.Rendering.SortingGroup.UpdateAllSortingGroups();
+        }
+
+        // The minimap keeps plain seat colours.
+        private void HideDecal(ArcadeVehicle car)
+        {
+            if (decalViews.TryGetValue(car, out var view) && view != null) view.enabled = false;
+        }
+
+        // The car's pattern (if it shows one) on the given sheet frame.
+        private void ShowDecal(ArcadeVehicle car, int frame)
+        {
+            var sprite = car.body.enabled ? CarDecals.Frame(decalFrames, game.ShownDecal(car), frame) : null;
+            bool on = sprite != null;
+            if (!decalViews.TryGetValue(car, out var view) || view == null)
+            {
+                if (!on) return;
+                var go = new GameObject("Decal") { hideFlags = HideFlags.DontSave, layer = car.body.gameObject.layer };
+                go.transform.SetParent(car.body.transform, false);
+                view = go.AddComponent<SpriteRenderer>();
+                decalViews[car] = view;
+            }
+            view.enabled = on;
+            if (!on) return;
+            view.sprite = sprite;
+            view.color = car.body.color.a < 1 ? new Color(1, 1, 1, car.body.color.a) : Color.white;
+            view.sortingLayerID = car.body.sortingLayerID;
+            view.sortingOrder = car.body.sortingOrder + 1;
         }
 
         // One white minimap dot per spike ball.
@@ -533,6 +569,7 @@ namespace TNDA.Prototype
                     s.car.body.sharedMaterial = top.material;
                     s.car.body.transform.localRotation = Quaternion.Euler(0, 0, s.car.heading - 90);
                 }
+                if (s.car != null) HideDecal(s.car);
             }
             foreach (var blip in blips)
             {

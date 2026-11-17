@@ -58,10 +58,22 @@ namespace TNDA.Prototype
         public const string GarageMaxed = "已滿";
         public const string GarageBought = "升級完成！";
         public const string GarageGoldShort = "金幣不足";
-        public const string GarageControls = "↑↓選擇　左Ctrl／手把下鍵 購買　Esc／手把右鍵 返回";
-        public const string GarageTypeAControls = "↑↓選擇　X／手把右鍵 購買　Z／手把下鍵 返回";
+        public const string GarageControls = "←→分頁　↑↓選擇　左Ctrl／手把下鍵 購買　Esc／手把右鍵 返回";
+        public const string GarageTypeAControls = "←→分頁　↑↓選擇　X／手把右鍵 購買　Z／手把下鍵 返回";
         public const string GarageStep = "每級 +5%　最多 +20%";
         public const string GarageStrengthStep = "強度：減少受到的傷害";
+        // Ticket 16: the 外觀 tab. Patterns are drawn over the seat colour; P1 and P2 each wear their own.
+        public const string GarageDecalTab = "←　外觀　→";
+        public const string GarageDecalShared = "收藏共用　各自裝備";
+        public const string GarageDecalNone = "無圖案";
+        public static readonly string[] GarageDecalNames = { GarageDecalNone, "雙條紋", "火焰", "閃電", "棋盤格" };
+        public const string GarageOwned = "已擁有";
+        public const string GarageDecalBought = "購買完成！P{0} 裝備{1}";
+        public const string GarageDecalEquipped = "P{0} 裝備：{1}";
+        public const string GarageDecalRule = "圖案畫在座位色上　AI 不裝";
+        public const string GarageDecalCherry = "吃櫻桃時暫時換成櫻桃條紋";
+        public const string GarageDecalControls = "←→分頁　↑↓選擇　P1：左Ctrl／手把1下鍵　P2：數字Enter／手把2下鍵";
+        public const string GarageDecalTypeAControls = "←→分頁　↑↓選擇　P1：X／手把1右鍵　P2：數字Enter／手把2右鍵";
 
         // Challenge mode (title list, play and result).
         public const string ModeNormal = "一般模式";

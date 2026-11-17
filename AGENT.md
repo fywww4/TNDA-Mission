@@ -320,7 +320,7 @@
 
 ## 車庫與能力升級（票單 13，2026-11-10）
 
-標題按 G／手把 B 進入車庫（2026-11-11 由 X 改為 B；標題上 B 沒有可退出的東西，所以改成開車庫，車庫內 B 仍是返回）（`ArcadePhase.Garage`），↑↓選項、左 Ctrl／手把 A 購買、Esc／手把 B 回標題。能力四項（最高速、加速、操控、強度）各 4 級，每級 +5%，價格 50／100／200／400 金幣，整台機器共用，存於 `TNDA.Upgrades.<能力>`，Delete 長按清除存檔時一併歸零。邏輯在 `Runtime/VehicleUpgrades.cs`，畫面在 `Runtime/GarageScreen.cs`，場景由 `Editor/Game3Garage.cs` 補上（`Mode7Layout` 會重跑）。`DemolitionMatch` 只對真人車套用：最高速、加速、操控加成；強度只降低被撞與被火箭命中的傷害（櫻桃碰撞不減）；AI 完全不變，仍以基礎最高速 2.8 為準。「外觀」分頁尚未做（票單 16）。
+標題按 G／手把 B 進入車庫（2026-11-11 由 X 改為 B；標題上 B 沒有可退出的東西，所以改成開車庫，車庫內 B 仍是返回）（`ArcadePhase.Garage`），↑↓選項、左 Ctrl／手把 A 購買、Esc／手把 B 回標題。能力四項（最高速、加速、操控、強度）各 4 級，每級 +5%，價格 50／100／200／400 金幣，整台機器共用，存於 `TNDA.Upgrades.<能力>`，Delete 長按清除存檔時一併歸零。邏輯在 `Runtime/VehicleUpgrades.cs`，畫面在 `Runtime/GarageScreen.cs`，場景由 `Editor/Game3Garage.cs` 補上（`Mode7Layout` 會重跑）。`DemolitionMatch` 只對真人車套用：最高速、加速、操控加成；強度只降低被撞與被火箭命中的傷害（櫻桃碰撞不減）；AI 完全不變，仍以基礎最高速 2.8 為準。「外觀」分頁見票單 16。
 
 驗證：EditMode `VehicleUpgradeTests`／`UpgradeDrivingTests`／`GarageCabinetTests` 加上既有測試共 161 項全數通過；Play Mode 截圖 `Docs/Game3/garage-abilities.png`（512×448，字元無缺）已檢視；Console 零錯誤、零警告。截圖測試時動用的金幣與升級存檔已還原。
 
@@ -385,3 +385,13 @@ Type B 保留 ↑ 油門、左 Ctrl 道具、手把左類比／十字鍵往上�
 煞車優先於油門，每秒減速 8，快於滑行；自排先煞到零速、繼續按住才倒車，最高速同手排 R 檔。手排煞車只減速、不自動換 R；AI 不受影響。既有 Q 降檔／E 升檔的未提交修正與本票一致，已整合。
 
 驗證：新增 14 項公開介面測試，完整 EditMode 226／226、PlayMode 4／4；鍵盤與兩支模擬手把實際 Update 流程共 57 項通過，480 幀持續前進。Type A／B 標題、車庫、比賽與結算截圖已檢視，無缺字。修正車庫測試既有的挑戰存檔備份鍵名，測試後逐鍵確認金幣、紀錄、升級與操作設定已還原。重新編譯及網域重載完成，Console 即時零錯誤、零警告，停止 Play Mode、正式場景無未儲存變更。Standards／Spec 各 0 項未解。詳見 `Docs/Game3/sfc-controls-verification.md`；未測實體手把，未重建 Windows／Web 發行檔。
+
+## Mode 7 票單 16：車庫「外觀」分頁（2026-11-17）
+
+車庫左右鍵切換「能力／外觀」分頁。外觀共 4 種圖案：雙條紋 100、火焰 200、閃電 300、棋盤格 500 金幣，加上「無圖案」一列。圖案只以白／黑疊在車身上，座位色不變。收藏整台機器共用；P1 按自己的道具鍵（Type A：X，Type B：左Ctrl）或手把 1 的確認鍵、P2 按數字 Enter 或手把 2 的確認鍵，對選取列「未擁有則購買並裝備，已擁有則裝備」，選「無圖案」即卸下。存於 `TNDA.Decals.Owned.<圖案>`、`TNDA.Decals.P1`／`P2`，長按 Delete 清除存檔時一併清空。
+
+邏輯在 `Runtime/CarDecals.cs`（`CarDecal` 列舉），車庫流程在 `ArcadeGame`（`GarageTab`、`SwitchGarageTab`、`UseSelectedDecal`），`DemolitionGame.ShownDecal` 決定每台車顯示的圖案：只有真人駕駛的 P1／P2 有；AI（含 1P 的 Panda）沒有；吃櫻桃期間不顯示，結束後恢復。`Mode7Stage.decalFrames`（4×16 格）在追尾視角於車身上加一個子 SpriteRenderer（排序比車身高 1），小地圖一律不畫圖案。展示台 `GarageScreen.carDecal` 即時預覽游標所在的圖案（能力分頁顯示 P1 裝備的圖案）。
+
+美術：`Game3/Art/DecalTwinStripes.png`、`DecalFlames.png`、`DecalLightning.png`、`DecalChecker.png`，各為與 `CarSheet.png` 對齊的 768×48 透明圖層。目前是 `Editor/Game3Decals.cs` 依 CarSheet 的四個鍵紅色（車身像素）自動產生的占位圖；GPT 正式圖到貨後直接覆蓋同名 PNG（同尺寸），再執行 `TNDA/Mode 7/Apply garage`（或 `Mode7Layout`）即沿用同樣切圖與接線。檔案不存在時才會重新產生占位圖。接線腳本 `Docs/Game3/decals-apply.cs.txt`（eval_file 用，放回 tmp 再執行）。
+
+驗證：EditMode `CarDecalTests`（價格、金幣不足、重複購買、各座位裝備、存檔與清除）、`GarageDecalTests`（分頁切換、購買扣款、P1／P2 各自裝備、重開保留、長按 Delete 清空、AI 與 1P Panda 無圖案、櫻桃期間隱藏後恢復），全部 EditMode 233 項通過。Play Mode 實測：車庫外觀分頁 512×448 版面與展示台預覽、2P 比賽中 P1 棋盤格／P2 火焰疊在座位色上、櫻桃期間改為櫻桃條紋、結束後恢復、小地圖車色不變（`Docs/Game3/decals-play.cs.txt` 依序六段，截圖 `Docs/Game3/garage-decals.png`、`Docs/Game3/decals-race-2p.png`）；測試用金幣與外觀存檔已還原。重新編譯後 Console 零錯誤、零警告。
