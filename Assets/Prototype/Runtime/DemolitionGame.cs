@@ -227,7 +227,6 @@ namespace TNDA.Prototype
                 t.ResetChallengeSwitches();
                 ActiveChallenge?.ApplyRules(t); // a challenge being played changes the rules; the title demo never does
                 t.driveSpeed = driveSpeed; t.accelerationPerSecond = accelerationPerSecond; t.coastDownPerSecond = coastDownPerSecond;
-                t.manualTransmission = ManualTransmission;
                 t.playerUpgrades = Upgrades;
                 t.respawnSeconds = enemyRespawnSeconds; t.wreckPenalty = wreckPenalty; t.wreckBonus = wreckBonus;
                 t.shieldDuration = shieldDuration; t.pickupRespawnSeconds = pickupRespawnSeconds;
@@ -299,9 +298,11 @@ namespace TNDA.Prototype
 
         [Header("Title: mode tabs and the challenge list")]
         public TMP_Text attractRule, attractModes, attractChallenges;
-        [Header("Transmission HUD")]
-        public TMP_Text attractTransmission, attractControlsType;
-        public TMP_Text[] attractControls, gearLabels;
+        [Header("Controls and speed HUD")]
+        public TMP_Text attractControlsType;
+        public TMP_Text[] attractControls;
+        [UnityEngine.Serialization.FormerlySerializedAs("gearLabels")]
+        public TMP_Text[] speedLabels;
         [Tooltip("Backing and list shown only while the title is on challenge mode.")]
         public GameObject attractChallengePanel;
 
@@ -584,7 +585,6 @@ namespace TNDA.Prototype
             Upgrades.Clear();
             Decals.Clear();
             PlayerPrefs.DeleteKey("WreckBest");
-            PlayerPrefs.DeleteKey(TransmissionSaveKey);
             PlayerPrefs.DeleteKey(ControlsSaveKey);
             PlayerPrefs.Save();
             resetSaveLatched = true;
@@ -1081,28 +1081,26 @@ namespace TNDA.Prototype
             if (Phase == ArcadePhase.Attract) overlayHint.text = CabinetText.AttractHint;
             ShowStartMessages();
             ShowContinue();
-            RefreshTransmissionHud();
+            RefreshControlsAndSpeedHud();
             if (standingsHud != null)
                 standingsHud.Render(this, order.ToArray(), victoryLeft < 0 && gameOverLeft < 0);
         }
 
-        private void RefreshTransmissionHud()
+        private void RefreshControlsAndSpeedHud()
         {
-            string mode = ManualTransmission ? CabinetText.ManualTransmission : CabinetText.AutomaticTransmission;
-            if (attractTransmission != null) attractTransmission.text = string.Format(CabinetText.TransmissionOption, mode);
             if (attractControlsType != null) attractControlsType.text = string.Format(CabinetText.ControlsOption, Controls == ControlType.TypeA ? "A" : "B");
             if (attractControls != null)
                 for (int i = 0; i < attractControls.Length; i++)
                     if (attractControls[i] != null) attractControls[i].text = ControlsFor(i);
             var cabinet = (RectTransform)header.transform.parent;
-            if (gearLabels == null) return;
-            for (int i = 0; i < gearLabels.Length; i++)
+            if (speedLabels == null) return;
+            for (int i = 0; i < speedLabels.Length; i++)
             {
-                var label = gearLabels[i];
+                var label = speedLabels[i];
                 if (label == null) continue;
                 bool shown = (Phase == ArcadePhase.Playing || Phase == ArcadePhase.Countdown) && i < PlayerCount && victoryLeft < 0 && gameOverLeft < 0;
                 label.transform.parent.gameObject.SetActive(shown);
-                label.text = string.Format(CabinetText.PlayerGear, i + 1, mode, cars[i].Gear == 0 ? CabinetText.ReverseGear : cars[i].Gear.ToString());
+                label.text = string.Format(CabinetText.PlayerSpeed, i + 1, Mathf.RoundToInt(Mathf.Abs(cars[i].speed) * CabinetText.SpeedToKmh));
                 // P1's lower-right corner moves up to the top half in a split view; P2 keeps the bottom corner.
                 var rect = (RectTransform)label.transform.parent;
                 rect.anchoredPosition = new Vector2(cabinet.sizeDelta.x - rect.sizeDelta.x - 6,
@@ -1111,10 +1109,8 @@ namespace TNDA.Prototype
         }
 
         private string ControlsFor(int player) => player == 0
-            ? Controls == ControlType.TypeA
-                ? ManualTransmission ? CabinetText.P1TypeAManualControls : CabinetText.P1TypeAControls
-                : ManualTransmission ? CabinetText.P1ManualControls : CabinetText.P1Controls
-            : ManualTransmission ? CabinetText.P2ManualControls : CabinetText.P2Controls;
+            ? Controls == ControlType.TypeA ? CabinetText.P1TypeAControls : CabinetText.P1Controls
+            : CabinetText.P2Controls;
 
         private static string Tinted(Color color, string text) => "<color=#" + ColorUtility.ToHtmlStringRGB(color) + ">" + text + "</color>";
 

@@ -4,29 +4,33 @@ using UnityEngine;
 
 namespace TNDA.Prototype.Editor
 {
-    // Targeted additions to the existing cabinet: title option and one gear readout per player view.
-    public static class Game3Transmission
+    // Targeted additions to the existing cabinet: the title's controls option and one speed readout per player view.
+    // (The manual/automatic gearbox was removed on 2026-11-18; Apply also deletes its old title line.)
+    public static class Game3SpeedHud
     {
         public static void Apply(DemolitionGame game, int width, int height)
         {
             var cabinet = (RectTransform)game.header.transform.parent;
             var title = (RectTransform)game.attractScreen.transform;
-            Undo.RecordObject(game, "Transmission HUD");
-            game.attractTransmission = Label(title, "Transmission option", 0, height - 79, width, 13, ArcadeGame.Yellow);
-            game.attractControlsType = Label(title, "Controls option", 0, height - 97, width, 13, ArcadeGame.Yellow);
+            Undo.RecordObject(game, "Speed HUD");
+            var oldTransmission = title.Find("Transmission option");
+            if (oldTransmission != null) Undo.DestroyObjectImmediate(oldTransmission.gameObject);
+            game.attractControlsType = Label(title, "Controls option", 0, height - 79, width, 13, ArcadeGame.Yellow);
             game.attractControls = new[] {
                 title.Find("P1 controls").GetComponent<TMP_Text>(),
                 title.Find("P2 controls").GetComponent<TMP_Text>()
             };
-            game.gearLabels = new TMP_Text[2];
+            game.speedLabels = new TMP_Text[2];
             for (int i = 0; i < 2; i++)
             {
-                var box = Rect(cabinet, "P" + (i + 1) + " gear", width - 96, 20 + (i == 0 ? height / 2 : 0), 90, 17);
+                var old = cabinet.Find("P" + (i + 1) + " gear");
+                if (old != null && cabinet.Find("P" + (i + 1) + " speed") == null) { Undo.RecordObject(old.gameObject, "Speed HUD"); old.name = "P" + (i + 1) + " speed"; }
+                var box = Rect(cabinet, "P" + (i + 1) + " speed", width - 96, 20 + (i == 0 ? height / 2 : 0), 90, 17);
                 var backing = box.GetComponent<UnityEngine.UI.Image>();
                 if (backing == null) backing = Undo.AddComponent<UnityEngine.UI.Image>(box.gameObject);
                 backing.color = Color.black;
                 backing.raycastTarget = false;
-                game.gearLabels[i] = Label(box, "Text", 0, 2, 90, 13, i == 0 ? ArcadeGame.Cyan : ArcadeGame.Yellow);
+                game.speedLabels[i] = Label(box, "Text", 0, 2, 90, 13, i == 0 ? ArcadeGame.Cyan : ArcadeGame.Yellow);
                 // Behind every title/countdown/continue/result/victory panel, above the racing picture.
                 box.SetSiblingIndex(game.overlay.transform.GetSiblingIndex());
                 box.gameObject.SetActive(false);
@@ -39,7 +43,7 @@ namespace TNDA.Prototype.Editor
                 var rect = Rect(parent, name, x, y, w, h);
                 var label = rect.GetComponent<TextMeshProUGUI>();
                 if (label == null) label = Undo.AddComponent<TextMeshProUGUI>(rect.gameObject);
-                Undo.RecordObject(label, "Transmission HUD");
+                Undo.RecordObject(label, "Speed HUD");
                 label.font = game.header.font;
                 label.fontSharedMaterial = game.header.fontSharedMaterial;
                 label.fontSize = ArcadeFontSetup.PixelSize;
@@ -59,10 +63,10 @@ namespace TNDA.Prototype.Editor
             if (rect == null)
             {
                 rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
-                Undo.RegisterCreatedObjectUndo(rect.gameObject, "Transmission HUD");
+                Undo.RegisterCreatedObjectUndo(rect.gameObject, "Speed HUD");
                 rect.SetParent(parent, false);
             }
-            Undo.RecordObject(rect, "Transmission HUD");
+            Undo.RecordObject(rect, "Speed HUD");
             rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.zero;
             rect.anchoredPosition = new Vector2(x, y);
             rect.sizeDelta = new Vector2(w, h);

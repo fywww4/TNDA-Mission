@@ -39,7 +39,7 @@ namespace TNDA.Prototype.Tests
 
         [TestCase(false)]
         [TestCase(true)]
-        public void KeyboardLayoutMapsGasItemBrakeAndShiftsWithoutChangingP2(bool legacy)
+        public void KeyboardLayoutMapsGasItemAndBrakeWithoutChangingP2(bool legacy)
         {
             PlayerPrefs.SetInt(SaveKey, legacy ? 1 : 0);
             var keyboard = InputSystem.AddDevice<Keyboard>();
@@ -47,11 +47,9 @@ namespace TNDA.Prototype.Tests
             Press(keyboard[legacy ? Key.LeftCtrl : Key.X]);
             Press(keyboard[legacy ? Key.DownArrow : Key.A]);
             Press(keyboard.leftArrowKey);
-            Press(keyboard.qKey);
             var p1 = ArcadeGame.ReadInput(0);
             Assert.That(p1.throttle, Is.EqualTo(1));
-            Assert.That(p1.action && p1.brake && p1.shiftDownPressed, Is.True);
-            Assert.That(p1.shiftUpPressed, Is.False);
+            Assert.That(p1.action && p1.brake, Is.True);
             Assert.That(p1.steer, Is.EqualTo(-1));
             Release(keyboard[legacy ? Key.LeftCtrl : Key.X]);
             Press(keyboard[legacy ? Key.LeftCtrl : Key.X]);
@@ -63,13 +61,9 @@ namespace TNDA.Prototype.Tests
             Press(keyboard.numpad8Key);
             Press(keyboard.numpadEnterKey);
             Press(keyboard.numpad2Key);
-            Press(keyboard.numpadPlusKey);
             p2 = ArcadeGame.ReadInput(1);
             Assert.That(p2.throttle, Is.EqualTo(1));
-            Assert.That(p2.action && p2.brake && p2.shiftUpPressed, Is.True);
-            Release(keyboard.qKey);
-            Press(keyboard.eKey);
-            Assert.That(ArcadeGame.ReadInput(0).shiftUpPressed, Is.True);
+            Assert.That(p2.action && p2.brake, Is.True);
         }
 
         [TestCase(false, 0)]
@@ -85,10 +79,9 @@ namespace TNDA.Prototype.Tests
             if (legacy) Set(pad.leftStick, new Vector2(.5f, 1));
             else { Press(pad.buttonSouth); Set(pad.leftStick, new Vector2(.5f, 1)); }
             Press(legacy ? pad.buttonSouth : pad.buttonEast);
-            Press(pad.rightShoulder);
             var input = ArcadeGame.ReadInput(seat);
             Assert.That(input.throttle, Is.EqualTo(1));
-            Assert.That(input.action && input.shiftUpPressed, Is.True);
+            Assert.That(input.action, Is.True);
             Release(legacy ? pad.buttonSouth : pad.buttonEast);
             Press(legacy ? pad.buttonSouth : pad.buttonEast);
             Assert.That(ArcadeGame.ReadInput(seat).actionPressed, Is.True);

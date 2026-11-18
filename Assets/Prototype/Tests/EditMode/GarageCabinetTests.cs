@@ -17,7 +17,7 @@ namespace TNDA.Prototype.Tests
         [SetUp]
         public void OpenCabinetWithACleanIsolatedSave()
         {
-            var keys = new[] { "TNDA.Gold", ArcadeGame.TransmissionSaveKey, ArcadeGame.ControlsSaveKey, "WreckBest" }
+            var keys = new[] { "TNDA.Gold", ArcadeGame.ControlsSaveKey, "WreckBest" }
                 .Concat(Enum.GetValues(typeof(VehicleAbility)).Cast<VehicleAbility>().Select(a => "TNDA.Upgrades." + a))
                 .Concat(Challenges.All.SelectMany(c => new[] { "TNDA.Challenge." + c.Id + ".Best", "TNDA.Challenge." + c.Id + ".Unlocked" }));
             foreach (string key in keys) { save[key] = (PlayerPrefs.HasKey(key), PlayerPrefs.GetInt(key)); PlayerPrefs.DeleteKey(key); }
@@ -50,11 +50,10 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
-        public void TitleOpensGarageAndReturningKeepsModeAndTransmission()
+        public void TitleOpensGarageAndReturningKeepsMode()
         {
             Assert.That(game.garage, Is.Not.Null, "saved scene must wire the garage");
             game.SelectMode(CabinetMode.Challenge);
-            game.SelectTransmission(true);
             game.OpenGarage();
             Assert.That(game.Phase, Is.EqualTo(ArcadePhase.Garage));
             Assert.That(game.garage.gameObject.activeSelf, Is.True);
@@ -65,7 +64,6 @@ namespace TNDA.Prototype.Tests
             Assert.That(game.garage.gameObject.activeSelf, Is.False);
             Assert.That(game.attractScreen.activeSelf, Is.True);
             Assert.That(game.Mode, Is.EqualTo(CabinetMode.Challenge));
-            Assert.That(game.ManualTransmission, Is.True);
         }
 
         [Test]

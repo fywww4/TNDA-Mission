@@ -24,8 +24,6 @@ namespace TNDA.Prototype
             new[] { new EliminationStep(45, 1), new EliminationStep(80, 1), new EliminationStep(120, 1) };
         public float RoundSeconds => eliminations[eliminations.Length - 1].at;
         public float driveSpeed = 3.5f, accelerationPerSecond = 2f, coastDownPerSecond = 2.2f;
-        // One saved cabinet setting shared by human seats. Computer drivers always use automatic.
-        public bool manualTransmission;
         public VehicleUpgrades playerUpgrades;
         public float respawnSeconds = 3;
         public int wreckPenalty = 250, wreckBonus = 300;
@@ -224,7 +222,7 @@ namespace TNDA.Prototype
                 float topSpeed = Tuning.driveSpeed * (car.computer ? AiTopSpeed(car) : 1) * (car.HasCherry ? Tuning.cherrySpeedMultiplier : 1);
                 topSpeed *= 1 + HumanBonus(car, VehicleAbility.TopSpeed);
                 Vector2 from = car.position;
-                car.Drive(dt, input, topSpeed, ramp, Tuning.manualTransmission && !car.computer,
+                car.Drive(dt, input, topSpeed, ramp,
                     1 + HumanBonus(car, VehicleAbility.Handling));
                 // Bumper-car slide from recent hits, fading out.
                 car.AdvanceSlide(dt, Tuning.bumpFriction);

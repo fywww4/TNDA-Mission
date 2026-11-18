@@ -83,7 +83,7 @@ namespace TNDA.Prototype.Editor
             foreach (var view in game.continuePanels) Centre((RectTransform)view.panel.transform);   // Mode7Stage moves them per view
             LayOutAttract((RectTransform)game.attractScreen.transform);
             LayOutVictory((RectTransform)game.victoryScreen.transform);
-            Game3Transmission.Apply(game, W, H);
+            Game3SpeedHud.Apply(game, W, H);
             Game3Garage.Apply(stage);
             Mode7StandingsLayout.Apply(stage);
             EditorUtility.SetDirty(game);

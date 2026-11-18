@@ -36,8 +36,6 @@ namespace TNDA.Prototype
         // already-hidden wreck that gets eliminated shows again while it flies out.
         public bool Visible => alive || IsSpinningOut;
         public int FinalPlace { get; internal set; }
-        // 0 is reverse; the forward gears are 1..4.
-        public int Gear { get; private set; } = 1;
 
         // Bumps into walls, props and cars, and lives started; the AI driver watches these to replan.
         public int Collisions { get; private set; }
@@ -76,7 +74,6 @@ namespace TNDA.Prototype
 
         private void ClearTransientState()
         {
-            Gear = 1;
             speed = stun = cooldown = respawn = shieldSeconds = spawnProtection = CherrySeconds = SlipSeconds = spinSpeed = 0;
             hitSpinRate = hitSpinSeconds = 0;
             flightLeft = flightSeconds = flightHeight = flightBase = 0;
@@ -199,7 +196,7 @@ namespace TNDA.Prototype
                 spinSpeed = 0;
         }
 
-        public void Drive(float dt, ArcadeInput input, float maxSpeed, float acceleration, bool manual = false, float turnScale = 1)
+        public void Drive(float dt, ArcadeInput input, float maxSpeed, float acceleration, float turnScale = 1)
         {
             stun = Mathf.Max(0, stun - dt);
             cooldown = Mathf.Max(0, cooldown - dt);
@@ -223,30 +220,15 @@ namespace TNDA.Prototype
                 heading -= input.steer * 155 * turnScale * dt;
                 return;
             }
-            if (manual)
-            {
-                Gear = Mathf.Clamp(Gear + (input.shiftUpPressed ? 1 : 0) - (input.shiftDownPressed ? 1 : 0), 0, 4);
-                float limit = Gear == 0 ? -1 : Gear == 1 ? 1.2f : Gear == 2 ? 1.9f : Gear == 3 ? 2.5f : 3;
-                maxSpeed *= limit / 2.8f;
-                if (input.throttle > .1f)
-                    acceleration *= Gear == 1 ? 1.5f : Gear == 2 ? 1.2f : Gear == 4 ? .65f : 1;
-            }
             // No gas means coasting to a stop.
             float target = input.throttle > .1f ? maxSpeed * Mathf.Clamp01(input.throttle) : 0;
             if (input.brake)
             {
-                // Automatic brakes to zero first; continuing to hold then backs up at the manual R limit.
-                // In manual, the brake only stops the car, even with R selected.
-                if (!manual && speed <= 0) target = -maxSpeed / 2.8f;
+                // Brakes to zero first; continuing to hold then backs up at 1/2.8 of top speed.
+                if (speed <= 0) target = -maxSpeed / 2.8f;
                 else { target = 0; acceleration = 8; }
             }
             speed = Mathf.MoveTowards(speed, target, dt * acceleration);
-            if (!manual)
-            {
-                // Automatic is the original one-button speed curve; the gear readout follows it without changing it.
-                float roadSpeed = maxSpeed > 0 ? Mathf.Abs(speed) * 2.8f / maxSpeed : 0;
-                Gear = speed < 0 ? 0 : roadSpeed >= 1.9f ? 3 : roadSpeed >= 1.2f ? 2 : 1;
-            }
             heading -= input.steer * 155 * turnScale * dt * Mathf.Clamp(Mathf.Abs(speed), .9f, 1.4f) * (speed < 0 ? -1 : 1);
             position += Forward * speed * dt;
         }

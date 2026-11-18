@@ -13,16 +13,11 @@ namespace TNDA.Prototype
         // Simplified rules (user request): only the two players' controls.
         public const string P1Controls = "P1　↑油門　↓煞車　←→轉向　左Ctrl道具";
         public const string P1TypeAControls = "P1　Z油門　X道具　A煞車　←→轉向";
-        public const string P1TypeAManualControls = P1TypeAControls + "　Q降檔　E升檔";
         public const string P2Controls = "P2　數字8油門　2煞車　4 6轉向　Enter道具";
-        public const string P1ManualControls = P1Controls + "　Q降檔　E升檔";
-        public const string P2ManualControls = P2Controls + "　-降檔　+升檔";
-        public const string ManualTransmission = "手排";
-        public const string AutomaticTransmission = "自排";
-        public const string TransmissionOption = "{0}　S／手把上鍵 切換";
         public const string ControlsOption = "Type {0}　Q／E・LB／RB 切換操作";
-        public const string PlayerGear = "P{0} {1} {2}檔";
-        public const string ReverseGear = "R";
+        // Each player's speedometer: arena units per second × SpeedToKmh, rounded (reversing reads positive too).
+        public const string PlayerSpeed = "P{0} {1,3} km/h";
+        public const float SpeedToKmh = 40;
         public const string Instructions = P1Controls + "\n" + P2Controls;
 
         // Title screen (the demo plays behind it). START is Space or the pad's Start.

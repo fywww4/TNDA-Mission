@@ -43,27 +43,16 @@ namespace TNDA.Prototype.Tests
             wallet.Clear();
         }
 
-        [TestCase(0, 2.8f, -1f, 1.2f, 1.9f, 2.5f, 3f)]
-        [TestCase(1, 2.94f, -1.05f, 1.26f, 1.995f, 2.625f, 3.15f)]
-        [TestCase(2, 3.08f, -1.1f, 1.32f, 2.09f, 2.75f, 3.3f)]
-        [TestCase(3, 3.22f, -1.15f, 1.38f, 2.185f, 2.875f, 3.45f)]
-        [TestCase(4, 3.36f, -1.2f, 1.44f, 2.28f, 3f, 3.6f)]
-        public void SpeedUpgradeScalesAutomaticAndEveryManualGear(int level, float auto, float reverse, float first, float second, float third, float fourth)
+        [TestCase(0, 2.8f)]
+        [TestCase(1, 2.94f)]
+        [TestCase(2, 3.08f)]
+        [TestCase(3, 3.22f)]
+        [TestCase(4, 3.36f)]
+        public void SpeedUpgradeScalesTopSpeed(int level, float top)
         {
             for (int i = 0; i < level; i++) upgrades.TryBuy(VehicleAbility.TopSpeed, wallet);
             match.Tick(10, Gas, Gas);
-            Assert.That(car.speed, Is.EqualTo(auto).Within(.0001f), "automatic");
-            float[] limits = { reverse, first, second, third, fourth };
-            match.Tuning.manualTransmission = true;
-            for (int gear = 0; gear <= 4; gear++)
-            {
-                match.Reset(1, true);
-                car.position = Vector2.zero;
-                while (car.Gear != gear)
-                    match.Tick(.001f, new ArcadeInput { shiftUpPressed = car.Gear < gear, shiftDownPressed = car.Gear > gear }, Gas);
-                match.Tick(10, Gas, Gas);
-                Assert.That(car.speed, Is.EqualTo(limits[gear]).Within(.0001f), "gear " + gear);
-            }
+            Assert.That(car.speed, Is.EqualTo(top).Within(.0001f));
         }
 
         [TestCase(0, .35f, -34.875f, .62f)]

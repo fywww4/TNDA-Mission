@@ -213,7 +213,7 @@
 | `Assets/Prototype/Runtime/MatchEvents.cs` | 比賽事件：火箭命中、撞擊（`CarRammed` 含 `ImpactKind` 正面／追撞／側撞／擦撞與 `VictimWrecked`）、櫻桃撞車、撞牆、撞碎破壞物、撿到／使用道具、火箭仍在飛、防護罩擋下、撞毀、撞毀獎勵、每次得分變化（`ScoreChanged`，供加分文字）、淘汰、比賽結束。規則只記錄事件，提示文字、顏色、停留時間與音效都由 `DemolitionGame.Cue` 決定。 |
 | `Assets/Prototype/Runtime/DemolitionGame.cs` | GAME3 場景 adapter：BreakableProp／ArenaPickup、Inspector 調整值與輸入送進 `DemolitionMatch`，再把狀態與事件轉成車輛／破壞物／木箱／火箭顯示、爆炸特效、提示文字與音效。 |
 | `Assets/Prototype/Tests/EditMode/` | EditMode 測試組件 `TNDA.Prototype.Tests.EditMode`（不載入 GAME3 場景），以 Unity CLI `run_tests --mode editor` 執行；執行期程式在 `TNDA.Prototype` 組件。 |
-| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 處理自排與手排 R／1～4、油門加速與放開滑行；開局與重生回 1 檔。規則不碰顯示物件：`Visible`（行駛中或打滑飛出中）由場景 adapter 轉成物件顯示隱藏，車色也由 adapter 在開局設定。 |
+| `Assets/Prototype/Runtime/ArcadeVehicle.cs` | 車輛資料、駕駛與生死週期 module。TakeDamage／Eliminate／Respawn 統一清理狀態；持有櫻桃、滑行、打滑飛出、名次，以及供 AI 察覺的碰撞／重生計數。VehicleLifecycleRules 傳入 Inspector 玩法值。Drive 處理油門加速、放開滑行與煞車後倒車（變速箱已於 2026-11-18 移除）。規則不碰顯示物件：`Visible`（行駛中或打滑飛出中）由場景 adapter 轉成物件顯示隱藏，車色也由 adapter 在開局設定。 |
 | `Assets/Prototype/Runtime/AiDriver.cs` | AI 駕駛 module（`car.Ai`）：依座位固定的個性（`AiPersonality`：碰碰／追王／迷糊）決定目標與道具時機；共用閃避玩家、逃離櫻桃、櫻桃追殺；比對車輛的 `Collisions`／`Spawns` 與存活車數自行重新規劃。比賽主程式經 `IAiArena` 提供局面。 |
 | `Assets/Prototype/Runtime/ArenaItems.cs` | 道具 module：`ArenaItem` 列舉、木箱抽選、使用效果、名稱／標籤／狀態文字；比賽主程式經 `IItemArena` 提供火箭與持續時間；撿到／使用道具的提示文字由 `PickupMessage`／`UsedMessage` 產生，經事件由場景 adapter 顯示。 |
 | `Assets/Prototype/Runtime/VehicleHarmPolicy.cs` | 衝撞、櫻桃、火箭與 AI 選目標共用的傷害資格規則；所有 AI 攻擊在開局前 10 秒不傷玩家，之後可傷玩家。 |
@@ -318,6 +318,8 @@
 
 驗證細節與截圖見 `Docs/Game3/manual-transmission-verification.md`。本次交付為 Unity 專案，未重建 Windows／Web 發行檔。
 
+**2026-11-18 使用者要求移除變速箱**：手排與自排都刪除，`ArcadeVehicle.Gear`、`ArcadeInput.shiftUp/DownPressed`、`MatchTuning.manualTransmission`、`ArcadeGame.ManualTransmission`／`TransmissionSaveKey` 與標題「手排／自排」切換（S／T／手把上鍵）都已移除，操作提示不再有升降檔鍵。駕駛一律是原本的一鍵油門曲線，煞車到停後繼續按住倒車（最高速 ÷2.8）。原檔位框改為速度表 `DemolitionGame.speedLabels`（物件 `P1 speed`／`P2 speed`，位置不變），顯示「P1 140 km/h」＝|速度|×`CabinetText.SpeedToKmh` 40（基礎最高速 3.5 → 140 km/h）。場景由 `Editor/Game3SpeedHud.cs`（原 `Game3Transmission.cs`）修補：刪除標題「Transmission option」，「Controls option」上移到原位置。`TransmissionTests`／`TransmissionCabinetTests` 已刪除。驗證：EditMode 219／219，Console 零錯誤、零警告。舊存檔鍵 `TNDA.ManualTransmission` 不再讀取。
+
 ## 車庫與能力升級（票單 13，2026-11-10）
 
 標題按 G／手把 B 進入車庫（2026-11-11 由 X 改為 B；標題上 B 沒有可退出的東西，所以改成開車庫，車庫內 B 仍是返回）（`ArcadePhase.Garage`），↑↓選項、左 Ctrl／手把 A 購買、Esc／手把 B 回標題。能力四項（最高速、加速、操控、強度）各 4 級，每級 +5%，價格 50／100／200／400 金幣，整台機器共用，存於 `TNDA.Upgrades.<能力>`，Delete 長按清除存檔時一併歸零。邏輯在 `Runtime/VehicleUpgrades.cs`，畫面在 `Runtime/GarageScreen.cs`，場景由 `Editor/Game3Garage.cs` 補上（`Mode7Layout` 會重跑）。`DemolitionMatch` 只對真人車套用：最高速、加速、操控加成；強度只降低被撞與被火箭命中的傷害（櫻桃碰撞不減）；AI 完全不變，仍以基礎最高速 2.8 為準。「外觀」分頁見票單 16。
@@ -376,7 +378,7 @@
 
 ## Mode 7 票單 24：SFC 操作、Type A／B 與煞車（2026-11-16）
 
-預設 Type A：P1 方向鍵轉向、Z 油門、X 道具／確認、A 煞車、S 切換手排／自排（只在標題）、Q 降檔／E 升檔。手把依 SFC 位置：下鍵油門／返回、右鍵道具／確認、左鍵煞車、上鍵於標題切換手排／自排、LB 降檔／RB 升檔。Enter／空白鍵／Start 開始，START 在比賽中不暫停；Esc 沿用返回標題功能。
+預設 Type A：P1 方向鍵轉向、Z 油門、X 道具／確認、A 煞車（2026-11-18 起無換檔鍵）。手把依 SFC 位置：下鍵油門／返回、右鍵道具／確認、左鍵煞車。Enter／空白鍵／Start 開始，START 在比賽中不暫停；Esc 沿用返回標題功能。
 
 Type B 保留 ↑ 油門、左 Ctrl 道具、手把左類比／十字鍵往上油門、下鍵道具，新增 ↓／類比往下煞車；選單手把下鍵確認、右鍵返回。標題 Q／E 或 LB／RB 切換 Type，兩位真人共用並保存於 `TNDA.ControlType`，長按 Delete 清存檔回 Type A。P2 鍵盤維持數字 8 油門、2 煞車、4／6 轉向、Enter 道具、−／＋換檔；兩支手把各自依 Type 讀鍵。舊 T 切換手排捷徑保留。
 

@@ -18,7 +18,7 @@ namespace TNDA.Prototype.Tests
         [SetUp]
         public void OpenCabinetWithACleanIsolatedSave()
         {
-            var keys = new[] { "TNDA.Gold", ArcadeGame.TransmissionSaveKey, ArcadeGame.ControlsSaveKey, "WreckBest",
+            var keys = new[] { "TNDA.Gold", ArcadeGame.ControlsSaveKey, "WreckBest",
                     "TNDA.Decals.P1", "TNDA.Decals.P2" }
                 .Concat(Enum.GetValues(typeof(CarDecal)).Cast<CarDecal>().Select(d => "TNDA.Decals.Owned." + d))
                 .Concat(Enum.GetValues(typeof(VehicleAbility)).Cast<VehicleAbility>().Select(a => "TNDA.Upgrades." + a))

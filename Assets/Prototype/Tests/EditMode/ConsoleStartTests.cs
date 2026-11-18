@@ -20,7 +20,7 @@ namespace TNDA.Prototype.Tests
         [SetUp]
         public void OpenTheGameWithAnIsolatedSave()
         {
-            var keys = new[] { "TNDA.Gold", ArcadeGame.TransmissionSaveKey, ArcadeGame.ControlsSaveKey, "WreckBest" }
+            var keys = new[] { "TNDA.Gold", ArcadeGame.ControlsSaveKey, "WreckBest" }
                 .Concat(Enum.GetValues(typeof(VehicleAbility)).Cast<VehicleAbility>().Select(a => "TNDA.Upgrades." + a));
             foreach (string key in keys) { save[key] = (PlayerPrefs.HasKey(key), PlayerPrefs.GetInt(key)); PlayerPrefs.DeleteKey(key); }
             scene = EditorSceneManager.OpenPreviewScene("Assets/Scenes/GAME3_Mode7.unity");

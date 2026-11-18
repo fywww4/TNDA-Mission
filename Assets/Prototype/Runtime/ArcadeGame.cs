@@ -17,7 +17,6 @@ namespace TNDA.Prototype
         public bool brake;
         public bool action, actionPressed;
         public bool resetSaveHeld;
-        public bool shiftUpPressed, shiftDownPressed;
         // This seat's START (P1: Space/Enter or pad 1; P2: Numpad Enter or pad 2).
         public bool startPressed;
         // Hold SELECT to see this seat's standings: Tab / Numpad 0, or its pad's Back/View.
@@ -60,19 +59,12 @@ namespace TNDA.Prototype
         // The title's player-count menu (normal mode): START opens it, left/right pick 1P or 2P, START again starts.
         public bool ChoosingPlayers { get; private set; }
         public int PlayerChoice { get; private set; } = 1;
-        public const string TransmissionSaveKey = "TNDA.ManualTransmission";
         public const string ControlsSaveKey = "TNDA.ControlType";
         private static ControlType SavedControls => PlayerPrefs.GetInt(ControlsSaveKey, 0) == 1 ? ControlType.TypeB : ControlType.TypeA;
         public ControlType Controls => SavedControls;
         public void SelectControls(ControlType controls)
         {
             PlayerPrefs.SetInt(ControlsSaveKey, controls == ControlType.TypeB ? 1 : 0);
-            PlayerPrefs.Save();
-        }
-        public bool ManualTransmission => PlayerPrefs.GetInt(TransmissionSaveKey, 0) == 1;
-        public void SelectTransmission(bool manual)
-        {
-            PlayerPrefs.SetInt(TransmissionSaveKey, manual ? 1 : 0);
             PlayerPrefs.Save();
         }
         // Title screen selection. ActiveChallenge is the challenge being played or just finished (null in normal mode,
@@ -209,8 +201,6 @@ namespace TNDA.Prototype
         {
             if (PressedAny(Key.Q, Key.E) || PadPressed(p => p.leftShoulder.wasPressedThisFrame || p.rightShoulder.wasPressedThisFrame))
                 SelectControls(Controls == ControlType.TypeA ? ControlType.TypeB : ControlType.TypeA);
-            if (PressedAny(Key.S, Key.T) || PadPressed(p => p.buttonNorth.wasPressedThisFrame))
-                SelectTransmission(!ManualTransmission);
             if (PressedAny(Key.G, Key.RightShift, Key.Numpad0) || PadPressed(p => p.selectButton.wasPressedThisFrame))
             {
                 OpenGarage();
@@ -485,8 +475,6 @@ namespace TNDA.Prototype
                 input.action = k[button].isPressed;
                 input.actionPressed = k[button].wasPressedThisFrame;
                 input.resetSaveHeld = index == 0 && k.deleteKey.isPressed;
-                input.shiftDownPressed = k[index == 0 ? Key.Q : Key.NumpadMinus].wasPressedThisFrame;
-                input.shiftUpPressed = k[index == 0 ? Key.E : Key.NumpadPlus].wasPressedThisFrame;
                 input.startPressed = index == 0 ? k.spaceKey.wasPressedThisFrame || k.enterKey.wasPressedThisFrame
                     : k.numpadEnterKey.wasPressedThisFrame;
                 input.selectHeld = k[index == 0 ? Key.Tab : Key.Numpad0].isPressed;
@@ -502,8 +490,6 @@ namespace TNDA.Prototype
                 var item = typeA ? pad.buttonEast : pad.buttonSouth;
                 input.action |= item.isPressed;
                 input.actionPressed |= item.wasPressedThisFrame;
-                input.shiftDownPressed |= pad.leftShoulder.wasPressedThisFrame;
-                input.shiftUpPressed |= pad.rightShoulder.wasPressedThisFrame;
                 input.startPressed |= pad.startButton.wasPressedThisFrame;
                 input.selectHeld |= pad.selectButton.isPressed;
             }
