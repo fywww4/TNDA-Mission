@@ -78,11 +78,12 @@ namespace TNDA.Prototype.Tests
         }
 
         // First recorded before car count and the elimination schedule were made data; re-recorded 2026-11-15 after
-        // the 3.5 top speed and ticket 18's ram knockback, side-hit spin and scrapes changed how matches play.
+        // the 3.5 top speed and ticket 18's ram knockback, side-hit spin and scrapes changed how matches play; the player
+        // cases again 2026-11-21 when hard rams began scattering scrap parts that players pull in for points.
         [TestCase(1, false, 11,
-            "0:75 0.478 (-6.012,-1.444) out 4|1:1872 0.217 (-6.005,1.994) out 3|2:4586 1.000 (-3.511,-3.228) out 2|3:5054 0.820 (3.438,-0.860) in 1|champion 3 wrecks 13 events 393 t 120.01")]
+            "0:0 0.575 (6.058,-5.622) out 4|1:1672 0.589 (-6.114,4.109) out 3|2:3270 0.011 (3.228,-3.541) out 2|3:8986 0.788 (3.799,-3.556) in 1|champion 3 wrecks 16 events 413 t 120.01")]
         [TestCase(2, false, 22,
-            "0:301 0.870 (-6.006,-4.167) out 4|1:1617 0.849 (-6.017,2.420) out 3|2:3694 0.000 (6.078,0.572) out 2|3:6642 0.367 (4.049,-0.474) in 1|champion 3 wrecks 13 events 389 t 120.01")]
+            "0:793 0.105 (-0.898,6.196) out 3|1:618 0.446 (-6.077,-4.323) out 4|2:5031 0.067 (2.041,1.665) out 2|3:5659 0.860 (1.323,1.208) in 1|champion 3 wrecks 11 events 433 t 120.01")]
         [TestCase(0, true, 33,
             "0:3096 0.838 (2.533,-2.660) in 0|1:1627 0.055 (-0.353,-3.110) in 0|2:2849 0.000 (2.771,-3.516) down 0|3:1453 0.572 (1.117,-2.381) in 0|champion -1 wrecks 12 events 301 t 60.00")]
         public void TheFourCarMatchPlaysAsBefore(int humans, bool demo, int seed, string expected)

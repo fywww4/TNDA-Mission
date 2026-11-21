@@ -8939,11 +8939,12 @@ MonoBehaviour:
   stage: {fileID: 530138701}
   sheet: {fileID: 2800000, guid: 59a9f0fa5a98c294684facecb98c5da4, type: 3}
   splashSeconds: 3
-  coverage: 0.25
-  scatter: 0.75
-  minGap: 0.85
-  holdSeconds: 0.35
+  oilSmear: {fileID: 2800000, guid: c329ae7fb8b045345a3efa882ba10663, type: 3}
+  smearHeight: 0.7
+  holdSeconds: 0.6
   fadeSeconds: 0.5
+  partSize: 0.42
+  partBlinkSeconds: 1.5
 --- !u!114 &530138704
 MonoBehaviour:
   m_ObjectHideFlags: 0

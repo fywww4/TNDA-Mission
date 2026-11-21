@@ -412,6 +412,8 @@ namespace TNDA.Prototype
                     standing.Add(new Standing { t = ball.transform, lift = 0 });
                 }
             KeepSpikeDots();
+            // Scrap parts stand on the floor (pivot at their bottom); chase views only, Mode7Debris sets their layer.
+            foreach (var part in game.partViews) if (part != null) standing.Add(new Standing { t = part.transform, lift = 0 });
             if (game.crownView != null)
             {
                 // The arena puts the crown crownHeight north of the leader; in the chase view it floats straight above.

@@ -4,11 +4,13 @@ using UnityEngine;
 
 namespace TNDA.Prototype.Editor
 {
-    // Imports the user's debris sheet (Game3/Art/Debris.png, 4 cells of 64x64) and wires Mode7Debris into GAME3_Mode7.
+    // Imports the user's debris sheet (Game3/Art/Debris.png, 4 cells of 64x64) and the big oil splat
+    // (Game3/Art/OilSmear.png, 96x80, optional) and wires Mode7Debris into GAME3_Mode7.
     // Re-runnable; keeps Inspector values already set.
     public static class Mode7DebrisArt
     {
         private const string SheetPath = "Assets/Prototype/Game3/Art/Debris.png";
+        private const string OilSmearPath = "Assets/Prototype/Game3/Art/OilSmear.png";
 
         [MenuItem("TNDA/Mode 7/Apply debris splash")]
         public static void Apply()
@@ -21,6 +23,28 @@ namespace TNDA.Prototype.Editor
 
             if (!(AssetImporter.GetAtPath(SheetPath) is TextureImporter importer))
                 throw new System.InvalidOperationException("Missing " + SheetPath + " (the 4-cell debris sheet).");
+            PixelArt(importer);
+            importer.isReadable = true;
+            importer.SaveAndReimport();
+            // The big oil splat on a player's view (2026-11-21). Missing = the sheet's oil cell, enlarged.
+            if (AssetImporter.GetAtPath(OilSmearPath) is TextureImporter oil)
+            {
+                PixelArt(oil);
+                oil.SaveAndReimport();
+            }
+
+            var debris = stage.GetComponent<Mode7Debris>();
+            if (debris == null) debris = stage.gameObject.AddComponent<Mode7Debris>();
+            debris.stage = stage;
+            debris.sheet = AssetDatabase.LoadAssetAtPath<Texture2D>(SheetPath);
+            debris.oilSmear = AssetDatabase.LoadAssetAtPath<Texture2D>(OilSmearPath);
+            EditorUtility.SetDirty(debris);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+        }
+
+        private static void PixelArt(TextureImporter importer)
+        {
             importer.textureType = TextureImporterType.Default;
             importer.npotScale = TextureImporterNPOTScale.None;
             importer.mipmapEnabled = false;
@@ -28,17 +52,6 @@ namespace TNDA.Prototype.Editor
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
             importer.alphaIsTransparency = true;
-            // Mode7Debris copies the sheet with the body reds swapped for each victim's seat colour.
-            importer.isReadable = true;
-            importer.SaveAndReimport();
-
-            var debris = stage.GetComponent<Mode7Debris>();
-            if (debris == null) debris = stage.gameObject.AddComponent<Mode7Debris>();
-            debris.stage = stage;
-            debris.sheet = AssetDatabase.LoadAssetAtPath<Texture2D>(SheetPath);
-            EditorUtility.SetDirty(debris);
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
         }
     }
 }

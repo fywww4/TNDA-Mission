@@ -298,6 +298,14 @@
 
 真人把敵車撞毀、或以 ≥ 2.1（`MatchTuning.smashSpeed`，與撞碎破壞物同一門檻）撞到敵車時，規則回報 `DebrisSplashed`，`Mode7Debris` 把被撞車的碎片（車殼換成其座位色）噴在撞人者自己的畫面（2P 只在其半邊），約遮 1/3，3 秒內滑落消失；AI 撞車、防護罩擋下、待機示範都沒有。美術 `Game3/Art/Debris.png` 為使用者提供的 4 格 64×64；接線 `Editor/Mode7DebrisArt.Apply()`。細節與驗證見 `.scratch/mode7-expansion/issues/04-debris-splash.md`。
 
+**2026-11-21 使用者改規則：零件噴在地上、油糊畫面。** 同樣的觸發條件（`DebrisSplashed`）改成把被撞車的 5 個零件（第一個必是車殼，其餘為玻璃或機械零件，取自 `Debris.png` 第 0、1、3 格）從被撞車位置往四周噴到**地上**（`ScrapParts.cs`，`DemolitionMatch.Parts` 共 24 格）。落地 0.45 秒後，2.2 單位內最近的真人車會自動把零件吸過去，每個 +10 分（`MatchTuning.partPoints`；挑戰「只能用火箭」`ramsScore=false` 時不給分），回報 `PartCollected`；AI 不吸，沒人吸的零件 8 秒後消失（最後 1.5 秒閃爍）。`Mode7Debris` 建零件看板（`game.partViews`，chase 專用層，車殼用 `CarSheetPalette` 換成被撞車座位色），`Mode7Stage` 把它們立在地上；小地圖不顯示。原本噴在畫面上的機制改給**油**：真人踩到油漬打滑（`CarSlipped`）時，`Debris.png` 第 2 格的油污糊在該玩家自己的畫面上（2P 只在其半邊），約遮 30%，0.6 秒後滑落、3 秒內消失；AI 與待機示範沒有。EditMode 220 個全過（新增 3 個零件測試；`MatchCarCountTests` 兩個真人局的指紋因零件加分與亂數重錄；移除已無用的 `Mode7DebrisTests`）。Play Mode `tmp/scrap-oil-play.cs`：撞毀噴 5 個零件立在地上、開近後全數吸走 +50、踩油後畫面出現油污（截圖 `tmp/scrap-parts.png`、`tmp/oil-smear.png`）。重新編譯後 Console 零錯誤。
+
+火箭的 Mode 7 美術（16 方向看板 `RocketSheet.png`）提示詞在 `.scratch/mode7-expansion/rocket-gpt-prompt.md`，圖到貨後再接線；目前飛行中的火箭仍是平貼地面的俯視圖。
+
+同日再調整：油污改成**一大片**（不再是多個小塊），高度約畫面 70%（`Mode7Debris.smearHeight`，以整數倍放大維持像素格），目前用 `Debris.png` 油格放大；專用美術 `OilSmear.png`（96×80）的 GPT 提示詞在 `.scratch/mode7-expansion/oil-smear-gpt-prompt.md`，到貨後放進 `Mode7Debris.oilSmear` 即可換上。撞破木柵欄改為 +50 分（`MatchTuning.fencePoints`，任何車都算，和破壞物一樣；`FenceSmashed.Points`，`ObstacleTests` 改為驗證 +50）。EditMode 220 個全過；Play Mode `tmp/scrap-oil-play.cs` 確認畫面只有一大片油污、撞破柵欄 +50，Console 零錯誤。
+
+同日油污美術到貨：使用者給的 GPT 圖（透明背景版）經 `Mode7DebrisArt` 同一流程轉成 96×80、提示詞指定的 7 色、外圈 1 px #404050 描邊，存為 `Assets/Prototype/Game3/Art/OilSmear.png`（Point、不壓縮）並指定給 `Mode7Debris.oilSmear`；選單 `TNDA/Mode 7/Apply debris splash` 會一併匯入。場景同時移除舊欄位、`holdSeconds` 改為 0.6。Play Mode 實測 P1 踩油後畫面出現新油污圖，Console 零錯誤。
+
 ## Mode 7 票單 07：8 台車金字塔淘汰（2026-11-10 完成）
 
 正式街機與待機示範為 P1～P8；120 秒一局，40 秒淘汰 4 台、80 秒淘汰 2 台、120 秒決賽。淘汰順序為低分、低耐久、較高座位；淘汰後保留名次與分數。單人 AI 為迷糊 2／追王 2／碰碰 3，雙人各 2；8 車座位的 AI 依序為碰碰、碰碰、迷糊、追王、迷糊、追王、碰碰、碰碰。舊 4 車的個性分配與固定亂數回歸保留。

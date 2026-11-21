@@ -397,6 +397,47 @@ namespace TNDA.Prototype.Tests
             Assert.IsEmpty(match.Events.OfType<DebrisSplashed>());
         }
 
+        // 零件 (2026-11-21): the debris lands on the floor instead of the player's screen.
+        [Test]
+        public void APlayersHardRamScattersTheVictimsPartsOnTheFloor()
+        {
+            P1RamsCar3(0, victimHealth: .01f, speed: 1.6f);
+
+            var parts = match.Parts.Where(p => p.active).ToArray();
+            Assert.AreEqual(match.Tuning.partsPerRam, parts.Length);
+            Assert.AreEqual(0, parts[0].kind, "the first piece is a body panel");
+            Assert.IsTrue(parts.All(p => p.Source == cars[3]));
+            for (int f = 0; f < 15; f++) match.Tick(Dt, Idle, Idle);
+            Assert.IsTrue(parts.Any(p => Vector2.Distance(p.position, cars[3].position) > .2f || p.Magnet != null), "they fly apart");
+        }
+
+        [Test]
+        public void ThePlayersCarPullsInNearbyPartsAndScoresForEach()
+        {
+            P1RamsCar3(0, victimHealth: .01f, speed: 1.6f);
+            float before = cars[0].score;
+            for (int f = 0; f < 180; f++) match.Tick(Dt, Idle, Idle);
+
+            Assert.IsFalse(match.Parts.Any(p => p.active));
+            var taken = match.Events.OfType<PartCollected>().ToArray();
+            Assert.AreEqual(match.Tuning.partsPerRam, taken.Length);
+            Assert.IsTrue(taken.All(t => t.Car == cars[0]));
+            Assert.AreEqual(before + match.Tuning.partsPerRam * match.Tuning.partPoints, cars[0].score, .001f);
+        }
+
+        [Test]
+        public void ComputerCarsLeavePartsWhereTheyLieUntilTheyAreGone()
+        {
+            P1RamsCar3(0, victimHealth: .01f, speed: 1.6f);
+            foreach (var car in cars) car.computer = true;
+            for (int f = 0; f < 120; f++) match.Tick(Dt, Idle, Idle);
+
+            Assert.AreEqual(match.Tuning.partsPerRam, match.Parts.Count(p => p.active));
+            Assert.IsEmpty(match.Events.OfType<PartCollected>());
+            for (int f = 0; f < 60 * 8; f++) match.Tick(Dt, Idle, Idle);
+            Assert.IsFalse(match.Parts.Any(p => p.active));
+        }
+
         [Test]
         public void ACherryCarThePlayerWrecksSplashesItsDebris()
         {

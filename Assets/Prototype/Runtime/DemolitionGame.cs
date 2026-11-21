@@ -72,6 +72,8 @@ namespace TNDA.Prototype
         public float spikeFrameDistance = .2f;
         // One view per spike ball, made at runtime like the sparks; Mode7Stage stands them up.
         [NonSerialized] public SpriteRenderer[] spikeBallViews = Array.Empty<SpriteRenderer>();
+        // 零件: one view per DemolitionMatch.Parts slot, made and moved by Mode7Debris; Mode7Stage stands them up.
+        [NonSerialized] public SpriteRenderer[] partViews = Array.Empty<SpriteRenderer>();
         private Sprite spikePlaceholder;
         public ArcadeProjectile[] rockets = Array.Empty<ArcadeProjectile>();
         public TMP_Text arenaBoard, leaderboard;
@@ -83,6 +85,9 @@ namespace TNDA.Prototype
         [Tooltip("Timed eliminations in order: at this many seconds knock out this many of the lowest scores. The last step is the final and the end of the round: everyone but the champion is knocked out.")]
         public EliminationStep[] eliminationSchedule = MatchTuning.DefaultEliminations();
         public float RoundSeconds => Match.Tuning.RoundSeconds;
+        // Scrap parts lying on the floor (or being pulled in), for the views.
+        public IReadOnlyList<ScrapPart> Parts => Match.Parts;
+        public float PartLifeSeconds => Match.Tuning.partLifeSeconds;
         public float driveSpeed = Defaults.driveSpeed;
         [Tooltip("Speed gained per second while gas is held (reaches top speed in about 2s).")]
         public float accelerationPerSecond = Defaults.accelerationPerSecond;
@@ -415,8 +420,8 @@ namespace TNDA.Prototype
         // Presentation-only listeners also receive wrecks in the silent attract demo.
         public event System.Action WreckPresented;
         public event System.Action<ArenaObstacle> FencePresented;
-        // A player's ram threw debris onto that player's screen (Mode7Debris). Never in the attract demo.
-        public event System.Action<DebrisSplashed> DebrisPresented;
+        // A player's car spun out on oil: smear that player's view (Mode7Debris). Never in the attract demo.
+        public event System.Action<ArcadeVehicle> OilPresented;
         // A player's chase view should shake (ticket 18). Never in the attract demo.
         public event System.Action<ShakeKick> ShakePresented;
 
@@ -429,7 +434,7 @@ namespace TNDA.Prototype
             {
                 if (e is VehicleWrecked) WreckPresented?.Invoke();
                 if (e is FenceSmashed fence) FencePresented?.Invoke(fence.Obstacle);
-                if (e is DebrisSplashed debris && !quiet && !demo) DebrisPresented?.Invoke(debris);
+                if (e is CarSlipped slip && !slip.Car.computer && !quiet && !demo) OilPresented?.Invoke(slip.Car);
                 if (!quiet && !demo && ShakePresented != null)
                     foreach (var kick in ImpactFeel.Kicks(e, Match.Tuning.smashSpeed, impactFeel)) ShakePresented(kick);
                 if (ImpactFeel.TrySparks(e, Match.Tuning.smashSpeed, out var sparkAt)) Spark(sparkAt);

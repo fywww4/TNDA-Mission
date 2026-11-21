@@ -44,14 +44,14 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
-        public void SlowFenceContactBlocksButFastContactBreaksWithoutPoints()
+        public void SlowFenceContactBlocksButFastContactBreaksForPoints()
         {
             Approach(2.09f);
             Assert.That(cars[0].position.y, Is.LessThan(-.5f), "The intact fence blocks the car's footprint.");
             Assert.That(obstacle.broken, Is.False);
             Approach(2.1f);
             Assert.That(obstacle.broken, Is.True);
-            Assert.That(cars[0].score, Is.Zero, "Terrain is not a scoring prop.");
+            Assert.That(cars[0].score, Is.EqualTo(50), "A smashed wooden fence scores like a prop (2026-11-21).");
             Assert.That(cars[0].health, Is.EqualTo(1));
         }
 

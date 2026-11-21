@@ -6,12 +6,13 @@ namespace TNDA.Prototype
     // turns them into notices, sounds and effects, and tests read them directly.
     public abstract class MatchEvent { }
 
-    // Terrain has no points; the adapter scatters wood pieces at this fixed fence.
+    // Car drove through a wooden fence and scores Points (any car, like a prop); the adapter scatters wood pieces there.
     public sealed class FenceSmashed : MatchEvent
     {
         public readonly ArcadeVehicle Car;
         public readonly ArenaObstacle Obstacle;
-        public FenceSmashed(ArcadeVehicle car, ArenaObstacle obstacle) { Car = car; Obstacle = obstacle; }
+        public readonly int Points;
+        public FenceSmashed(ArcadeVehicle car, ArenaObstacle obstacle, int points = 0) { Car = car; Obstacle = obstacle; Points = points; }
     }
 
     // A rocket struck a car (even one whose shield blocked it), at the car's position.
@@ -77,8 +78,8 @@ namespace TNDA.Prototype
         }
     }
 
-    // A player wrecked a car by driving into it, or rammed it at prop-smashing speed: pieces of Victim fly onto the
-    // Rammer's own screen. Computer rammers and shielded victims shed nothing.
+    // A player wrecked a car by driving into it, or rammed it at prop-smashing speed: pieces of Victim scatter across
+    // the floor (DemolitionMatch.Parts). Computer rammers and shielded victims shed nothing.
     public sealed class DebrisSplashed : MatchEvent
     {
         public readonly ArcadeVehicle Rammer, Victim;
@@ -169,7 +170,15 @@ namespace TNDA.Prototype
         public VehicleRevived(ArcadeVehicle car) { Car = car; }
     }
 
-    // Car drove onto Dropper's oil slick and spun out.
+    // A player's car pulled in a scrap part (Kind is its Debris.png cell) and scores for it.
+    public sealed class PartCollected : MatchEvent
+    {
+        public readonly ArcadeVehicle Car;
+        public readonly int Kind;
+        public PartCollected(ArcadeVehicle car, int kind) { Car = car; Kind = kind; }
+    }
+
+    // Car drove onto Dropper's oil slick and spun out (a player's view is smeared with oil, Mode7Debris).
     public sealed class CarSlipped : MatchEvent
     {
         public readonly ArcadeVehicle Car, Dropper;

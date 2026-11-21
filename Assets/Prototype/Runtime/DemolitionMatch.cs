@@ -51,6 +51,8 @@ namespace TNDA.Prototype
         // Driving into a prop at least this fast smashes it; a player ramming a car this fast splashes its debris.
         public float smashSpeed = 2.1f;
         public float fenceRespawnSeconds = 6;
+        // Smashing a wooden fence scores this much (2026-11-21; crates 100, barrels 75).
+        public int fencePoints = 50;
         public float rampSpeed = 2.1f, jumpSeconds = .7f, jumpHeight = .85f;
         // Spike balls (ticket 21): roll at spikeRollSpeed; a car driving into one loses spikeDamage of its durability and
         // knocks it away at spikeLaunchPerSpeed per unit of impact (up to spikeLaunchMax). From spikeFlyImpact the ball
@@ -73,6 +75,12 @@ namespace TNDA.Prototype
         // Oil: the slick spins a car out for oilSlipSeconds, earns its dropper oilBonus, and dries after oilLifeSeconds.
         public float oilSlipSeconds = .8f, oilLifeSeconds = 12;
         public int oilBonus = 50;
+        // 零件 (2026-11-21): a player's hard ram scatters partsPerRam pieces of the victim at up to partScatterSpeed,
+        // sliding to a stop (partFriction). After partLandSeconds a player's car within partMagnetRadius pulls one in at
+        // partMagnetSpeed and scores partPoints for it; a piece nobody takes is gone after partLifeSeconds.
+        public int partsPerRam = 5, partPoints = 10;
+        public float partScatterSpeed = 3f, partFriction = 5f, partLandSeconds = .45f, partMagnetRadius = 2.2f;
+        public float partMagnetSpeed = 7f, partCollectRadius = .3f, partLifeSeconds = 8f;
     }
 
     // The elimination match rules: driving, props, crates, contacts, rockets, wrecks, timed eliminations and the
@@ -191,6 +199,7 @@ namespace TNDA.Prototype
                 else if (!TerrainClear(prop.point, .65f)) prop.point = ClearFloor(prop.point, .65f);
             }
             foreach (var rocket in Rockets) rocket.Hide();
+            ResetParts();
             ResetSpikeBalls();
             contactCooldowns.Clear();
         }
@@ -235,6 +244,7 @@ namespace TNDA.Prototype
             MoveSpikeBalls(dt);
             MoveRockets(dt);
             UpdateSlicks(dt);
+            MoveParts(dt);
             while (!demo && !Finished && Elapsed >= NextElimination) EliminateNextStep();
         }
 
@@ -375,7 +385,8 @@ namespace TNDA.Prototype
                     obstacle.broken = true;
                     obstacle.respawn = Tuning.fenceRespawnSeconds;
                     car.speed *= .85f;
-                    events.Add(new FenceSmashed(car, obstacle));
+                    events.Add(new FenceSmashed(car, obstacle, Tuning.fencePoints));
+                    AddScore(car, Tuning.fencePoints);
                     continue;
                 }
                 car.position = contact;
@@ -605,10 +616,12 @@ namespace TNDA.Prototype
             victim.SpinFromHit(sign * degrees, Tuning.sideSpinSeconds);
         }
 
-        // Only a player's own rams throw debris, onto that player's screen; computer rams never do.
+        // Only a player's own rams throw the victim's parts across the floor; computer rams never do.
         private void SplashDebris(ArcadeVehicle rammer, ArcadeVehicle victim)
         {
-            if (!rammer.computer) events.Add(new DebrisSplashed(rammer, victim));
+            if (rammer.computer) return;
+            events.Add(new DebrisSplashed(rammer, victim));
+            ScatterParts(victim);
         }
 
         private void MoveRockets(float dt)
@@ -769,6 +782,7 @@ namespace TNDA.Prototype
             Champion = winner.index;
             winner.FinalPlace = 1;
             foreach (var rocket in Rockets) rocket.Hide();
+            ResetParts();
             Finished = true;
             events.Add(new MatchEnded(winner));
         }
