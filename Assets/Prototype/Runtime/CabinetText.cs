@@ -235,6 +235,16 @@ namespace TNDA.Prototype
         public const string CheatInvincibleDone = "無敵模式{0}";
         public const string CheatNeedsMatch = "比賽中才能使用";
 
+        // Developer mode (' toggles it): plain text, no icons. 2026-11-23 user request.
+        public const string DevTitle = "開發者模式　（' 關閉）";
+        public const string DevNoMatch = "沒有比賽資料";
+        public const string DevCar = "{0}　血量 {1:0}%　裝甲 ×{2:0.0#}　{3}　道具：{4}";
+        public const string DevDrops = "　木箱爆率　{0}";
+        public const string DevDrop = "{0} {1:0}%";
+        public const string DevDriving = "行駛中", DevWrecked = "撞毀，{0:0.0} 秒後重生", DevOut = "已淘汰";
+        public const string DevNone = "無";
+        public const string DevFixedCrates = "固定道具木箱不在此列；火箭限定時全為火箭";
+
         // Every string above (templates included), for building the pixel font's character set.
         public static IEnumerable<string> All => typeof(CabinetText).GetFields(BindingFlags.Public | BindingFlags.Static)
             .SelectMany(f => f.GetValue(null) is string[] list ? list : new[] { f.GetValue(null) as string })

@@ -467,6 +467,32 @@ namespace TNDA.Prototype
             return true;
         }
 
+        // Developer mode: per car health, armour, state and held item, then its crate odds (ArenaItems.Roll's rule).
+        protected override string DeveloperReport()
+        {
+            if (Match == null) return base.DeveloperReport();
+            var lines = new System.Collections.Generic.List<string> { CabinetText.DevTitle };
+            var match = Match;
+            foreach (var car in match.Cars)
+            {
+                string state = car.eliminated ? CabinetText.DevOut
+                    : car.alive ? CabinetText.DevDriving : string.Format(CabinetText.DevWrecked, car.respawn);
+                string item = car.item == ArenaItem.None ? CabinetText.DevNone : ArenaItems.Name(car.item);
+                lines.Add(string.Format(CabinetText.DevCar, car.DriverName, car.health * 100, car.armor, state, item));
+                float cherry = !match.Tuning.rocketCratesOnly && ArenaItems.IsTrailing(car, match.Cars)
+                    ? match.Tuning.trailingCherryChance : 0;
+                float third = match.Tuning.rocketCratesOnly ? 0 : (1 - cherry) / 3;
+                float rocket = match.Tuning.rocketCratesOnly ? 1 : third;
+                lines.Add(string.Format(CabinetText.DevDrops, string.Join("　",
+                    string.Format(CabinetText.DevDrop, ArenaItems.Name(ArenaItem.Shield), third * 100),
+                    string.Format(CabinetText.DevDrop, ArenaItems.Name(ArenaItem.Rocket), rocket * 100),
+                    string.Format(CabinetText.DevDrop, ArenaItems.Name(ArenaItem.Oil), third * 100),
+                    string.Format(CabinetText.DevDrop, ArenaItems.Name(ArenaItem.Cherry), cherry * 100))));
+            }
+            lines.Add(CabinetText.DevFixedCrates);
+            return string.Join("\n", lines);
+        }
+
         protected override bool CheatKnockOutEnemies()
         {
             if (!CheatMatchLive) return false;

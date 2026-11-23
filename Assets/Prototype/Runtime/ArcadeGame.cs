@@ -124,6 +124,8 @@ namespace TNDA.Prototype
         private void Update()
         {
             AudioListener.volume = masterVolume;
+            if (Pressed(Key.Quote)) SetDeveloperMode(!DeveloperMode);
+            if (DeveloperMode && developerText != null) developerText.text = DeveloperReport();
             if (Pressed(Key.Backquote)) SetCheatMenu(!CheatMenuOpen);
             else if (CheatMenuOpen)
             {
@@ -584,6 +586,56 @@ namespace TNDA.Prototype
             cheatText.alignment = TextAlignmentOptions.TopLeft;
             cheatText.richText = true;
             cheatText.raycastTarget = false;
+        }
+
+        // Developer mode (' on any screen): a plain text panel, top left, with each car's health and the crate odds.
+        // The game keeps running underneath.
+        public bool DeveloperMode { get; private set; }
+        private GameObject developerPanel;
+        private TMP_Text developerText;
+
+        public void SetDeveloperMode(bool on)
+        {
+            DeveloperMode = on;
+            if (on && developerPanel == null) BuildDeveloperPanel();
+            if (developerPanel == null) return;
+            developerPanel.SetActive(on);
+            developerPanel.transform.SetAsLastSibling();
+            if (on) developerText.text = DeveloperReport();
+        }
+
+        // What the developer panel shows; the match adapter fills it in.
+        protected virtual string DeveloperReport() => CabinetText.DevTitle + "\n" + CabinetText.DevNoMatch;
+
+        private void BuildDeveloperPanel()
+        {
+            var canvas = overlayBody.canvas.rootCanvas;
+            developerPanel = new GameObject("Developer mode", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            var rect = (RectTransform)developerPanel.transform;
+            rect.SetParent(canvas.transform, false);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
+            rect.anchoredPosition = new Vector2(4, -4);
+            rect.sizeDelta = new Vector2(504, 280);
+            var image = developerPanel.GetComponent<UnityEngine.UI.Image>();
+            image.color = new Color(0, 0, 0, .8f);
+            image.raycastTarget = false;
+            var textObject = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            var textRect = (RectTransform)textObject.transform;
+            textRect.SetParent(rect, false);
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(6, 4);
+            textRect.offsetMax = new Vector2(-6, -4);
+            developerText = textObject.GetComponent<TextMeshProUGUI>();
+            developerText.font = overlayBody.font;
+            developerText.fontSharedMaterial = overlayBody.fontSharedMaterial;
+            developerText.fontSize = 11;
+            developerText.color = White;
+            developerText.alignment = TextAlignmentOptions.TopLeft;
+            developerText.textWrappingMode = TextWrappingModes.NoWrap;
+            developerText.overflowMode = TextOverflowModes.Truncate;
+            developerText.richText = false;
+            developerText.raycastTarget = false;
         }
 
         private void RenderCheatMenu()

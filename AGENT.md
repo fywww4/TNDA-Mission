@@ -446,6 +446,10 @@ Type B 保留 ↑ 油門、左 Ctrl 道具、手把左類比／十字鍵往上�
 
 非比賽畫面按 3／4 顯示「比賽中才能使用」。選單面板在 `ArcadeGame.BuildCheatPanel` 執行時建立，不改場景。驗證：重新編譯零錯誤、零警告；Play Mode 實測因共用 Editor 卡住尚未完成。2026-11-23 補 EditMode `CheatMenuTests` 6 項（金幣、全關卡、比賽外不加分不淘汰、P1 加分、消滅敵軍奪冠、無敵只擋玩家傷害、開關不改階段），並把選單用到的「弊所敵消滅破開」7 字加進 Cubic 11 字型（`ArcadeFontSetup.GetOrCreate`），修好 `StandingsHudTests` 的字型檢查；完整 EditMode 254／254 通過。
 
+## 開發者模式（2026-11-23 使用者要求）
+
+任何畫面按 `'`（`Key.Quote`）開關，遊戲照常進行（不暫停）。左上角半透明黑底純文字面板，不用圖示、不做 Mode 7 美術、不寫測試（使用者指定）。每台車兩行：名稱、血量 %、裝甲倍數、狀態（行駛中／撞毀幾秒後重生／已淘汰）、持有道具；下一行是該車此刻撿到隨機木箱的爆率（依 `ArenaItems.Roll`：盾、火箭、油各 1/3；最後一名先有 `trailingCherryChance` 的櫻桃；火箭限定時 100% 火箭）。固定道具木箱不在計算內。面板在 `ArcadeGame.BuildDeveloperPanel` 執行時建立，內容由 `DemolitionGame.DeveloperReport` 每幀產生，文字在 `CabinetText.Dev*`，新字已烘進 Cubic 11 字型。
+
 ## Mode 7 票單 27：背景音樂（2026-11-22）
 
 `GAME3_Mode7` 的 `ArcadeMusic` 引用五首 Abstraction 的原始 OGG，素材出自 Tallbeard Studios 的 CC0 音樂包。授權文件隨曲目放在 `Assets/Prototype/Audio/Music/`。[Music Loop Bundle](https://tallbeard.itch.io/music-loop-bundle)
