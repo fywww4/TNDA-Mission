@@ -23,7 +23,8 @@ namespace TNDA.Prototype
         // size scales the car's footprint (and its picture), armor divides the damage it takes, mass sets how far a
         // ram pushes it and how hard it pushes back. nameTag replaces the seat name (P1..P8) when set.
         public int team;
-        public float size = 1, armor = 1, mass = 1;
+        // power multiplies the damage this car's rams deal (boss-stage allies).
+        public float size = 1, armor = 1, mass = 1, power = 1;
         public string nameTag;
         // Half the gap two touching cars keep apart (0.31 for an ordinary car).
         public float Radius => .31f * size;

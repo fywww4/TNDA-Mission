@@ -221,6 +221,29 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
+        public void AlliesAreHalfAgainAsStrongAndTheBossIsHalved()
+        {
+            Create(Campaign.BossFight);
+            var boss = cars[Campaign.BossSeat];
+            Assert.AreEqual(2.5f, boss.armor, 1e-4f);
+            Assert.AreEqual(1.25f, boss.mass, 1e-4f);
+            Assert.AreEqual(14, tuning.bossRocketSeconds, 1e-4f);
+            foreach (int ally in new[] { 1, 2 })
+            {
+                Assert.AreEqual(1.5f, cars[ally].armor, 1e-4f);
+                Assert.AreEqual(1.5f, cars[ally].mass, 1e-4f);
+                Assert.AreEqual(1.5f, cars[ally].power, 1e-4f);
+            }
+            // The player, the minions and the boss keep an ordinary car's ram damage.
+            foreach (int seat in new[] { 0, 3, 4, 5 }) Assert.AreEqual(1, cars[seat].power, 1e-4f);
+            foreach (int seat in new[] { 0, 4, 5 }) Assert.AreEqual(1, cars[seat].armor, 1e-4f);
+            // An ally takes two thirds of a hit.
+            cars[1].spawnProtection = 0;
+            match.ApplyDamage(cars[1], .3f);
+            Assert.AreEqual(1 - .3f / 1.5f, cars[1].health, 1e-4f);
+        }
+
+        [Test]
         public void WreckingTheBossClearsTheStage()
         {
             Create(Campaign.BossFight);
@@ -248,6 +271,8 @@ namespace TNDA.Prototype.Tests
         {
             Create(Campaign.BossFight);
             cars[0].spawnProtection = 999;
+            // The allies could wreck the boss within the time; keep it untouchable to see the clock alone.
+            cars[Campaign.BossSeat].spawnProtection = 999;
             cars[0].score = 99999; // outscoring the boss does not matter
             while (!match.Finished && match.Elapsed < Campaign.BossSeconds + 1) Tick();
             Assert.IsTrue(match.Finished);

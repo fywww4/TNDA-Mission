@@ -41,6 +41,8 @@ namespace TNDA.Prototype
         public const float BossSeconds = 180;
         // Seats in the boss stage: the player and two allies (team 1) against the boss and two minions (team 2).
         public const int BossSeat = 3;
+        // The two allies are 50% stronger than an ordinary car (2026-11-23: the boss stage was too hard).
+        public const float AllyStrength = 1.5f;
 
         // 1: four cars on the training ground. The steps first (the computers cannot hurt the player, no eliminations),
         // then a fight where a wrecked computer car is out for good and a wrecked player loses.
@@ -72,6 +74,7 @@ namespace TNDA.Prototype
                 tuning.seatNames = new[] { null, CabinetText.AllyName, CabinetText.AllyName, CabinetText.BossName,
                     CabinetText.MinionName, CabinetText.MinionName };
                 tuning.bossSeat = BossSeat;
+                tuning.allyStrength = AllyStrength;
                 tuning.wrecksKnockOut = true;
                 tuning.wreckEndsRound = true;
                 tuning.eliminations = new[] { new EliminationStep(BossSeconds, 1) };

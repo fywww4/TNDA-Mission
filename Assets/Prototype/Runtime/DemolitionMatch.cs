@@ -79,7 +79,11 @@ namespace TNDA.Prototype
         public AiPersonality[] seatPersonalities;
         public string[] seatNames;
         public int bossSeat = -1;
-        public float bossSize = 1.6f, bossArmor = 5, bossMass = 2.5f, bossRocketSeconds = 7;
+        // 2026-11-23 (the boss was too hard): armour 5 -> 2.5, mass 2.5 -> 1.25, a rocket every 7 -> 14 s.
+        public float bossSize = 1.6f, bossArmor = 2.5f, bossMass = 1.25f, bossRocketSeconds = 14;
+        // allyStrength: computer cars on a player's team take 1/allyStrength of the damage, ram with allyStrength times
+        // the damage and weigh allyStrength (1 = an ordinary car; the boss stage uses 1.5).
+        public float allyStrength = 1;
         public float bossCruiseSpeed = .8f, bossChargeSpeed = 1.25f;
         // Every challenge and campaign switch back to the arcade match.
         public void ResetChallengeSwitches()
@@ -88,6 +92,7 @@ namespace TNDA.Prototype
             aiSparesPlayers = wrecksKnockOut = false;
             seatTeams = null; seatPersonalities = null; seatNames = null;
             bossSeat = -1;
+            allyStrength = 1;
         }
         // Oil: the slick spins a car out for oilSlipSeconds, earns its dropper oilBonus, and dries after oilLifeSeconds.
         public float oilSlipSeconds = .8f, oilLifeSeconds = 12;
@@ -204,9 +209,13 @@ namespace TNDA.Prototype
                 car.ResetVehicle(starts[i].spot, starts[i].heading, humans);
                 bool boss = i == Tuning.bossSeat;
                 car.team = Tuning.seatTeams != null && i < Tuning.seatTeams.Length ? Tuning.seatTeams[i] : 0;
+                bool ally = !boss && car.computer && car.team > 0
+                    && Enumerable.Range(0, Mathf.Min(humans, Tuning.seatTeams.Length)).Any(h => Tuning.seatTeams[h] == car.team);
+                float allyScale = ally ? Tuning.allyStrength : 1;
                 car.size = boss ? Tuning.bossSize : 1;
-                car.armor = boss ? Tuning.bossArmor : 1;
-                car.mass = boss ? Tuning.bossMass : 1;
+                car.armor = boss ? Tuning.bossArmor : allyScale;
+                car.mass = boss ? Tuning.bossMass : allyScale;
+                car.power = allyScale;
                 car.nameTag = Tuning.seatNames != null && i < Tuning.seatNames.Length ? Tuning.seatNames[i] : null;
                 AiPersonality? personality = Tuning.seatPersonalities != null && i < Tuning.seatPersonalities.Length
                     ? Tuning.seatPersonalities[i] : Tuning.allAiHuntThePlayer ? AiPersonality.Hunter : (AiPersonality?)null;
@@ -621,7 +630,7 @@ namespace TNDA.Prototype
         // rammer's points and wreck bonus, and a little damage back to the rammer. True when the victim was hurt.
         private bool Strike(ArcadeVehicle attacker, ArcadeVehicle victim, float impact, float multiplier)
         {
-            float damage = (.035f + impact * .035f) * multiplier;
+            float damage = (.035f + impact * .035f) * multiplier * attacker.power;
             if (!CanHarm(attacker, victim)) damage = 0;
             bool damaged = ApplyDamage(victim, damage);
             if (damaged && Tuning.ramsScore)

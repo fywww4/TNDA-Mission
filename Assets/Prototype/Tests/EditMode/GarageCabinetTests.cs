@@ -92,6 +92,9 @@ namespace TNDA.Prototype.Tests
             for (int i = 0; i < 4; i++) Assert.That(game.TryBuySelectedUpgrade(), Is.True);
             // This fixture measures the upgrade's speed on open floor; terrain contacts have their own tests.
             game.obstacles = Array.Empty<ArenaObstacle>();
+            // Spike balls roll and crates drop at random: a fixed seed keeps the result from depending on how many
+            // random draws earlier tests made.
+            UnityEngine.Random.InitState(1);
             game.StartRun(players, challenge ? Challenges.All[0] : null);
             game.Advance(4, new ArcadeInput(), new ArcadeInput());
             var gas = new ArcadeInput { throttle = 1 };
@@ -99,6 +102,7 @@ namespace TNDA.Prototype.Tests
             {
                 for (int i = 0; i < game.cars.Length; i++) { game.cars[i].position = new Vector2(-4 + i, 0); game.cars[i].heading = 90; }
                 foreach (var prop in game.props) { prop.broken = true; prop.respawn = 100; }
+                foreach (var ball in game.spikeBalls) { ball.position = new Vector2(0, -4); ball.velocity = Vector2.zero; }
                 game.Advance(1f / 60, gas, gas);
             }
             for (int i = 0; i < players; i++) Assert.That(game.cars[i].speed, Is.EqualTo(5.25f).Within(.001f), "seat " + i);
