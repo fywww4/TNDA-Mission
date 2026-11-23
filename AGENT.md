@@ -443,7 +443,7 @@ Type B 保留 ↑ 油門、左 Ctrl 道具、手把左類比／十字鍵往上�
 4. 消滅所有敵軍（`DemolitionMatch.KnockOutEnemies`：不是玩家隊友的電腦車全部淘汰；頭目關直接判勝；單人剩一台即奪冠，雙人兩位真人繼續比；僅比賽中）
 5. 無敵模式開／關（`Cheats.Invincible`，玩家不受任何傷害，計時淘汰照常；場景載入時重設為關）
 
-非比賽畫面按 3／4 顯示「比賽中才能使用」。選單面板在 `ArcadeGame.BuildCheatPanel` 執行時建立，不改場景。驗證：重新編譯零錯誤、零警告；Play Mode 實測因共用 Editor 卡住尚未完成。
+非比賽畫面按 3／4 顯示「比賽中才能使用」。選單面板在 `ArcadeGame.BuildCheatPanel` 執行時建立，不改場景。驗證：重新編譯零錯誤、零警告；Play Mode 實測因共用 Editor 卡住尚未完成。2026-11-23 補 EditMode `CheatMenuTests` 6 項（金幣、全關卡、比賽外不加分不淘汰、P1 加分、消滅敵軍奪冠、無敵只擋玩家傷害、開關不改階段），並把選單用到的「弊所敵消滅破開」7 字加進 Cubic 11 字型（`ArcadeFontSetup.GetOrCreate`），修好 `StandingsHudTests` 的字型檢查；完整 EditMode 254／254 通過。
 
 ## Mode 7 票單 27：背景音樂（2026-11-22）
 
