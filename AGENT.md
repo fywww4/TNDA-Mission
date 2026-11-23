@@ -126,7 +126,7 @@
 
 ## Mode 7 擴充規劃（2026-11-09，尚未實作）
 
-使用者確認以 `GAME3_Mode7` 為主線，新增功能拆成票單 `.scratch/mode7-expansion/issues/01～15`（照編號與 Blocked by 開工）。用詞以根目錄 `GLOSSARY.md` 為準（「硬幣」＝投幣點數、「金幣」＝存檔的獎勵貨幣，兩者不同）。解析度改為 512×448 混合（美術 2 倍粗像素、文字原生），見 `Docs/adr/0001-hybrid-512x448-resolution.md`。內容：混合解析度與 HUD、P2 標籤、換主場景、碎片噴濺、觀眾席與鐵絲網、8 台車金字塔淘汰（40 秒淘汰 4、80 秒淘汰 2、120 秒決賽）、金幣存檔、挑戰模式三個挑戰。車庫（能力升級，票單 13；外觀為票單 16）；手排已於 2026-11-10 依票單 14 開工；關卡模式仍保留不做。觀眾席、鐵絲網、碎片的 GPT 美術提示詞已交給使用者（`crowd.png`、`fence.png`、`debris.png`），到貨前用占位圖。
+使用者確認以 `GAME3_Mode7` 為主線，新增功能拆成票單 `.scratch/mode7-expansion/issues/01～15`（照編號與 Blocked by 開工）。用詞以根目錄 `GLOSSARY.md` 為準（「硬幣」＝投幣點數、「金幣」＝存檔的獎勵貨幣，兩者不同）。解析度改為 512×448 混合（美術 2 倍粗像素、文字原生），見 `Docs/adr/0001-hybrid-512x448-resolution.md`。內容：混合解析度與 HUD、P2 標籤、換主場景、碎片噴濺、觀眾席與鐵絲網、8 台車金字塔淘汰（40 秒淘汰 4、80 秒淘汰 2、120 秒決賽）、金幣存檔、挑戰模式三個挑戰。車庫（能力升級，票單 13；外觀為票單 16）；手排已於 2026-11-10 依票單 14 開工；關卡模式已於 2026-11-22 依票單 15 完成（見下方「Mode 7 票單 15」）。觀眾席、鐵絲網、碎片的 GPT 美術提示詞已交給使用者（`crowd.png`、`fence.png`、`debris.png`），到貨前用占位圖。
 
 ## Mode 7 票單 17：主機化，按 START 開始（2026-11-10）
 
@@ -380,6 +380,8 @@
 
 一般畫面各自顯示大字名次、目前存活車數分母及自己的分數，完整八車排行榜改為按住 SELECT 展開、放開收起：P1 Tab／第 1 支手把 Back（View），P2 數字鍵盤 0／第 2 支手把 Back。兩人各在自己的半邊顯示，時間與淘汰倒數各一份，提示列保留。排行榜列出名次、車名、分數、耐久，淘汰者灰顯並保留最終名次。淘汰前 5 秒預設自動展開，可在 `Mode7StandingsHud` Inspector 關閉或調整秒數。 2026-11-17：P1 排行榜鍵由右 Shift 改為 Tab（標題畫面開車庫仍為右 Shift）。
 
+2026-11-17：小地圖改為與排行榜一起顯示（任一玩家按住 SELECT，或淘汰前自動展開時），平時隱藏；`Mode7Stage.minimapWithStandingsOnly` 可關閉改回常駐。小地圖車標由箭頭改為實心等腰三角形（7×7、16 方向）。提示文字仍為「看排行」，未改字型圖集。
+
 邏輯在 `Runtime/Mode7StandingsHud.cs`，增量接線為 `Editor/Mode7StandingsLayout.cs`（`Mode7Layout` 會沿用），所有新文字集中於 `CabinetText`。`ArcadeInput.selectHeld` 與公開 `ArcadeGame.ReadInput` 為票單 24 可共用的 SELECT 定義；尚未改動其他 SFC 操作或加入暫停。
 
 驗證：新增公開輸入／HUD 測試 6 項，完整整合 EditMode 212／212、PlayMode 4／4；1P／2P、雙人獨立按住／放開、35 秒自動展開及開關、淘汰後分母 8→4 與灰顯均已確認，字型無缺字。主專案重新編譯及網域重新載入完成，Console 即時零錯誤、零警告，最後停止 Play Mode。Standards／Spec 各 0 項。保留票單 21 共用程式的正確區塊與場景接線，原未提交的換檔鍵修正留在工作區。詳見 `Docs/Game3/standings-verification.md` 與三張 `standings-*.png`；未重建 Windows／Web 發行檔。
@@ -389,6 +391,8 @@
 預設 Type A：P1 方向鍵轉向、Z 油門、X 道具／確認、A 煞車（2026-11-18 起無換檔鍵）。手把依 SFC 位置：下鍵油門／返回、右鍵道具／確認、左鍵煞車。Enter／空白鍵／Start 開始，START 在比賽中不暫停；Esc 沿用返回標題功能。
 
 Type B 保留 ↑ 油門、左 Ctrl 道具、手把左類比／十字鍵往上油門、下鍵道具，新增 ↓／類比往下煞車；選單手把下鍵確認、右鍵返回。標題 Q／E 或 LB／RB 切換 Type，兩位真人共用並保存於 `TNDA.ControlType`，長按 Delete 清存檔回 Type A。P2 鍵盤維持數字 8 油門、2 煞車、4／6 轉向、Enter 道具、−／＋換檔；兩支手把各自依 Type 讀鍵。舊 T 切換手排捷徑保留。
+
+**2026-11-22 使用者要求只留一種操作，刪除 Type B**：`ControlType`、`ArcadeGame.Controls`／`SelectControls`／`ControlsSaveKey` 與標題「Type A／B」那一行（Q／E、LB／RB 切換）都已移除，舊存檔鍵 `TNDA.ControlType` 不再讀取。操作固定為原 Type A：P1 方向鍵轉向、Z 油門、X 道具／確認、A 煞車、Z 返回；P2 數字鍵 8 油門、2 煞車、4／6 轉向、Enter 道具；手把下鍵油門／返回、右鍵道具／確認、左鍵煞車。`CabinetText.P1Controls`／`GarageControls`／`GarageDecalControls` 現在就是這組文字（原 `*TypeAControls` 已併入）。同日整體最高速提高 25%：`driveSpeed` 3.5 → 4.375（`MatchTuning` 預設與 GAME3_Mode7 場景值），AI 與櫻桃速度依此倍率同步變快，速度表最高約 175 km/h。`MatchCarCountTests` 三組比賽指紋因速度改變重新記錄。
 
 車庫改為 SELECT（P1 右 Shift、P2 數字 0、手把 Back／View）或 G；面板按鈕不再開車庫。比賽中 SELECT 繼續顯示各自排行榜。`CabinetText`、標題 Type 選項、車庫與比賽底部提示同步更新；`Game3Transmission.Apply`／`Game3Garage.Apply`／`Mode7Layout.Apply` 保留接線。
 
@@ -405,3 +409,56 @@ Type B 保留 ↑ 油門、左 Ctrl 道具、手把左類比／十字鍵往上�
 美術：`Game3/Art/DecalTwinStripes.png`、`DecalFlames.png`、`DecalLightning.png`、`DecalChecker.png`，各為與 `CarSheet.png` 對齊的 768×48 透明圖層。目前是 `Editor/Game3Decals.cs` 依 CarSheet 的四個鍵紅色（車身像素）自動產生的占位圖；GPT 正式圖到貨後直接覆蓋同名 PNG（同尺寸），再執行 `TNDA/Mode 7/Apply garage`（或 `Mode7Layout`）即沿用同樣切圖與接線。檔案不存在時才會重新產生占位圖。接線腳本 `Docs/Game3/decals-apply.cs.txt`（eval_file 用，放回 tmp 再執行）。
 
 驗證：EditMode `CarDecalTests`（價格、金幣不足、重複購買、各座位裝備、存檔與清除）、`GarageDecalTests`（分頁切換、購買扣款、P1／P2 各自裝備、重開保留、長按 Delete 清空、AI 與 1P Panda 無圖案、櫻桃期間隱藏後恢復），全部 EditMode 233 項通過。Play Mode 實測：車庫外觀分頁 512×448 版面與展示台預覽、2P 比賽中 P1 棋盤格／P2 火焰疊在座位色上、櫻桃期間改為櫻桃條紋、結束後恢復、小地圖車色不變（`Docs/Game3/decals-play.cs.txt` 依序六段，截圖 `Docs/Game3/garage-decals.png`、`Docs/Game3/decals-race-2p.png`）；測試用金幣與外觀存檔已還原。重新編譯後 Console 零錯誤、零警告。
+
+## Mode 7 票單 15：關卡模式（2026-11-22）
+
+使用者要求做三關（2026-11-22）。標題左右鍵在「街機模式／挑戰模式／關卡模式」三者間循環，關卡模式 ↑↓ 選關、START 開始；未過前一關的關卡顯示未開放、無法進入。進度存在 `TNDA.Campaign.Stage{n}.Cleared`（`CampaignProgress`），長按 Delete 清存檔一併清除。每關開打前顯示劇情（`ArcadePhase.Story`，START 逐句、Esc 回關卡列表），劇情背景已是該關場地。結算畫面：過關按 START 進下一關劇情，失敗按 START 直接重試（不重看劇情）；第 3 關過關顯示「全部關卡完成！」。
+
+- **第 1 關 新手教學**：4 台碰碰車（AI 全為 Bumper，最高速 0.75），黑盒訓練場（`Mode7TrainingGround`：黑色格線地板＋四面內向牆，無觀眾、地形、刺球）。依序完成 6 步：油門、轉一整圈、倒車、撞車、撿木箱、用道具（`TutorialCoach`，提前做的步驟輪到時直接算完成）；教學期間 AI 不傷害玩家、時間不走。完成後全員回滿耐久開打 150 秒：撞毀即出局（`wrecksKnockOut`），3 台全出局過關，玩家撞毀或時間到失敗。
+- **第 2 關**：原本 8 台車金字塔淘汰，拿冠軍過關。
+- **第 3 關 魔王**：玩家＋2 友軍（綠色）對魔王（鋼灰色）＋2 嘍囉（紅色）。同隊不互傷、火箭穿過隊友（`VehicleHarmPolicy.Teammates`）。魔王體型 1.6 倍、裝甲 5（傷害 ÷5）、重量 2.5（衝撞推力與反彈依重量比），AI 為 `AiPersonality.Boss`：對準 2.2 秒 → 直線衝撞 1.3 秒 → 滑行 0.9 秒循環，每 7 秒得到一枚火箭、目標在 5 距離內且 15° 內就發射。撞毀魔王過關；玩家撞毀或 180 秒到失敗。友軍與嘍囉撞毀即出局。
+- 規則都在 `Campaign.cs` 各關的 rules（套在 Inspector 與挑戰規則之後）；新欄位在 `MatchTuning`（`aiSparesPlayers`、`wrecksKnockOut`、`seatTeams`、`seatPersonalities`、`seatNames`、`bossSeat` 等），一般街機／挑戰模式全部歸零，`MatchCarCountTests` 指紋不變。
+- 美術：GPT 提示詞在 `.scratch/mode7-expansion/campaign-gpt-prompts.md`（`CarSheetBoss.png` 魔王 16 方向、`TrainingFloor.png`、`TrainingWall.png`）。到貨前用程式畫的占位圖，魔王用一般車圖放大＋鋼灰色。地板／牆圖放到 `Mode7TrainingGround.floorTile`／`wallTile` 即可；魔王專屬車圖還需在 `Mode7Stage` 加掛點。
+- **訓練場美術到貨（2026-11-22）**：`Game3/Art/TrainingFloor.png`（32×32）與 `TrainingWall.png`（32×48）已接到 `Mode7TrainingGround`。GPT 給的是放大預覽：牆是剛好 4 倍，直接取第一張縮回；地板預覽是非整數倍放大（1254 px），直接取樣會讓十字偏一格，所以依預覽的格線、十字、磨損斑點位置在 32×32 重畫，顏色都量化到提示詞色票（預覽原圖存 `Art/Source/TrainingFloorSource.png`、`TrainingWallSource.png`）。匯入：Point、無壓縮、無 mipmap；地板 wrap 全 Repeat，牆水平 Repeat、垂直 Clamp。
+- **訓練場牆半透明（2026-11-22 使用者要求：外牆擋住攝影機視線）**：牆改用新 shader `TNDA/Mode7 Training Wall`（`Art/Mode7TrainingWall.shader`，材質 `Art/TrainingWall.mat`，由 `Mode7TrainingGround.wallMaterial` 引用，所以一定會進建置）。只畫朝內的面（Cull Back，鏡頭退到牆外時那面牆完全不畫）、不寫深度、不透明度 0.55；離鏡頭 4 單位內逐漸淡到 1.5 單位內的 0.12（`_Alpha`、`_NearAlpha`、`_FadeNear`、`_FadeFar`）。Queue 為 AlphaTest+10：畫在不透明與鏤空道具之後、車與特效 sprite 之前，所以車永遠蓋在牆上。地板仍用不透明的 ground 材質。`wallMaterial` 空白時退回舊的不透明牆。只影響第 1 關（訓練場只在 `TrainingGround` 時顯示）。
+- 驗證：EditMode 238 項全過（新增 `CampaignMatchTests` 10 項、`CampaignCabinetTests` 7 項）；Play Mode 以 `tmp/campaign-play.cs` 走過標題、劇情、教學、開打、第 1 關過關、魔王關、全破，Console 零錯誤。
+
+## Mode 7 票單 25：魔王關的場地與車輛外觀（2026-11-22）
+
+第 3 關（魔王關）改在「夜間泥地撞車場」，規則不變。`CampaignStage.Arena`（`CampaignArena.Standard／TrainingGround／Derby`）決定場地；規則端只換障礙物清單，各個 Mode 7 呈現元件自己看 `DemolitionGame.Arena` 決定畫什麼。
+
+- **規則**：撞車場用 `DemolitionGame.derbyObstacles`（Inspector 第二組障礙物，一般場地的 `obstacles` 不動，`MatchCarCountTests` 指紋不變），沒有刺球。新障礙物種類 `ObstacleKind.Loader`（挖土機，靠左牆）與 `Hulk`（報廢車殘骸 ×3），都和牆一樣撞不壞、AI 會繞。預設配置在 `Runtime/DerbyLayout.cs`，避開 6 個出生點、4 個木箱點與魔王出生點到玩家出生點的直線衝撞路線。木箱、油桶照常。`DemolitionGame.Terrain` 是目前比賽用的障礙物。
+- **畫面**：`Mode7DerbyArena` 畫泥土地板（`DerbyDirt.png`）；`Mode7Stage.derbySky` 夜空、`derbyGroundA/B` 調暗場外棋盤格；`Mode7Audience.derbyWall`／`derbyCrowd` 換成水泥護欄與夜間觀眾（歡呼動畫相同）；`Mode7Obstacles` 分成一般與撞車場兩組，材質第 5、6 格是 `DerbyLoader.mat`、`DerbyHulk.mat`（兩格貼圖：左格側面車頭朝左、右格正面）。
+- **車輛**：魔王用 `CarSheetBoss.png`（1280×80，16 格 80×80，接地線離底 4 px），嘍囉用 `CarSheetMinion.png`（768×48，與 CarSheet 同格式），都由使用者 2026-11-22 附的圖轉成：切 16 格、等比縮小、透明度二值化、車身紅色換成 4 個鍵紅色（魔王仍換成鋼灰色、嘍囉紅色）。使用者同日決定嘍囉改用自己的車圖，不加棋盤格塗裝；所有 AI 都沒有塗裝，玩家車庫存檔不受影響。`Mode7Stage.FramesFor(car)` 選車圖（`bossFrames`／`minionFrames`，空白就用 `carFrames`）。魔王車圖的 pixels per unit 是 32×80/48，所以一格 80 px 和一般車一格 48 px 一樣寬，只靠魔王自己的 `transform.localScale`（＝`size` 1.6，碰撞半徑同比例）放大，不會重複放大。小地圖魔王用另外烘的 11×11 三角形（一般車 7×7）。
+- **美術已到貨（2026-11-22，票單 26）**：使用者附的泥地、護欄、看台、挖土機與殘骸已轉成規格尺寸，放進 `Game3/Art/Derby*.png`。看台由預覽重新排列成橫排三格，護欄欄杆間保留全透明，泥地輪胎痕跨邊相接。已執行 `TNDA/Mode 7/Apply boss arena` 並儲存 `GAME3_Mode7`。重新接線時，`derbyObstacles` 只在空的時候寫入預設配置。
+- **驗證**：EditMode `BossArenaTests` 6 項（只有第 3 關是撞車場、撞車場只有挖土機與殘骸且無刺球、之後的一般比賽恢復原地形、出生點／木箱／魔王衝撞路線暢通、AI 無塗裝且玩家塗裝存檔不變、魔王與嘍囉車圖選擇及大小），全部 EditMode 244 項通過。Play Mode 以 `tmp/boss-arena-play.cs` 截圖 `tmp/boss-arena-front.png`、`tmp/boss-arena-loader.png`，Console 零錯誤。
+
+## 作弊選單（2026-11-22 使用者要求）
+
+遊戲執行中任何畫面按 `~`（`Key.Backquote`）開關作弊選單（Esc 也能關），開著時整個遊戲暫停。原本「按住 Tab 看排行」與標題 Tab 切換模式不變。選單用數字鍵 1～5：
+
+1. 金幣 +1000（`GoldWallet.Add`，寫入存檔）
+2. 全關卡破關（關卡模式三關全部標記為已過關）
+3. P1 分數 +1000（`DemolitionMatch.GrantScore`，僅比賽中）
+4. 消滅所有敵軍（`DemolitionMatch.KnockOutEnemies`：不是玩家隊友的電腦車全部淘汰；頭目關直接判勝；單人剩一台即奪冠，雙人兩位真人繼續比；僅比賽中）
+5. 無敵模式開／關（`Cheats.Invincible`，玩家不受任何傷害，計時淘汰照常；場景載入時重設為關）
+
+非比賽畫面按 3／4 顯示「比賽中才能使用」。選單面板在 `ArcadeGame.BuildCheatPanel` 執行時建立，不改場景。驗證：重新編譯零錯誤、零警告；Play Mode 實測因共用 Editor 卡住尚未完成。
+
+## Mode 7 票單 27：背景音樂（2026-11-22）
+
+`GAME3_Mode7` 的 `ArcadeMusic` 引用五首 Abstraction 的原始 OGG，素材出自 Tallbeard Studios 的 CC0 音樂包。授權文件隨曲目放在 `Assets/Prototype/Audio/Music/`。[Music Loop Bundle](https://tallbeard.itch.io/music-loop-bundle)
+
+| 使用位置 | 編號 | 曲目 |
+| --- | --- | --- |
+| 大廳與車庫 | 6 | Week 15 - Sunburn SPF 3000 |
+| 第一關 | 17 | Sketchbook 2025-12-11_NEURO |
+| 第二關 | 12 | Week 6 - Never Miss FIRE |
+| 第三關 | 36 | Ludum Dare 30 04 |
+| 挑戰關卡 | 34 | VGMA Challenge 06 |
+
+- 大廳切換模式與進出車庫時延續原曲。關卡曲從劇情開始，接著播過倒數和比賽。挑戰曲從開局倒數開始。
+- 配樂使用獨立的 2D 音源循環播放，換曲先淡出再淡入，各為 0.35 秒。預設音量為 0.18，受既有主音量控制。作弊選單開啟時暫停。一般 1P／2P、結算及未指定曲目的畫面在淡出後無配樂。待機示範保有大廳配樂，示範中的比賽音效仍維持靜音。
+- 桌面使用 Streaming／Vorbis。WebGL 使用 Compressed In Memory／AAC。[Unity Web 音訊手冊](https://docs.unity.com/en-us/engine/6000.6/manual/platform-specific/webgl/develop/audio)
+- 驗證包含 8 項選曲測試、完整 EditMode 248 項，以及 PlayMode 5 項。播放驗證涵蓋五首音樂、循環、淡出、倒數音效、作弊選單暫停與返回大廳。Chrome 的 WebGL 測試建置中，五首都成功播放。
+- 以預設增益量測音訊樣本，四首比賽曲的均方根音量約為 −33 至 −30 dBFS，引擎怠速約 −25 dBFS，錄製撞擊音效在一般增益下約 −23 dBFS。
