@@ -617,7 +617,7 @@ namespace TNDA.Prototype
             rect.anchoredPosition = new Vector2(4, -4);
             rect.sizeDelta = new Vector2(504, 280);
             var image = developerPanel.GetComponent<UnityEngine.UI.Image>();
-            image.color = new Color(0, 0, 0, .8f);
+            image.color = Color.black;
             image.raycastTarget = false;
             var textObject = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
             var textRect = (RectTransform)textObject.transform;
