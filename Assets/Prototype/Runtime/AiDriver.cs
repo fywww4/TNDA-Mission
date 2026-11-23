@@ -14,7 +14,10 @@ namespace TNDA.Prototype
         // crates for a while, like the ghosts' chase/scatter rhythm. A car it rams is left alone for the next chase.
         Hunter,
         // 迷糊: wanders about at random, never rams on purpose and picks up props and crates that happen to be on its way.
-        Wanderer
+        Wanderer,
+        // 魔王 (campaign stage 3): turns to face its quarry (a player first) while creeping forwards, then charges in a
+        // straight line, then coasts a moment; fires a rocket when the quarry is in front.
+        Boss
     }
 
     // What an AI driver can see of the match.
@@ -62,6 +65,13 @@ namespace TNDA.Prototype
         private BreakableProp charging;
         // A run-up this long reaches the 2.1 speed the match needs to smash a prop.
         private const float RunUp = 1.9f;
+        // 魔王 rhythm: 0 lining up, 1 charging, 2 coasting; seconds left in it, and the bumps seen when the charge began.
+        private int bossStep;
+        private float bossStepLeft;
+        private int chargeCollisions;
+        public const float BossLineUpSeconds = 2.2f, BossChargeSeconds = 1.3f, BossCoastSeconds = .9f;
+        // A 魔王 in the straight-line charge of its rhythm (the match lets it drive faster meanwhile).
+        public bool Charging => Personality == AiPersonality.Boss && bossStep == 1 && car.alive;
 
         public AiDriver(ArcadeVehicle car) { this.car = car; }
 
@@ -101,6 +111,7 @@ namespace TNDA.Prototype
             think -= dt;
             bumpedSeconds -= dt;
             if (Escaping(arena, dt, out var escape)) return escape;
+            if (Personality == AiPersonality.Boss) return BossDrive(arena, dt);
             if (car.HasCherry) HuntWithCherry(arena);
             else if (detourLeft <= 0 && chargeLeft <= 0 && (think <= 0 || Vector2.Distance(car.position, destination) < .4f
                 || (target != null && !arena.CanHarm(car, target)))) ChooseDestination(arena);
@@ -169,6 +180,8 @@ namespace TNDA.Prototype
                 stuckAnchor = car.position;
                 stuckClock = escapeLeft = detourLeft = chargeLeft = 0;
                 charging = null;
+                bossStep = 0;
+                bossStepLeft = BossLineUpSeconds;
             }
             if (car.Spawns != seenSpawns)
             {
@@ -295,6 +308,38 @@ namespace TNDA.Prototype
 
         private static Vector2 Inside(IAiArena arena, Vector2 point) => new Vector2(
             Mathf.Clamp(point.x, arena.ArenaMin.x + .5f, arena.ArenaMax.x - .5f), Mathf.Clamp(point.y, arena.ArenaMin.y + .5f, arena.ArenaMax.y - .5f));
+
+        // 魔王: line up on the quarry (the nearest player it may hit, else the nearest car), charge straight at it, coast,
+        // and again. A bump ends a charge early. A held rocket goes when the quarry is in front and in range.
+        private ArcadeInput BossDrive(IAiArena arena, float dt)
+        {
+            target = arena.Cars.Where(c => arena.CanHarm(car, c))
+                .OrderBy(c => c.computer).ThenBy(c => Vector2.Distance(c.position, car.position)).FirstOrDefault();
+            bossStepLeft -= dt;
+            if (bossStep == 1 && car.Collisions != chargeCollisions) bossStepLeft = 0;
+            if (bossStepLeft <= 0)
+            {
+                bossStep = (bossStep + 1) % 3;
+                bossStepLeft = bossStep == 0 ? BossLineUpSeconds : bossStep == 1 ? BossChargeSeconds : BossCoastSeconds;
+                chargeCollisions = car.Collisions;
+            }
+            if (target == null && (think <= 0 || Vector2.Distance(car.position, destination) < .4f))
+            {
+                destination = Roam(arena);
+                think = 3;
+            }
+            Vector2 goal = target != null ? target.position : destination;
+            Vector2 delta = (bossStep == 1 ? goal : arena.Navigate(car, goal)) - car.position;
+            float error = Mathf.DeltaAngle(car.heading, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+            bool rocket = car.item == ArenaItem.Rocket && target != null && delta.magnitude < 5 && Mathf.Abs(error) < 15;
+            // The charge keeps the heading it set off with.
+            if (bossStep == 1) return new ArcadeInput { throttle = 1, action = rocket };
+            return new ArcadeInput {
+                steer = -Mathf.Clamp(error / 38, -1, 1),
+                throttle = bossStep == 0 ? .45f : 0,
+                action = rocket
+            };
+        }
 
         private void ChooseDestination(IAiArena arena)
         {

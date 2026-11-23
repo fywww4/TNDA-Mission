@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace TNDA.Prototype.Editor
 {
-    // Targeted additions to the existing cabinet: the title's controls option and one speed readout per player view.
-    // (The manual/automatic gearbox was removed on 2026-11-18; Apply also deletes its old title line.)
+    // Targeted additions to the existing cabinet: one speed readout per player view. Apply also deletes the title's
+    // old gearbox line (removed 2026-11-18) and Type A/B line (removed 2026-11-22).
     public static class Game3SpeedHud
     {
         public static void Apply(DemolitionGame game, int width, int height)
@@ -13,9 +13,12 @@ namespace TNDA.Prototype.Editor
             var cabinet = (RectTransform)game.header.transform.parent;
             var title = (RectTransform)game.attractScreen.transform;
             Undo.RecordObject(game, "Speed HUD");
-            var oldTransmission = title.Find("Transmission option");
-            if (oldTransmission != null) Undo.DestroyObjectImmediate(oldTransmission.gameObject);
-            game.attractControlsType = Label(title, "Controls option", 0, height - 79, width, 13, ArcadeGame.Yellow);
+            // Removed title lines: the gearbox option (2026-11-18) and the Type A/B option (2026-11-22, one layout only).
+            foreach (var removed in new[] { "Transmission option", "Controls option" })
+            {
+                var old = title.Find(removed);
+                if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+            }
             game.attractControls = new[] {
                 title.Find("P1 controls").GetComponent<TMP_Text>(),
                 title.Find("P2 controls").GetComponent<TMP_Text>()

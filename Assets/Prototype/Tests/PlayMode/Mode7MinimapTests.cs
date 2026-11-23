@@ -73,6 +73,7 @@ namespace TNDA.Prototype.Tests
         [UnityTest]
         public IEnumerator MinimapHasItsOwnCoarseTextureAboveBothDebrisLayersAndBelowHud()
         {
+            stage.minimapWithStandingsOnly = false;
             foreach (int players in new[] { 1, 2 })
             {
                 stage.game.StartRun(players);
@@ -97,7 +98,14 @@ namespace TNDA.Prototype.Tests
                 stage.minimap = true;
                 yield return null;
                 Assert.That(image.gameObject.activeSelf, Is.True);
+                stage.minimapWithStandingsOnly = true;
+                yield return null;
+                Assert.That(stage.game.standingsHud.TableShown, Is.False);
+                Assert.That(image.gameObject.activeSelf, Is.False, "Without SELECT held the map stays hidden");
+                Assert.That(map.enabled, Is.False, "and its camera stops drawing");
+                stage.minimapWithStandingsOnly = false;
             }
+            stage.minimapWithStandingsOnly = true;
         }
 
         [UnityTest]

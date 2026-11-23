@@ -44,11 +44,13 @@ namespace TNDA.Prototype
 
         [Header("Minimap (the original top-down camera), in 256x224 art pixels from the bottom left")]
         public bool minimap = true;
+        [Tooltip("Show the minimap only while a standings table is open (SELECT held, or just before an elimination).")]
+        public bool minimapWithStandingsOnly = true;
         public RectInt minimapRect = DefaultMinimapRect;
         public static readonly RectInt DefaultMinimapRect = new RectInt(4, 18, 72, 48);
         [Tooltip("A layer only the minimap draws (the car blips).")]
         [Range(8, 31)] public int minimapOnlyLayer = 30;
-        [Tooltip("Size of each car's arrow on the minimap, in world units.")]
+        [Tooltip("Size of each car's triangle on the minimap, in world units.")]
         public float blipSize = 1.6f;
         [Tooltip("Side of each spike ball's white dot on the minimap, in minimap pixels.")]
         public int spikeDotPixels = 2;
@@ -72,6 +74,16 @@ namespace TNDA.Prototype
         [Tooltip("Ticket 16: the four pattern sheets (DecalTwinStripes, DecalFlames, DecalLightning, DecalChecker), 16 frames each "
             + "in carFrames' order, drawn unpaletted over a P1/P2 car (DemolitionGame.ShownDecal).")]
         public Sprite[] decalFrames;
+        [Tooltip("Ticket 25: CarSheetBoss.png sliced into 16 frames in carFrames' order, pivot on the ground line, imported so a cell "
+            + "is as wide in world units as a CarSheet cell (the boss's own scale then sizes it to its footprint). Empty = carFrames.")]
+        public Sprite[] bossFrames;
+        [Tooltip("Ticket 25: CarSheetMinion.png (768x48, same layout and size as CarSheet) for the boss's two minions. Empty = carFrames.")]
+        public Sprite[] minionFrames;
+
+        [Header("Ticket 25: campaign stage 3's night derby (Mode7DerbyArena draws the floor)")]
+        public Color derbySky = new Color32(0x10, 0x18, 0x38, 0xFF);
+        public Color derbyGroundA = new Color32(0x18, 0x18, 0x20, 0xFF);
+        public Color derbyGroundB = new Color32(0x20, 0x20, 0x28, 0xFF);
 
         private readonly Camera[] chase = new Camera[2];
         private readonly float[] chaseYaw = new float[2];
@@ -89,6 +101,10 @@ namespace TNDA.Prototype
         private (UnityEngine.UI.CanvasScaler.ScaleMode mode, float factor) scalerBefore;
         private readonly List<(SpriteRenderer view, ArcadeVehicle car)> blips = new List<(SpriteRenderer, ArcadeVehicle)>();
         private readonly Sprite[] blipFrames = new Sprite[16];
+        // Ticket 25: the boss's bigger arrow, baked at its own size rather than stretched.
+        private readonly Sprite[] bigBlipFrames = new Sprite[16];
+        private const int BlipSide = 7, BigBlipSide = 11;
+        private CampaignArena? groundArena;
         // Ticket 21: a white dot per spike ball, drawn only by the minimap (the ball sprite itself is chase-only).
         private readonly List<SpriteRenderer> spikeDots = new List<SpriteRenderer>();
         private Sprite spikeDot;
@@ -108,6 +124,17 @@ namespace TNDA.Prototype
         private readonly Dictionary<ArcadeVehicle, SpriteRenderer> decalViews = new Dictionary<ArcadeVehicle, SpriteRenderer>();
 
         private bool UseFrames => carFrames != null && carFrames.Length == 16 && carSheetMaterial != null;
+
+        // The 16-direction sheet a car is drawn from (ticket 25): the boss's and its minions' own sheets once wired,
+        // otherwise the normal one.
+        public Sprite[] FramesFor(ArcadeVehicle car) => FramesFor(car, car != null ? game.Boss : null);
+
+        private Sprite[] FramesFor(ArcadeVehicle car, ArcadeVehicle boss)
+        {
+            if (car == null || boss == null) return carFrames;
+            var own = car == boss ? bossFrames : car.team == boss.team ? minionFrames : null;
+            return own != null && own.Length == 16 ? own : carFrames;
+        }
 
         // Score pop-ups and car name tags ask for a point this far north of the car (see DemolitionGame).
         private const float TagOffset = .88f;
@@ -158,6 +185,9 @@ namespace TNDA.Prototype
             decalViews.Clear();
             foreach (var sprite in blipFrames)
                 if (sprite != null) { Destroy(sprite.texture); Destroy(sprite); }
+            foreach (var sprite in bigBlipFrames)
+                if (sprite != null) { Destroy(sprite.texture); Destroy(sprite); }
+            groundArena = null;
             foreach (var dot in spikeDots) if (dot != null) Destroy(dot.gameObject);
             spikeDots.Clear();
             if (spikeDot != null) { Destroy(spikeDot.texture); Destroy(spikeDot); }
@@ -196,11 +226,16 @@ namespace TNDA.Prototype
                 // The attract demo never shakes; a shake left from the last match ends with it.
                 if (game.Phase == ArcadePhase.Attract) shakes[i].Stop();
                 chase[i].rect = HybridResolution.ViewRect(i, two);
+                // The campaign's training ground is a closed black box.
+                chase[i].backgroundColor = game.TrainingGround ? Color.black : game.Arena == CampaignArena.Derby ? derbySky : sky;
                 Follow(i, Target(i));
                 ApplyShake(i);
             }
-            map.enabled = minimap;
-            mapImage.gameObject.SetActive(minimap);
+            if (ground != null) ground.SetActive(!game.TrainingGround);
+            ColourGround();
+            bool showMap = minimap && (!minimapWithStandingsOnly || game.standingsHud == null || game.standingsHud.TableShown);
+            map.enabled = showMap;
+            mapImage.gameObject.SetActive(showMap);
             map.cullingMask = (map.cullingMask & ~(1 << chaseOnlyLayer)) | 1 << minimapOnlyLayer;
             map.rect = new Rect(0, 0, 1, 1);
             // The whole arena out to the fence, fitted to the minimap's shape.
@@ -307,29 +342,12 @@ namespace TNDA.Prototype
             return cam;
         }
 
-        // Bake the sixteen arrow directions into texels instead of rotating a square sprite on the pixel grid.
+        // Bake the sixteen triangle directions into texels instead of rotating a square sprite on the pixel grid.
         private void MakeBlips()
         {
-            const int side = 7;
-            for (int direction = 0; direction < blipFrames.Length; direction++)
-            {
-                var texture = new Texture2D(side, side, TextureFormat.RGBA32, false)
-                    { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave };
-                float angle = direction * 22.5f * Mathf.Deg2Rad;
-                var forward = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-                for (int y = 0; y < side; y++) for (int x = 0; x < side; x++)
-                {
-                    var pixel = new Vector2(x - 3, y - 3);
-                    float along = Vector2.Dot(pixel, forward), across = Mathf.Abs(pixel.x * forward.y - pixel.y * forward.x);
-                    bool head = along >= -1 && across <= (3.5f - along) * .78f;
-                    bool shaft = along < -1 && along >= -3.5f && across <= 1;
-                    // Red is tinted by the car palette, including P3/P4's three-texel stripes.
-                    texture.SetPixel(x, y, head || shaft ? Color.red : Color.clear);
-                }
-                texture.Apply();
-                blipFrames[direction] = Sprite.Create(texture, new Rect(0, 0, side, side), Vector2.one * .5f, side);
-                blipFrames[direction].hideFlags = HideFlags.DontSave;
-            }
+            BakeBlips(blipFrames, BlipSide);
+            BakeBlips(bigBlipFrames, BigBlipSide);
+
             foreach (var car in game.cars)
             {
                 if (car == null) continue;
@@ -341,6 +359,31 @@ namespace TNDA.Prototype
                 renderer.sharedMaterial = car.body.sharedMaterial;
                 renderer.sortingOrder = 1000;
                 blips.Add((renderer, car));
+            }
+        }
+
+        // One sprite per sixteenth of a turn, side texels square; 7 is the normal arrow and the shape scales with it.
+        private static void BakeBlips(Sprite[] frames, int side)
+        {
+            float k = (side - 1) / 6f;
+            for (int direction = 0; direction < frames.Length; direction++)
+            {
+                var texture = new Texture2D(side, side, TextureFormat.RGBA32, false)
+                    { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave };
+                float angle = direction * 22.5f * Mathf.Deg2Rad;
+                var forward = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                for (int y = 0; y < side; y++) for (int x = 0; x < side; x++)
+                {
+                    var pixel = new Vector2(x - 3 * k, y - 3 * k);
+                    float along = Vector2.Dot(pixel, forward), across = Mathf.Abs(pixel.x * forward.y - pixel.y * forward.x);
+                    // A solid isosceles triangle, tip forward, base behind the centre.
+                    bool inside = along >= -3 * k && across <= (3.5f * k - along) * .45f;
+                    // Red is tinted by the car palette, including P3/P4's three-texel stripes.
+                    texture.SetPixel(x, y, inside ? Color.red : Color.clear);
+                }
+                texture.Apply();
+                frames[direction] = Sprite.Create(texture, new Rect(0, 0, side, side), Vector2.one * .5f, side);
+                frames[direction].hideFlags = HideFlags.DontSave;
             }
         }
 
@@ -459,6 +502,7 @@ namespace TNDA.Prototype
             if (seat < 0) return;
             foreach (var group in standingGroups.Values) group.enabled = true;
             var rot = cam.transform.rotation;
+            var boss = game.Boss;
             foreach (var s in standing)
             {
                 if (s.t == null) continue;
@@ -472,7 +516,7 @@ namespace TNDA.Prototype
                     Vector2 from = (Vector2)s.t.position - (Vector2)cam.transform.position;
                     float bearing = from.sqrMagnitude > 1e-6f ? Mathf.Atan2(from.y, from.x) * Mathf.Rad2Deg : chaseYaw[seat];
                     int frame = Mathf.RoundToInt(Mathf.Repeat(bearing - s.car.heading, 360) / 22.5f) % 16;
-                    s.car.body.sprite = carFrames[frame];
+                    s.car.body.sprite = FramesFor(s.car, boss)[frame];
                     s.car.body.sharedMaterial = carSheetMaterial;
                     s.car.body.transform.localRotation = Quaternion.identity;
                     s.t.rotation = rot;
@@ -536,10 +580,10 @@ namespace TNDA.Prototype
                 var dot = go.AddComponent<SpriteRenderer>();
                 dot.sprite = spikeDot;
                 dot.color = ArcadeGame.White;
-                dot.sortingOrder = 999; // under the car arrows
+                dot.sortingOrder = 999; // under the car triangles
                 spikeDots.Add(dot);
             }
-            for (int i = 0; i < spikeDots.Count; i++) spikeDots[i].gameObject.SetActive(i < game.spikeBalls.Length);
+            for (int i = 0; i < spikeDots.Count; i++) spikeDots[i].gameObject.SetActive(i < game.spikeBalls.Length && game.SpikeBallsInPlay);
         }
 
         // The crown floats clear above the leader's name tag. The tag is cabinet text, the same height in pixels at
@@ -573,12 +617,15 @@ namespace TNDA.Prototype
                 }
                 if (s.car != null) HideDecal(s.car);
             }
+            var boss = game.Boss;
             foreach (var blip in blips)
             {
-                blip.view.sprite = blipFrames[Mathf.RoundToInt(Mathf.Repeat(blip.car.heading, 360) / 22.5f) % 16];
+                // The boss's arrow is baked bigger (ticket 25).
+                bool big = blip.car == boss;
+                blip.view.sprite = (big ? bigBlipFrames : blipFrames)[Mathf.RoundToInt(Mathf.Repeat(blip.car.heading, 360) / 22.5f) % 16];
                 // Whole texels and pixel-aligned edges keep every baked direction and stripe intact on the map.
                 float pixel = map.orthographicSize * 2 / map.pixelHeight;
-                int pixels = 7 * Mathf.Max(1, Mathf.RoundToInt(blipSize / (7 * pixel)));
+                int pixels = (big ? BigBlipSide : BlipSide) * Mathf.Max(1, Mathf.RoundToInt(blipSize / (BlipSide * pixel)));
                 float halfPixel = pixels % 2 * .5f;
                 var at = map.WorldToViewportPoint(blip.car.position);
                 at.x = (Mathf.Round(at.x * map.pixelWidth - halfPixel) + halfPixel) / map.pixelWidth;
@@ -661,6 +708,18 @@ namespace TNDA.Prototype
             cam.depth = map.depth - 1 - seat;
             cam.transparencySortMode = TransparencySortMode.Perspective;
             return cam;
+        }
+
+        // The checker outside the fence is darker at the night derby (ticket 25).
+        private void ColourGround()
+        {
+            if (ground == null || groundArena == game.Arena) return;
+            groundArena = game.Arena;
+            bool night = game.Arena == CampaignArena.Derby;
+            Color a = night ? derbyGroundA : groundA, b = night ? derbyGroundB : groundB;
+            var tex = (Texture2D)ground.GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
+            tex.SetPixels(new[] { a, b, b, a });
+            tex.Apply();
         }
 
         // An endless-looking checker floor a hair below the arena, so the view reaches a horizon.

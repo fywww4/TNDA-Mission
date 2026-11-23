@@ -23,7 +23,8 @@ namespace TNDA.Prototype
         public static EliminationStep[] DefaultEliminations() =>
             new[] { new EliminationStep(45, 1), new EliminationStep(80, 1), new EliminationStep(120, 1) };
         public float RoundSeconds => eliminations[eliminations.Length - 1].at;
-        public float driveSpeed = 3.5f, accelerationPerSecond = 2f, coastDownPerSecond = 2.2f;
+        // Top speed 4.375 = 3.5 + 25% (2026-11-22); AI and cherry speeds scale from it.
+        public float driveSpeed = 4.375f, accelerationPerSecond = 2f, coastDownPerSecond = 2.2f;
         public VehicleUpgrades playerUpgrades;
         public float respawnSeconds = 3;
         public int wreckPenalty = 250, wreckBonus = 300;
@@ -67,10 +68,26 @@ namespace TNDA.Prototype
         public bool wreckEndsRound = false;
         // Every computer car drives as a 追王 whose chases go only for players (and keep going for the one it rammed).
         public bool allAiHuntThePlayer = false;
-        // Every challenge switch back to the arcade match.
+        // Campaign switches (ticket 15). aiSparesPlayers: computer cars cannot hurt players (the tutorial steps).
+        // wrecksKnockOut: a wrecked computer car is out for good instead of respawning; when only one car is left it wins.
+        // seatTeams / seatPersonalities / seatNames: per seat (null = everyone alone / the usual personalities / P1..P8).
+        // bossSeat: that seat is the boss (bossSize, bossArmor, bossMass; a rocket every bossRocketSeconds; cruises and
+        // charges at those shares of top speed). Wrecking it wins the round for the players; the final at the end of
+        // the schedule is a loss instead.
+        public bool aiSparesPlayers = false, wrecksKnockOut = false;
+        public int[] seatTeams;
+        public AiPersonality[] seatPersonalities;
+        public string[] seatNames;
+        public int bossSeat = -1;
+        public float bossSize = 1.6f, bossArmor = 5, bossMass = 2.5f, bossRocketSeconds = 7;
+        public float bossCruiseSpeed = .8f, bossChargeSpeed = 1.25f;
+        // Every challenge and campaign switch back to the arcade match.
         public void ResetChallengeSwitches()
         {
             rocketCratesOnly = false; ramsScore = true; wreckEndsRound = false; allAiHuntThePlayer = false;
+            aiSparesPlayers = wrecksKnockOut = false;
+            seatTeams = null; seatPersonalities = null; seatNames = null;
+            bossSeat = -1;
         }
         // Oil: the slick spins a car out for oilSlipSeconds, earns its dropper oilBonus, and dries after oilLifeSeconds.
         public float oilSlipSeconds = .8f, oilLifeSeconds = 12;
@@ -97,6 +114,7 @@ namespace TNDA.Prototype
         private readonly List<MatchEvent> events = new List<MatchEvent>();
         private readonly Dictionary<(ArcadeVehicle, ArcadeVehicle), float> contactCooldowns = new Dictionary<(ArcadeVehicle, ArcadeVehicle), float>();
         private bool demo;
+        private float bossRocketClock;
 
         public DemolitionMatch(ArcadeVehicle[] cars, BreakableProp[] props, ArenaPickup[] pickups, ArcadeProjectile[] rockets, MatchTuning tuning,
             ArenaObstacle[] obstacles = null, SpikeBall[] spikeBalls = null)
@@ -179,10 +197,20 @@ namespace TNDA.Prototype
             events.Clear();
             foreach (var obstacle in Obstacles) { obstacle.broken = false; obstacle.respawn = 0; }
             var starts = StartSpots();
+            bossRocketClock = 0;
             for (int i = 0; i < Cars.Length; i++)
             {
-                Cars[i].ResetVehicle(starts[i].spot, starts[i].heading, humans);
-                Cars[i].Ai.BeginMatch(Tuning.allAiHuntThePlayer ? AiPersonality.Hunter : (AiPersonality?)null, cars: Cars.Length);
+                var car = Cars[i];
+                car.ResetVehicle(starts[i].spot, starts[i].heading, humans);
+                bool boss = i == Tuning.bossSeat;
+                car.team = Tuning.seatTeams != null && i < Tuning.seatTeams.Length ? Tuning.seatTeams[i] : 0;
+                car.size = boss ? Tuning.bossSize : 1;
+                car.armor = boss ? Tuning.bossArmor : 1;
+                car.mass = boss ? Tuning.bossMass : 1;
+                car.nameTag = Tuning.seatNames != null && i < Tuning.seatNames.Length ? Tuning.seatNames[i] : null;
+                AiPersonality? personality = Tuning.seatPersonalities != null && i < Tuning.seatPersonalities.Length
+                    ? Tuning.seatPersonalities[i] : Tuning.allAiHuntThePlayer ? AiPersonality.Hunter : (AiPersonality?)null;
+                car.Ai.BeginMatch(personality, cars: Cars.Length);
             }
             foreach (var pickup in Pickups)
             {
@@ -208,6 +236,7 @@ namespace TNDA.Prototype
         {
             Elapsed += dt;
             RefreshSpawns(dt);
+            ArmBoss(dt);
             foreach (var car in Cars)
             {
                 car.AdvanceTimers(dt);
@@ -318,7 +347,23 @@ namespace TNDA.Prototype
         }
 
         private bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) =>
-            VehicleHarmPolicy.CanHarm(attacker, victim, Elapsed, Tuning.aiGraceSeconds);
+            VehicleHarmPolicy.CanHarm(attacker, victim, Elapsed, Tuning.aiGraceSeconds)
+            && !(Tuning.aiSparesPlayers && attacker.computer && !victim.computer);
+
+        // How much further than an ordinary car's a bigger car's footprint reaches (exactly 0 for an ordinary car, so
+        // the arcade match's numbers are untouched).
+        private static float Grow(ArcadeVehicle car) => .31f * (car.size - 1);
+
+        // The boss gets a rocket every bossRocketSeconds it spends without one.
+        private void ArmBoss(float dt)
+        {
+            if (Tuning.bossSeat < 0 || Tuning.bossSeat >= Cars.Length) return;
+            var boss = Cars[Tuning.bossSeat];
+            if (!boss.alive || boss.item != ArenaItem.None) { bossRocketClock = 0; return; }
+            if ((bossRocketClock += dt) < Tuning.bossRocketSeconds) return;
+            boss.item = ArenaItem.Rocket;
+            bossRocketClock = 0;
+        }
 
         IReadOnlyList<ArcadeVehicle> IAiArena.Cars => Cars;
         IReadOnlyList<BreakableProp> IAiArena.Props => Props;
@@ -333,7 +378,9 @@ namespace TNDA.Prototype
         Vector2 IAiArena.ArenaMax => Tuning.arenaMax;
 
         // Late in the match (from the first elimination) the computer cars speed up; personalities stay the same.
-        public float AiTopSpeed(ArcadeVehicle car) => (CarsKnockedOut > 0 ? Tuning.aiLateTopSpeed : Tuning.aiTopSpeed)
+        public float AiTopSpeed(ArcadeVehicle car) => car.Ai.Personality == AiPersonality.Boss
+            ? car.Ai.Charging ? Tuning.bossChargeSpeed : Tuning.bossCruiseSpeed
+            : (CarsKnockedOut > 0 ? Tuning.aiLateTopSpeed : Tuning.aiTopSpeed)
             * (car.Ai.Personality == AiPersonality.Wanderer ? Tuning.wandererTopSpeedScale : 1);
         bool IAiArena.CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim) => CanHarm(attacker, victim);
         Vector2 IAiArena.Navigate(ArcadeVehicle driver, Vector2 destination) => driver.Airborne || Obstacles.Length == 0 ? destination
@@ -403,7 +450,7 @@ namespace TNDA.Prototype
             if (car.Airborne) return;
             foreach (var prop in Props)
             {
-                if (prop.broken || Vector2.Distance(car.position, prop.point) > .6f) continue;
+                if (prop.broken || Vector2.Distance(car.position, prop.point) > .6f + Grow(car)) continue;
                 if (Mathf.Abs(car.speed) >= Tuning.smashSpeed)
                 {
                     prop.broken = true;
@@ -432,7 +479,7 @@ namespace TNDA.Prototype
             if (car.item != ArenaItem.None) return;
             foreach (var pickup in Pickups)
             {
-                if (!pickup.available || Vector2.Distance(car.position, pickup.point) > .58f) continue;
+                if (!pickup.available || Vector2.Distance(car.position, pickup.point) > .58f + Grow(car)) continue;
                 car.item = pickup.item != ArenaItem.None ? pickup.item
                     : Tuning.rocketCratesOnly ? ArenaItem.Rocket
                     : ArenaItems.Roll(ArenaItems.IsTrailing(car, Cars), Tuning.trailingCherryChance, () => Random.value);
@@ -507,17 +554,21 @@ namespace TNDA.Prototype
                 var pair = (a, b);
                 contactCooldowns.TryGetValue(pair, out float cooldown);
                 contactCooldowns[pair] = Mathf.Max(0, cooldown - dt);
-                if (!a.alive || !b.alive || a.Airborne || b.Airborne || Vector2.Distance(a.position, b.position) >= .62f) continue;
+                // Ordinary cars touch within 0.62 (exactly as before sizes existed); a bigger car reaches further.
+                float grow = Grow(a) + Grow(b);
+                if (!a.alive || !b.alive || a.Airborne || b.Airborne || Vector2.Distance(a.position, b.position) >= .62f + grow) continue;
                 Vector2 separation = (a.position - b.position).normalized;
                 if (separation.sqrMagnitude < .001f) separation = Vector2.right;
-                float overlap = .63f - Vector2.Distance(a.position, b.position);
-                a.position += separation * overlap * .5f;
-                b.position -= separation * overlap * .5f;
+                float overlap = .63f + grow - Vector2.Distance(a.position, b.position);
+                // The lighter car gives way more (half each for equal cars).
+                float aShare = b.mass / (a.mass + b.mass);
+                a.position += separation * overlap * aShare;
+                b.position -= separation * overlap * (1 - aShare);
                 if (contactCooldowns[pair] <= 0)
                 {
                     // Every new touch bounces both cars apart a little; a real ram adds more in ResolveImpact.
-                    a.ApplySlide(separation * Tuning.contactBump);
-                    b.ApplySlide(-separation * Tuning.contactBump);
+                    a.ApplySlide(separation * Tuning.contactBump * 2 * aShare);
+                    b.ApplySlide(-separation * Tuning.contactBump * 2 * (1 - aShare));
                     a.RecordCollision();
                     b.RecordCollision();
                     ResolveImpact(a, b);
@@ -555,8 +606,10 @@ namespace TNDA.Prototype
             // Bumper cars: the rammed car slides away and its nose is knocked aside; the rammer rebounds.
             Vector2 push = (victim.position - attacker.position).normalized;
             float closing = Mathf.Max(0, approachA + approachB);
-            victim.ApplySlide(push * Mathf.Min(Tuning.ramBumpPerSpeed * closing, Tuning.ramBumpMax));
-            attacker.ApplySlide(-push * Mathf.Min(Tuning.rammerReboundPerSpeed * closing, Tuning.ramBumpMax / 3));
+            // A heavier rammer sends the victim further and rebounds less (equal cars: as before).
+            float weight = attacker.mass / victim.mass;
+            victim.ApplySlide(push * Mathf.Min(Tuning.ramBumpPerSpeed * closing * weight, Tuning.ramBumpMax));
+            attacker.ApplySlide(-push * Mathf.Min(Tuning.rammerReboundPerSpeed * closing / weight, Tuning.ramBumpMax / 3));
             // Only a victim the ram could hurt spins (not a shielded, protected or grace-period car).
             if (kind == ImpactKind.Side && damaged) SpinVictim(attacker, victim, impact);
             else victim.heading += Random.Range(15f, 30f) * (Random.value < .5f ? -1 : 1);
@@ -636,7 +689,7 @@ namespace TNDA.Prototype
                 rocket.age += dt;
                 // Swept hit detection avoids skipping cars at high projectile speed.
                 var victim = Cars.Where(c => CanHarm(owner, c))
-                    .Where(c => SegmentDistance(c.position, from, rocket.position) < .42f)
+                    .Where(c => SegmentDistance(c.position, from, rocket.position) < .42f + Grow(c))
                     .OrderBy(c => Vector2.Distance(from, c.position)).FirstOrDefault();
                 if (victim != null)
                 {
@@ -682,7 +735,11 @@ namespace TNDA.Prototype
         public bool ApplyDamage(ArcadeVehicle car, float damage, bool ignoresStrength = false)
         {
             // Cherry contact is an instant wreck, while ordinary rams and rockets use durability damage.
+            // Cheat menu: players take no damage at all (the clock can still eliminate them).
+            if (Cheats.Invincible && !car.computer && !demo) return false;
             if (!ignoresStrength) damage *= 1 - HumanBonus(car, VehicleAbility.Strength);
+            // Armour (the campaign boss) cuts every hit, a cherry's too.
+            damage /= Mathf.Max(.01f, car.armor);
             float previousScore = car.score;
             Vector2 point = car.position;
             if (!car.TakeDamage(damage, LifecycleRules))
@@ -696,6 +753,8 @@ namespace TNDA.Prototype
                 int deducted = Mathf.FloorToInt(previousScore - car.score);
                 events.Add(new VehicleWrecked(car, deducted));
                 if (deducted > 0) events.Add(new ScoreChanged(car, -deducted, point));
+                if (!demo && !Finished && car.index == Tuning.bossSeat) EndBossRound(true);
+                else if (!demo && !Finished && Tuning.wrecksKnockOut && car.computer) KnockOut(car);
                 if (Tuning.wreckEndsRound && !car.computer && !demo && !Finished) EndRoundOnWreck(car);
             }
             return true;
@@ -728,6 +787,8 @@ namespace TNDA.Prototype
             bool final = stepsDone >= Tuning.eliminations.Length - 1;
             int count = CurrentStep.count;
             stepsDone++;
+            // A boss stage that reaches its final has run out of time: the boss wins.
+            if (final && Tuning.bossSeat >= 0 && Tuning.bossSeat < Cars.Length) { EndBossRound(false); return; }
             for (int i = 0; (final || i < count) && !Finished; i++) EliminateLowest();
         }
 
@@ -755,6 +816,56 @@ namespace TNDA.Prototype
             RespawnVehicle(car);
             events.Add(new VehicleRevived(car));
             return true;
+        }
+
+        // Cheat menu: points for a player straight away, shown like any other score change.
+        public void GrantScore(ArcadeVehicle car, int points)
+        {
+            if (demo || Finished || car == null) return;
+            AddScore(car, points);
+        }
+
+        // Cheat menu: every computer car that is not on a player's team is knocked out at once. A boss stage is won;
+        // a match left with one car crowns it (two players keep playing for the crown).
+        public int KnockOutEnemies()
+        {
+            if (demo || Finished) return 0;
+            var humans = Cars.Where(c => !c.computer).ToList();
+            var enemies = Cars.Where(c => c.computer && !c.eliminated && !humans.Any(h => VehicleHarmPolicy.Teammates(h, c)))
+                .ToList();
+            int count = 0;
+            foreach (var car in enemies)
+            {
+                if (Finished) break;
+                KnockOut(car);
+                count++;
+            }
+            if (!Finished && Tuning.bossSeat >= 0 && Tuning.bossSeat < Cars.Length) EndBossRound(true);
+            return count;
+        }
+
+        // wrecksKnockOut: a wrecked computer car is out for good in the place it reached; the last car left wins.
+        private void KnockOut(ArcadeVehicle car)
+        {
+            int place = Contenders;
+            car.Eliminate(place, LifecycleRules);
+            foreach (var rocket in Rockets.Where(r => r.active && r.owner == car.index)) rocket.Hide();
+            CarsKnockedOut++;
+            events.Add(new VehicleEliminated(car, place, wrecked: true));
+            if (Contenders == 1) EndRound();
+        }
+
+        // A boss stage ends: won (the boss was wrecked) crowns the player, lost (time ran out) crowns the boss. The rest
+        // still in take the places below by score.
+        private void EndBossRound(bool won)
+        {
+            var winner = won ? Cars.FirstOrDefault(c => !c.computer) ?? Cars[0] : Cars[Tuning.bossSeat];
+            int place = 2;
+            foreach (var car in Cars.Where(c => c != winner && !c.eliminated).OrderByDescending(c => c.score).ThenBy(c => c.index))
+                car.FinalPlace = place++;
+            Survived = won;
+            if (!winner.alive && !winner.eliminated) RespawnVehicle(winner);
+            Crown(winner);
         }
 
         private void EndRound()

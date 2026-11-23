@@ -5,11 +5,11 @@ using UnityEngine.InputSystem;
 
 namespace TNDA.Prototype
 {
-    public enum ArcadePhase { Attract, Playing, Results, Countdown, Garage }
+    // Story: a campaign stage's opening dialogue, page by page, before its countdown (ticket 15).
+    public enum ArcadePhase { Attract, Playing, Results, Countdown, Garage, Story }
     public enum GarageTab { Abilities, Decals }
-    // What the title screen offers: the normal 1P/2P elimination match, or single-player challenges.
-    public enum CabinetMode { Normal, Challenge }
-    public enum ControlType { TypeA, TypeB }
+    // What the title screen offers: the normal 1P/2P elimination match, single-player challenges, or the campaign.
+    public enum CabinetMode { Normal, Challenge, Campaign }
 
     public struct ArcadeInput
     {
@@ -59,20 +59,21 @@ namespace TNDA.Prototype
         // The title's player-count menu (normal mode): START opens it, left/right pick 1P or 2P, START again starts.
         public bool ChoosingPlayers { get; private set; }
         public int PlayerChoice { get; private set; } = 1;
-        public const string ControlsSaveKey = "TNDA.ControlType";
-        private static ControlType SavedControls => PlayerPrefs.GetInt(ControlsSaveKey, 0) == 1 ? ControlType.TypeB : ControlType.TypeA;
-        public ControlType Controls => SavedControls;
-        public void SelectControls(ControlType controls)
-        {
-            PlayerPrefs.SetInt(ControlsSaveKey, controls == ControlType.TypeB ? 1 : 0);
-            PlayerPrefs.Save();
-        }
         // Title screen selection. ActiveChallenge is the challenge being played or just finished (null in normal mode,
         // on the title and in the demo).
         public CabinetMode Mode { get; private set; }
         public int ChallengeCursor { get; private set; }
         public Challenge ActiveChallenge { get; private set; }
         public Challenge SelectedChallenge => Challenges.All[ChallengeCursor];
+        // Campaign (ticket 15): the stage picked on the title, the stage being told, played or just finished (null
+        // otherwise), the story page showing, and whether the last finished stage was cleared.
+        public int StageCursor { get; private set; }
+        public CampaignStage SelectedStage => Campaign.Stages[StageCursor];
+        public CampaignStage ActiveStage { get; private set; }
+        public int StoryPage { get; private set; }
+        public bool StageCleared { get; private set; }
+        private CampaignProgress progress;
+        public CampaignProgress Progress => progress ?? (progress = new CampaignProgress());
         public GarageScreen garage;
         private VehicleUpgrades upgrades;
         public VehicleUpgrades Upgrades => upgrades ?? (upgrades = new VehicleUpgrades());
@@ -90,12 +91,18 @@ namespace TNDA.Prototype
         protected GoldWallet Wallet => wallet ?? (wallet = new GoldWallet());
         public int Gold => Wallet.Total;
         private float noticeAge, goFlash;
+        // Cheat menu (~): opens on any screen while the game runs and pauses everything until it closes.
+        public bool CheatMenuOpen { get; private set; }
+        private GameObject cheatPanel;
+        private TMP_Text cheatText;
+        private string cheatStatus = "";
         [NonSerialized] private AudioClip[] sounds; // generated in Awake; a reload must not turn it into an empty array
 
         private void Awake()
         {
             // The game never uses slow motion; guard against a time scale left over from editor tooling.
             Time.timeScale = 1;
+            Cheats.Invincible = false;
             AudioListener.volume = masterVolume;
             MakeSounds();
             onePlayerButton.onClick.AddListener(() => StartRun(1));
@@ -108,6 +115,7 @@ namespace TNDA.Prototype
             PlayerCount = 1;
             Elapsed = 0;
             ActiveChallenge = null;
+            ActiveStage = null;
             ResetMatch();
             ShowAttract();
             RefreshHud();
@@ -116,17 +124,23 @@ namespace TNDA.Prototype
         private void Update()
         {
             AudioListener.volume = masterVolume;
-            bool menu = Phase == ArcadePhase.Attract || Phase == ArcadePhase.Garage || Phase == ArcadePhase.Results;
-            bool back = Controls == ControlType.TypeA
-                ? Pressed(Key.Z) || PadPressed(p => p.buttonSouth.wasPressedThisFrame)
-                : PadPressed(p => p.buttonEast.wasPressedThisFrame);
+            if (Pressed(Key.Backquote)) SetCheatMenu(!CheatMenuOpen);
+            else if (CheatMenuOpen)
+            {
+                if (Pressed(Key.Escape)) SetCheatMenu(false);
+                else CheatMenuInput();
+            }
+            if (CheatMenuOpen) return;
+            bool menu = Phase == ArcadePhase.Attract || Phase == ArcadePhase.Garage || Phase == ArcadePhase.Results
+                || Phase == ArcadePhase.Story;
+            bool back = Pressed(Key.Z) || PadPressed(p => p.buttonSouth.wasPressedThisFrame);
             if (Pressed(Key.Escape) || (menu && back)) Back();
             else
             {
                 var phase = Phase;
                 if (Phase == ArcadePhase.Attract) NavigateTitle();
                 else if (Phase == ArcadePhase.Garage) NavigateGarage();
-                if (Phase == phase && (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results)
+                if (Phase == phase && (Phase == ArcadePhase.Attract || Phase == ArcadePhase.Results || Phase == ArcadePhase.Story)
                     && (PressedAny(Key.Space, Key.Enter, Key.NumpadEnter)
                         || PadPressed(p => p.startButton.wasPressedThisFrame) || ConfirmPressed())) PressStart();
             }
@@ -163,14 +177,31 @@ namespace TNDA.Prototype
         // same game again (same player count, or a retry of the same challenge).
         public void PressStart()
         {
+            if (Phase == ArcadePhase.Story)
+            {
+                NextStoryPage();
+                return;
+            }
             if (Phase == ArcadePhase.Results)
             {
-                if (ActiveChallenge != null) TryStartChallenge(ActiveChallenge);
+                if (ActiveStage != null)
+                {
+                    // Cleared: on to the next stage's story (the last stage plays again). Failed: straight back in.
+                    var next = StageCleared ? Campaign.After(ActiveStage) : null;
+                    if (next != null) BeginStory(next);
+                    else StartRun(1, stage: ActiveStage);
+                }
+                else if (ActiveChallenge != null) TryStartChallenge(ActiveChallenge);
                 else StartRun(PlayerCount);
                 return;
             }
             if (Phase != ArcadePhase.Attract) return;
-            if (Mode == CabinetMode.Challenge)
+            if (Mode == CabinetMode.Campaign)
+            {
+                if (Progress.IsUnlocked(SelectedStage)) BeginStory(SelectedStage);
+                else Announce(CabinetText.CampaignLocked, Yellow, 2);
+            }
+            else if (Mode == CabinetMode.Challenge)
             {
                 if (!Records.IsUnlocked(SelectedChallenge)) TryUnlockChallenge(SelectedChallenge);
                 else TryStartChallenge(SelectedChallenge);
@@ -199,26 +230,86 @@ namespace TNDA.Prototype
         // player menu is open, left/right pick 1P or 2P instead.
         private void NavigateTitle()
         {
-            if (PressedAny(Key.Q, Key.E) || PadPressed(p => p.leftShoulder.wasPressedThisFrame || p.rightShoulder.wasPressedThisFrame))
-                SelectControls(Controls == ControlType.TypeA ? ControlType.TypeB : ControlType.TypeA);
             if (PressedAny(Key.G, Key.RightShift, Key.Numpad0) || PadPressed(p => p.selectButton.wasPressedThisFrame))
             {
                 OpenGarage();
                 return;
             }
-            bool sideways = PressedAny(Key.LeftArrow, Key.RightArrow, Key.Numpad4, Key.Numpad6, Key.Tab) || DirectionPressed(pad => pad.dpad.left, pad => pad.dpad.right);
+            bool left = PressedAny(Key.LeftArrow, Key.Numpad4) || DirectionPressed(pad => pad.dpad.left);
+            bool right = PressedAny(Key.RightArrow, Key.Numpad6, Key.Tab) || DirectionPressed(pad => pad.dpad.right);
             if (ChoosingPlayers)
             {
-                if (sideways) PickPlayers(3 - PlayerChoice);
+                if (left || right) PickPlayers(3 - PlayerChoice);
                 return;
             }
-            if (sideways) Mode = Mode == CabinetMode.Normal ? CabinetMode.Challenge : CabinetMode.Normal;
-            if (Mode != CabinetMode.Challenge) return;
-            if (PressedAny(Key.UpArrow, Key.Numpad8) || DirectionPressed(pad => pad.dpad.up)) MoveChallengeCursor(-1);
-            if (PressedAny(Key.DownArrow, Key.Numpad2) || DirectionPressed(pad => pad.dpad.down)) MoveChallengeCursor(1);
+            if (left || right) MoveMode(right ? 1 : -1);
+            int vertical = PressedAny(Key.UpArrow, Key.Numpad8) || DirectionPressed(pad => pad.dpad.up) ? -1
+                : PressedAny(Key.DownArrow, Key.Numpad2) || DirectionPressed(pad => pad.dpad.down) ? 1 : 0;
+            if (vertical == 0) return;
+            if (Mode == CabinetMode.Challenge) MoveChallengeCursor(vertical);
+            else if (Mode == CabinetMode.Campaign) MoveStageCursor(vertical);
         }
 
         public void SelectMode(CabinetMode mode) => Mode = mode;
+
+        // Left/right on the title: 一般 -> 挑戰 -> 關卡 and round again.
+        public void MoveMode(int delta)
+        {
+            const int count = 3;
+            Mode = (CabinetMode)((((int)Mode + delta) % count + count) % count);
+        }
+
+        public void MoveStageCursor(int delta)
+        {
+            int count = Campaign.Stages.Count;
+            StageCursor = ((StageCursor + delta) % count + count) % count;
+        }
+
+        // A campaign stage's opening story: the stage's field is set up behind the dialogue, START turns the page and
+        // after the last page the stage starts. Esc goes back to the title.
+        public void BeginStory(CampaignStage stage)
+        {
+            if (stage == null) return;
+            ActiveStage = stage;
+            ActiveChallenge = null;
+            PlayerCount = 1;
+            Elapsed = 0;
+            ChoosingPlayers = false;
+            StoryPage = 0;
+            Phase = ArcadePhase.Story;
+            if (garage != null) garage.gameObject.SetActive(false);
+            ResetMatch();
+            if (stage.Story == null || stage.Story.Count == 0) { StartRun(1, stage: stage); return; }
+            ShowStoryPage();
+            Sound(0);
+        }
+
+        public void NextStoryPage()
+        {
+            if (Phase != ArcadePhase.Story || ActiveStage == null) return;
+            if (++StoryPage >= ActiveStage.Story.Count) { StartRun(1, stage: ActiveStage); return; }
+            ShowStoryPage();
+            Sound(0);
+        }
+
+        private void ShowStoryPage()
+        {
+            string page = ActiveStage.Story[StoryPage];
+            int bar = page.IndexOf('｜');
+            string body = bar < 0 ? page : string.Format(CabinetText.StoryPage, page.Substring(0, bar), page.Substring(bar + 1));
+            ShowOverlay(string.Format(CabinetText.StageTitle, ActiveStage.Number, ActiveStage.Name), body, CabinetText.StoryHint);
+        }
+
+        // The finished stage's result panel; a clear is saved and opens the next stage.
+        protected void FinishStage(bool cleared, string body)
+        {
+            StageCleared = cleared;
+            if (cleared) Progress.MarkCleared(ActiveStage);
+            bool last = Campaign.After(ActiveStage) == null;
+            string title = cleared && last ? CabinetText.CampaignComplete
+                : string.Format(cleared ? CabinetText.StageClear : CabinetText.StageFailed, ActiveStage.Number);
+            Finish(title, body, !cleared ? CabinetText.StageRetryHint : last ? CabinetText.StageReplayHint : CabinetText.StageNextHint);
+        }
 
         public void OpenGarage()
         {
@@ -333,10 +424,12 @@ namespace TNDA.Prototype
         }
 
         // Starts a normal match for 1 or 2 players, or (with a challenge) that single-player challenge.
-        public void StartRun(int players = 1, Challenge challenge = null)
+        public void StartRun(int players = 1, Challenge challenge = null, CampaignStage stage = null)
         {
             ActiveChallenge = challenge;
-            PlayerCount = challenge != null ? 1 : Mathf.Clamp(players, 1, 2);
+            ActiveStage = stage;
+            StageCleared = false;
+            PlayerCount = challenge != null || stage != null ? 1 : Mathf.Clamp(players, 1, 2);
             Elapsed = 0;
             ChoosingPlayers = false;
             bool countdown = countdownSeconds > 0;
@@ -373,6 +466,7 @@ namespace TNDA.Prototype
             goFlash = 0;
             if (countdownLabel != null) countdownLabel.text = "";
             ActiveChallenge = null;
+            ActiveStage = null;
             ChoosingPlayers = false;
             Phase = ArcadePhase.Attract;
             if (garage != null) garage.gameObject.SetActive(false);
@@ -402,6 +496,108 @@ namespace TNDA.Prototype
             notice.text = text;
             notice.color = color;
             noticeAge = duration;
+        }
+
+        public void SetCheatMenu(bool open)
+        {
+            CheatMenuOpen = open;
+            cheatStatus = "";
+            if (open && cheatPanel == null) BuildCheatPanel();
+            if (cheatPanel != null)
+            {
+                cheatPanel.SetActive(open);
+                cheatPanel.transform.SetAsLastSibling();
+            }
+            if (open) RenderCheatMenu();
+            Sound(0);
+        }
+
+        private void CheatMenuInput()
+        {
+            for (int i = 1; i <= 5; i++)
+                if (Pressed(Key.Digit1 + i - 1) || Pressed(Key.Numpad1 + i - 1)) UseCheat(i);
+        }
+
+        // 1 gold, 2 every campaign stage cleared, 3 score, 4 enemies wiped out, 5 invincibility on/off.
+        public void UseCheat(int number)
+        {
+            bool done = true;
+            switch (number)
+            {
+                case 1:
+                    Wallet.Add(Cheats.Gold);
+                    cheatStatus = string.Format(CabinetText.CheatGoldDone, Gold);
+                    break;
+                case 2:
+                    foreach (var stage in Campaign.Stages) Progress.MarkCleared(stage);
+                    cheatStatus = CabinetText.CheatStagesDone;
+                    break;
+                case 3:
+                    done = CheatScore(Cheats.Score);
+                    cheatStatus = done ? CabinetText.CheatScoreDone : CabinetText.CheatNeedsMatch;
+                    break;
+                case 4:
+                    done = CheatKnockOutEnemies();
+                    cheatStatus = done ? CabinetText.CheatWipeDone : CabinetText.CheatNeedsMatch;
+                    break;
+                case 5:
+                    Cheats.Invincible = !Cheats.Invincible;
+                    cheatStatus = string.Format(CabinetText.CheatInvincibleDone, Cheats.Invincible ? CabinetText.CheatOn : CabinetText.CheatOff);
+                    break;
+                default: return;
+            }
+            Sound(done ? 2 : 1);
+            RefreshHud();
+            RenderCheatMenu();
+        }
+
+        // The match-only cheats; false when no match is being played (title, garage, story, results, the demo).
+        protected virtual bool CheatScore(int points) => false;
+        protected virtual bool CheatKnockOutEnemies() => false;
+
+        private void BuildCheatPanel()
+        {
+            var canvas = overlayBody.canvas.rootCanvas;
+            cheatPanel = new GameObject("Cheat menu", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Outline));
+            var rect = (RectTransform)cheatPanel.transform;
+            rect.SetParent(canvas.transform, false);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, .5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(300, 150);
+            cheatPanel.GetComponent<UnityEngine.UI.Image>().color = Color.black;
+            var outline = cheatPanel.GetComponent<UnityEngine.UI.Outline>();
+            outline.effectColor = Yellow;
+            outline.effectDistance = new Vector2(2, -2);
+            var textObject = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            var textRect = (RectTransform)textObject.transform;
+            textRect.SetParent(rect, false);
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(12, 8);
+            textRect.offsetMax = new Vector2(-12, -8);
+            cheatText = textObject.GetComponent<TextMeshProUGUI>();
+            cheatText.font = overlayBody.font;
+            cheatText.fontSharedMaterial = overlayBody.fontSharedMaterial;
+            cheatText.fontSize = 11;
+            cheatText.lineSpacing = 20;
+            cheatText.color = White;
+            cheatText.alignment = TextAlignmentOptions.TopLeft;
+            cheatText.richText = true;
+            cheatText.raycastTarget = false;
+        }
+
+        private void RenderCheatMenu()
+        {
+            if (cheatText == null) return;
+            string yellow = "#" + ColorUtility.ToHtmlStringRGB(Yellow);
+            cheatText.text = string.Join("\n",
+                "<color=" + yellow + ">" + CabinetText.CheatTitle + "</color>",
+                string.Format(CabinetText.CheatGold, Gold),
+                CabinetText.CheatStages,
+                CabinetText.CheatScore,
+                CabinetText.CheatWipe,
+                string.Format(CabinetText.CheatInvincible, Cheats.Invincible ? CabinetText.CheatOn : CabinetText.CheatOff),
+                "<color=" + yellow + ">" + cheatStatus + "</color>");
         }
 
         // Puts the cars and arena back for a new match (or the title demo); Phase and PlayerCount are already set.
@@ -441,31 +637,25 @@ namespace TNDA.Prototype
             return false;
         }
 
-        private bool ConfirmPressed() => Controls == ControlType.TypeA
-            ? Pressed(Key.X) || PadPressed(p => p.buttonEast.wasPressedThisFrame)
-            : Pressed(Key.LeftCtrl) || PadPressed(p => p.buttonSouth.wasPressedThisFrame);
+        private bool ConfirmPressed() => Pressed(Key.X) || PadPressed(p => p.buttonEast.wasPressedThisFrame);
 
         private bool SeatConfirmPressed(int seat)
         {
-            bool typeA = Controls == ControlType.TypeA;
-            bool key = seat == 0 ? Pressed(typeA ? Key.X : Key.LeftCtrl) : Pressed(Key.NumpadEnter);
-            if (key) return true;
-            if (Gamepad.all.Count <= seat) return false;
-            var pad = Gamepad.all[seat];
-            return (typeA ? pad.buttonEast : pad.buttonSouth).wasPressedThisFrame;
+            if (seat == 0 ? Pressed(Key.X) : Pressed(Key.NumpadEnter)) return true;
+            return Gamepad.all.Count > seat && Gamepad.all[seat].buttonEast.wasPressedThisFrame;
         }
 
         // The live input boundary: each seat combines its keyboard keys with its own gamepad.
         public static ArcadeInput ReadInput(int index)
         {
-            bool typeA = SavedControls == ControlType.TypeA;
-            // P2's keyboard stays on the numpad; both pads follow the shared title-screen setting.
+            // One control layout (SFC style): P1 Z gas, X item, A brake; P2 stays on the numpad. Pads: South gas,
+            // East item, West brake.
             var k = Keyboard.current;
             Key left = index == 0 ? Key.LeftArrow : Key.Numpad4;
             Key right = index == 0 ? Key.RightArrow : Key.Numpad6;
-            Key gas = index == 0 ? typeA ? Key.Z : Key.UpArrow : Key.Numpad8;
-            Key button = index == 0 ? typeA ? Key.X : Key.LeftCtrl : Key.NumpadEnter;
-            Key brake = index == 0 ? typeA ? Key.A : Key.DownArrow : Key.Numpad2;
+            Key gas = index == 0 ? Key.Z : Key.Numpad8;
+            Key button = index == 0 ? Key.X : Key.NumpadEnter;
+            Key brake = index == 0 ? Key.A : Key.Numpad2;
             var input = new ArcadeInput();
             if (k != null)
             {
@@ -485,9 +675,9 @@ namespace TNDA.Prototype
                 Vector2 stick = pad.leftStick.ReadValue();
                 if (pad.dpad.ReadValue().sqrMagnitude > .01f) stick = pad.dpad.ReadValue();
                 if (stick.sqrMagnitude > .03f) input.steer = stick.x;
-                if (typeA ? pad.buttonSouth.isPressed : stick.y > .4f) input.throttle = 1;
-                input.brake |= typeA ? pad.buttonWest.isPressed : stick.y < -.4f;
-                var item = typeA ? pad.buttonEast : pad.buttonSouth;
+                if (pad.buttonSouth.isPressed) input.throttle = 1;
+                input.brake |= pad.buttonWest.isPressed;
+                var item = pad.buttonEast;
                 input.action |= item.isPressed;
                 input.actionPressed |= item.wasPressedThisFrame;
                 input.startPressed |= pad.startButton.wasPressedThisFrame;

@@ -35,10 +35,7 @@ namespace TNDA.Prototype
             gold.text = string.Format(CabinetText.GoldTotal, game.Gold);
             message.text = game.GarageMessage;
             bool decalsTab = game.GarageTab == GarageTab.Decals;
-            bool typeA = game.Controls == ControlType.TypeA;
-            if (controls != null)
-                controls.text = decalsTab ? typeA ? CabinetText.GarageDecalTypeAControls : CabinetText.GarageDecalControls
-                    : typeA ? CabinetText.GarageTypeAControls : CabinetText.GarageControls;
+            if (controls != null) controls.text = decalsTab ? CabinetText.GarageDecalControls : CabinetText.GarageControls;
             if (abilityPanel != null) abilityPanel.SetActive(!decalsTab);
             if (decalPanel != null) decalPanel.SetActive(decalsTab);
             if (tab != null) tab.text = decalsTab ? CabinetText.GarageDecalTab : CabinetText.GarageAbilityTab;

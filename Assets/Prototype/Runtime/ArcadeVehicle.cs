@@ -19,6 +19,14 @@ namespace TNDA.Prototype
         public float shieldSeconds, spawnProtection;
         public ArenaItem item;
         public float respawn;
+        // Campaign (ticket 15), set by the match on every reset: cars on the same team (above 0) cannot hurt each other;
+        // size scales the car's footprint (and its picture), armor divides the damage it takes, mass sets how far a
+        // ram pushes it and how hard it pushes back. nameTag replaces the seat name (P1..P8) when set.
+        public int team;
+        public float size = 1, armor = 1, mass = 1;
+        public string nameTag;
+        // Half the gap two touching cars keep apart (0.31 for an ordinary car).
+        public float Radius => .31f * size;
 
         public float CherrySeconds { get; private set; }
         // Spinning on an oil slick: no control, no speed, no damage.
@@ -49,7 +57,7 @@ namespace TNDA.Prototype
         private const float ProtectionSeconds = 2;
 
         // P1 to P8 by seat in the arcade, for players and computer cars alike.
-        public string DriverName => string.Format(CabinetText.DriverName, index + 1);
+        public string DriverName => string.IsNullOrEmpty(nameTag) ? string.Format(CabinetText.DriverName, index + 1) : nameTag;
         public Vector2 Forward => new Vector2(Mathf.Cos(heading * Mathf.Deg2Rad), Mathf.Sin(heading * Mathf.Deg2Rad));
 
         public void ResetVehicle(Vector2 start, float angle, int playerCount)

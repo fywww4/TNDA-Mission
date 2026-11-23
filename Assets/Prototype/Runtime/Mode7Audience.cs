@@ -12,9 +12,15 @@ namespace TNDA.Prototype
         public float fenceHeight = 1.2f, crowdHeight = 2;
         public float crowdSetback = .45f;
         public float cheerSeconds = 1;
+        [Header("Ticket 25: campaign stage 3's night derby")]
+        [Tooltip("DerbyWall.png (32x48, concrete barrier and railing) in place of the fence. Empty = keep the fence.")]
+        public Texture2D derbyWall;
+        [Tooltip("DerbyCrowd.png (384x64, three frames like Mode7Crowd.png). Empty = keep the crowd.")]
+        public Texture2D derbyCrowd;
 
         private GameObject boundary;
-        private Material animatedCrowd;
+        private Material animatedCrowd, derbyFenceMaterial, derbyCrowdMaterial;
+        private MeshRenderer fenceView, crowdView;
         private Mesh fenceMesh, crowdMesh;
         private float cheerLeft, animationAge, lastElapsed;
         private DemolitionGame game;
@@ -28,9 +34,11 @@ namespace TNDA.Prototype
             boundary.transform.SetParent(transform, false);
             Vector2 min = game.arenaMin - Vector2.one * stage.arenaMargin;
             Vector2 max = game.arenaMax + Vector2.one * stage.arenaMargin;
-            fenceMesh = MakeRing("Fence", min, max, fenceHeight, fenceHeight * 32 / 48, fenceMaterial);
+            fenceMesh = MakeRing("Fence", min, max, fenceHeight, fenceHeight * 32 / 48, fenceMaterial, out fenceView);
             crowdMesh = MakeRing("Crowd", min - Vector2.one * crowdSetback, max + Vector2.one * crowdSetback,
-                crowdHeight, crowdHeight * 2, animatedCrowd);
+                crowdHeight, crowdHeight * 2, animatedCrowd, out crowdView);
+            if (derbyWall != null) derbyFenceMaterial = new Material(fenceMaterial) { mainTexture = derbyWall, hideFlags = HideFlags.DontSave };
+            if (derbyCrowd != null) derbyCrowdMaterial = new Material(crowdMaterial) { mainTexture = derbyCrowd, hideFlags = HideFlags.DontSave };
             game.WreckPresented += Cheer;
         }
 
@@ -39,6 +47,8 @@ namespace TNDA.Prototype
             if (game != null) game.WreckPresented -= Cheer;
             if (boundary != null) Destroy(boundary);
             if (animatedCrowd != null) Destroy(animatedCrowd);
+            if (derbyFenceMaterial != null) Destroy(derbyFenceMaterial);
+            if (derbyCrowdMaterial != null) Destroy(derbyCrowdMaterial);
             if (fenceMesh != null) Destroy(fenceMesh);
             if (crowdMesh != null) Destroy(crowdMesh);
             game = null;
@@ -50,6 +60,12 @@ namespace TNDA.Prototype
         private void LateUpdate()
         {
             if (animatedCrowd == null) return;
+            // No audience on the campaign's training ground (Mode7TrainingGround puts up its own walls).
+            boundary.SetActive(!game.TrainingGround);
+            bool derby = game.Arena == CampaignArena.Derby;
+            fenceView.sharedMaterial = derby && derbyFenceMaterial != null ? derbyFenceMaterial : fenceMaterial;
+            var crowd = derby && derbyCrowdMaterial != null ? derbyCrowdMaterial : animatedCrowd;
+            crowdView.sharedMaterial = crowd;
             if (game.Elapsed < lastElapsed) cheerLeft = animationAge = 0;
             lastElapsed = game.Elapsed;
             animationAge += Time.unscaledDeltaTime;
@@ -57,12 +73,12 @@ namespace TNDA.Prototype
             bool cheering = cheerLeft > 0;
             int beat = (int)(animationAge * 10) % 4;
             int frame = cheering ? (beat == 0 || beat == 3 ? 1 : 2) : (int)(animationAge * 3) % 2;
-            animatedCrowd.SetFloat("_Frame", frame);
-            animatedCrowd.SetFloat("_Bob", cheering ? (beat == 1 || beat == 2 ? 2 : 0) : frame);
+            crowd.SetFloat("_Frame", frame);
+            crowd.SetFloat("_Bob", cheering ? (beat == 1 || beat == 2 ? 2 : 0) : frame);
             cheerLeft = Mathf.Max(0, cheerLeft - Time.unscaledDeltaTime);
         }
 
-        private Mesh MakeRing(string name, Vector2 min, Vector2 max, float height, float tileWidth, Material material)
+        private Mesh MakeRing(string name, Vector2 min, Vector2 max, float height, float tileWidth, Material material, out MeshRenderer renderer)
         {
             var corners = new[] { min, new Vector2(max.x, min.y), max, new Vector2(min.x, max.y) };
             var vertices = new Vector3[16];
@@ -88,7 +104,7 @@ namespace TNDA.Prototype
             var go = new GameObject(name) { layer = stage.chaseOnlyLayer };
             go.transform.SetParent(boundary.transform, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var renderer = go.AddComponent<MeshRenderer>();
+            renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;

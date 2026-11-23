@@ -11,10 +11,8 @@ namespace TNDA.Prototype
     {
         public const string Title = "廢車場大亂鬥";
         // Simplified rules (user request): only the two players' controls.
-        public const string P1Controls = "P1　↑油門　↓煞車　←→轉向　左Ctrl道具";
-        public const string P1TypeAControls = "P1　Z油門　X道具　A煞車　←→轉向";
+        public const string P1Controls = "P1　Z油門　X道具　A煞車　←→轉向";
         public const string P2Controls = "P2　數字8油門　2煞車　4 6轉向　Enter道具";
-        public const string ControlsOption = "Type {0}　Q／E・LB／RB 切換操作";
         // Each player's speedometer: arena units per second × SpeedToKmh, rounded (reversing reads positive too).
         public const string PlayerSpeed = "P{0} {1,3} km/h";
         public const float SpeedToKmh = 40;
@@ -53,8 +51,7 @@ namespace TNDA.Prototype
         public const string GarageMaxed = "已滿";
         public const string GarageBought = "升級完成！";
         public const string GarageGoldShort = "金幣不足";
-        public const string GarageControls = "←→分頁　↑↓選擇　左Ctrl／手把下鍵 購買　Esc／手把右鍵 返回";
-        public const string GarageTypeAControls = "←→分頁　↑↓選擇　X／手把右鍵 購買　Z／手把下鍵 返回";
+        public const string GarageControls = "←→分頁　↑↓選擇　X／手把右鍵 購買　Z／手把下鍵 返回";
         public const string GarageStep = "每級 +5%　最多 +20%";
         public const string GarageStrengthStep = "強度：減少受到的傷害";
         // Ticket 16: the 外觀 tab. Patterns are drawn over the seat colour; P1 and P2 each wear their own.
@@ -67,13 +64,71 @@ namespace TNDA.Prototype
         public const string GarageDecalEquipped = "P{0} 裝備：{1}";
         public const string GarageDecalRule = "圖案畫在座位色上　AI 不裝";
         public const string GarageDecalCherry = "吃櫻桃時暫時換成櫻桃條紋";
-        public const string GarageDecalControls = "←→分頁　↑↓選擇　P1：左Ctrl／手把1下鍵　P2：數字Enter／手把2下鍵";
-        public const string GarageDecalTypeAControls = "←→分頁　↑↓選擇　P1：X／手把1右鍵　P2：數字Enter／手把2右鍵";
+        public const string GarageDecalControls = "←→分頁　↑↓選擇　P1：X／手把1右鍵　P2：數字Enter／手把2右鍵";
 
         // Challenge mode (title list, play and result).
         public const string ModeNormal = "一般模式";
         public const string ModeChallenge = "挑戰模式";
-        public const string ModeTabs = "←　{0}　{1}　→";
+        public const string ModeCampaign = "關卡模式";
+        public const string ModeTabs = "←　{0}　{1}　{2}　→";
+
+        // Campaign mode (ticket 15): title list, story, play and result. Story pages are "speaker｜line" placeholders
+        // until the user supplies the script.
+        public const string CampaignRule = "只限單人　過關後開放下一關";
+        public const string CampaignPrompt = "↑↓選擇　按 START 開始";
+        public const string CampaignLocked = "先通過上一關才能挑戰";
+        public const string CampaignRow = "{0} 第{1}關 {2}　{3}";
+        public const string CampaignCleared = "已過關";
+        public const string CampaignOpen = "挑戰中";
+        public const string CampaignLockedShort = "未開放";
+        public const string StageTitle = "第{0}關 {1}";
+        public const string StoryHint = "按 START 繼續　按 Esc 返回";
+        public const string StoryPage = "{0}：\n\n{1}";
+        public const string Stage1Name = "新手教學";
+        public const string Stage1Goal = "在訓練場學會操作，再把 3 台碰碰車撞出局";
+        public static readonly string[] Stage1Story = {
+            "教練｜歡迎來到廢車場訓練場，菜鳥。",
+            "教練｜這裡是黑盒子，沒有觀眾，撞爛了也沒人笑你。",
+            "教練｜照我說的一步一步做，最後跟 3 台碰碰車打一場。",
+        };
+        public const string Stage2Name = "金字塔淘汰賽";
+        public const string Stage2Goal = "8 台車淘汰賽，拿到冠軍";
+        public static readonly string[] Stage2Story = {
+            "主持人｜各位觀眾！今天有新面孔上場！",
+            "主持人｜8 台車、3 次淘汰，只有冠軍能留下來！",
+            "教練｜記住訓練場學到的，去拿冠軍。",
+        };
+        public const string Stage3Name = "魔王戰";
+        public const string Stage3Goal = "和 2 台友軍一起撞毀魔王";
+        public static readonly string[] Stage3Story = {
+            "魔王｜就是你這小子在我的廢車場出風頭？",
+            "魔王｜我和我的手下會把你壓成一塊鐵餅。",
+            "教練｜別怕，我派了 2 台車幫你。撞毀魔王就贏了！",
+        };
+        public const string AllyName = "友軍";
+        public const string BossName = "魔王";
+        public const string MinionName = "嘍囉";
+        public const string StageBoard = "第{0}關　{1}";
+        public const string TutorialBoard = "教學 {0}／{1}　{2}";
+        public static readonly string[] TutorialSteps = {
+            "按住油門鍵往前開",
+            "邊開邊按←→，轉一整圈",
+            "按住煞車鍵，停下後繼續按住倒車",
+            "開去撞一台車",
+            "開過道具箱撿道具",
+            "按道具鍵使用道具",
+        };
+        public const string TutorialStepDone = "完成！";
+        public const string TutorialFight = "開打！把 3 台車都撞出局！";
+        public const string TutorialFightBoard = "撞出局！剩 {0} 台　{1:00}秒";
+        public const string BossBoard = "魔王 耐久 {0}%　剩 {1:000} 秒";
+        public const string KnockedOut = "{0} 出局！";
+        public const string StageClear = "第{0}關 過關！";
+        public const string StageFailed = "第{0}關 失敗";
+        public const string CampaignComplete = "全部關卡完成！";
+        public const string StageNextHint = "按 START 下一關　按 Esc 回標題";
+        public const string StageRetryHint = "按 START 重試　按 Esc 回標題";
+        public const string StageReplayHint = "按 START 再玩一次　按 Esc 回標題";
         public const string ChallengeRule = "只限單人";
         public const string ChallengePrompt = "↑↓選擇　按 START 開始";
         public const string ChallengeLocked = "按 START 花 {0} 金幣解鎖";
@@ -164,6 +219,21 @@ namespace TNDA.Prototype
         public const string P2StandingsHint = "按住數字0／SELECT 看排行";
         public const string RaceStanding = "{0} {1} {2:00000} 耐久{3}";
         public const string RaceStandingEliminated = "{0}　淘汰";
+
+        // Cheat menu (~ key, any screen while the game runs; the game pauses while it is open).
+        public const string CheatTitle = "作弊選單　　（~／Esc 關閉）";
+        public const string CheatGold = "1　金幣 +1000（現有 {0}）";
+        public const string CheatStages = "2　全關卡破關";
+        public const string CheatScore = "3　分數 +1000";
+        public const string CheatWipe = "4　消滅所有敵軍";
+        public const string CheatInvincible = "5　無敵模式：{0}";
+        public const string CheatOn = "開", CheatOff = "關";
+        public const string CheatGoldDone = "金幣 +1000，現有 {0}";
+        public const string CheatStagesDone = "全部關卡已破關";
+        public const string CheatScoreDone = "P1 分數 +1000";
+        public const string CheatWipeDone = "敵軍已全部消滅";
+        public const string CheatInvincibleDone = "無敵模式{0}";
+        public const string CheatNeedsMatch = "比賽中才能使用";
 
         // Every string above (templates included), for building the pixel font's character set.
         public static IEnumerable<string> All => typeof(CabinetText).GetFields(BindingFlags.Public | BindingFlags.Static)

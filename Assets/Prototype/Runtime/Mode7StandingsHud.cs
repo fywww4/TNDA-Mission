@@ -21,6 +21,8 @@ namespace TNDA.Prototype
         [Min(0)] public float autoShowSeconds = 5;
         public View[] views = new View[2];
         private readonly bool[] held = new bool[2];
+        // True while any seat's full table is open; Mode7Stage shows the minimap with it.
+        public bool TableShown { get; private set; }
 
         public void ReadInput(ArcadeInput p1, ArcadeInput p2)
         {
@@ -50,6 +52,7 @@ namespace TNDA.Prototype
             int rows = (lines.Length + 1) / 2;
             string table = string.Join("\n", Enumerable.Range(0, rows).Select(i => lines[i]
                 + (i + rows < lines.Length ? "<pos=250>" + lines[i + rows] : "")));
+            TableShown = false;
             for (int seat = 0; seat < views.Length; seat++)
             {
                 var view = views[seat];
@@ -63,6 +66,7 @@ namespace TNDA.Prototype
                 view.root.sizeDelta = new Vector2(HybridResolution.CabinetWidth, height);
                 bool expanded = racing && (held[seat] || automatic);
                 view.table.SetActive(expanded);
+                TableShown |= expanded;
                 view.compact.SetActive(!expanded);
                 view.rows.text = table;
                 var car = game.cars[seat];

@@ -23,6 +23,16 @@ namespace TNDA.Prototype
             PlayerPrefs.Save();
             return added;
         }
+        // Gold from outside a round (the cheat menu); capped so the total never overflows.
+        public int Add(int gold)
+        {
+            int added = (int)Math.Min(Math.Max(0, gold), int.MaxValue - (long)Total);
+            Total += added;
+            PlayerPrefs.SetInt(saveKey, Total);
+            PlayerPrefs.Save();
+            return added;
+        }
+
         // Pays for something (a challenge unlock); false and nothing spent when the wallet holds too little.
         public bool TrySpend(int gold)
         {

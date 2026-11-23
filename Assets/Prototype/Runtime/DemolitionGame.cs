@@ -51,6 +51,8 @@ namespace TNDA.Prototype
         public BreakableProp[] props;
         public ArenaPickup[] pickups = Array.Empty<ArenaPickup>();
         public ArenaObstacle[] obstacles = Array.Empty<ArenaObstacle>();
+        [Tooltip("Ticket 25: campaign stage 3's night derby uses these instead (a loader and wrecked hulks, no spike balls).")]
+        public ArenaObstacle[] derbyObstacles = Array.Empty<ArenaObstacle>();
         [Header("Fixed terrain")]
         public float fenceRespawnSeconds = Defaults.fenceRespawnSeconds;
         public float rampSpeed = Defaults.rampSpeed, jumpSeconds = Defaults.jumpSeconds, jumpHeight = Defaults.jumpHeight;
@@ -219,11 +221,15 @@ namespace TNDA.Prototype
         {
             get
             {
-                int count = ActiveChallenge == null ? cars.Length : Mathf.Min(cars.Length, ActiveChallenge.CarCount);
+                int count = ActiveStage != null ? Mathf.Min(cars.Length, ActiveStage.CarCount)
+                    : ActiveChallenge == null ? cars.Length : Mathf.Min(cars.Length, ActiveChallenge.CarCount);
+                // The campaign's training ground has no terrain and no spike balls; the night derby has its own terrain.
+                var terrain = Arena == CampaignArena.TrainingGround ? NoObstacles : Arena == CampaignArena.Derby ? derbyObstacles : obstacles;
+                var balls = Arena == CampaignArena.Standard ? spikeBalls : NoSpikeBalls;
                 if (match == null || matchSource != cars || match.Cars.Length != count
-                    || match.Props != props || match.Pickups != pickups || match.Rockets != rockets || match.Obstacles != obstacles || match.SpikeBalls != spikeBalls)
+                    || match.Props != props || match.Pickups != pickups || match.Rockets != rockets || match.Obstacles != terrain || match.SpikeBalls != balls)
                 {
-                    match = new DemolitionMatch(count == cars.Length ? cars : cars.Take(count).ToArray(), props, pickups, rockets, new MatchTuning(), obstacles, spikeBalls);
+                    match = new DemolitionMatch(count == cars.Length ? cars : cars.Take(count).ToArray(), props, pickups, rockets, new MatchTuning(), terrain, balls);
                     matchSource = cars;
                 }
                 var t = match.Tuning;
@@ -252,11 +258,29 @@ namespace TNDA.Prototype
                 t.jumpSeconds = jumpSeconds; t.jumpHeight = jumpHeight;
                 t.spikeRollSpeed = spikeRollSpeed; t.spikeDamage = spikeDamage; t.spikeLaunchPerSpeed = spikeLaunchPerSpeed;
                 t.spikeLaunchMax = spikeLaunchMax; t.spikeFlyImpact = spikeFlyImpact; t.spikeFlyFriction = spikeFlyFriction;
+                // A campaign stage being told or played changes the rules last, so it may change any value.
+                ActiveStage?.ApplyRules(t, Coach);
                 return match;
             }
         }
 
-        public float Remaining => Mathf.Max(0, RoundSeconds - Elapsed);
+        private static readonly ArenaObstacle[] NoObstacles = Array.Empty<ArenaObstacle>();
+        private static readonly SpikeBall[] NoSpikeBalls = Array.Empty<SpikeBall>();
+        // Which arena the match is played in: campaign stage 1's black-box training ground (Mode7TrainingGround draws
+        // it), stage 3's night derby (Mode7DerbyArena), or the usual one.
+        public CampaignArena Arena => ActiveStage != null ? ActiveStage.Arena : CampaignArena.Standard;
+        public bool TrainingGround => Arena == CampaignArena.TrainingGround;
+        // The fixed terrain in play.
+        public ArenaObstacle[] Terrain => Match.Obstacles;
+        public bool SpikeBallsInPlay => Match.SpikeBalls.Length > 0;
+        // The running tutorial's steps (campaign stage 1 only).
+        public TutorialCoach Coach { get; private set; }
+        // The campaign boss, while a boss stage is set up (null otherwise).
+        public ArcadeVehicle Boss => Match.Tuning.bossSeat >= 0 && Match.Tuning.bossSeat < Match.Cars.Length ? Match.Cars[Match.Tuning.bossSeat] : null;
+
+        // While the tutorial's steps run the clock waits: it shows the fight's full time.
+        public float Remaining => Coach != null && !Coach.Fighting ? Campaign.TutorialFightSeconds
+            : Mathf.Max(0, RoundSeconds - Elapsed);
         public float NextElimination => Match.NextElimination;
         public int Contenders => Match.Contenders;
         public bool Survived => Match.Survived;
@@ -304,7 +328,6 @@ namespace TNDA.Prototype
         [Header("Title: mode tabs and the challenge list")]
         public TMP_Text attractRule, attractModes, attractChallenges;
         [Header("Controls and speed HUD")]
-        public TMP_Text attractControlsType;
         public TMP_Text[] attractControls;
         [UnityEngine.Serialization.FormerlySerializedAs("gearLabels")]
         public TMP_Text[] speedLabels;
@@ -372,6 +395,7 @@ namespace TNDA.Prototype
         {
             if (standingsHud != null) standingsHud.ReadInput(default, default);
             demo = startingDemo;
+            Coach = ActiveStage != null && ActiveStage.Tutorial && !demo ? new TutorialCoach() : null;
             goldAwarded = false;
             RoundGold = 0;
             Continues.NewMatch();
@@ -380,7 +404,7 @@ namespace TNDA.Prototype
             victor = null;
             if (victoryScreen != null) victoryScreen.SetActive(false);
             Match.Reset(demo ? 0 : PlayerCount, demo);
-            foreach (var car in cars) car.body.color = Livery(car.index).body;
+            foreach (var car in cars) car.body.color = TeamColour(car) ?? Livery(car.index).body;
             for (int i = 0; i < cars.Length; i++)
                 if (healthBars != null && i < healthBars.Length && healthBars[i] != null)
                     healthBars[i].GetComponentInChildren<SpriteRenderer>().color = cars[i].body.color;
@@ -408,7 +432,46 @@ namespace TNDA.Prototype
         private void Simulate(float dt, ArcadeInput p1, ArcadeInput p2)
         {
             Match.Tick(dt, p1, p2);
+            if (Coach != null && Coach.Observe(cars[0], Match.Events, Match.Elapsed)) NextTutorialStep();
             Present();
+        }
+
+        // A tutorial step done: say so and show the next. The last one starts the fight with every car repaired.
+        private void NextTutorialStep()
+        {
+            Sound(2);
+            if (!Coach.Fighting)
+            {
+                Announce(CabinetText.TutorialStepDone, Yellow, 1.2f);
+                return;
+            }
+            foreach (var car in Match.Cars) if (car.alive) car.health = 1;
+            Announce(CabinetText.TutorialFight, Yellow, 3);
+        }
+
+        // Campaign stage 3: the player's side green (the player keeps cyan), the boss steel grey, its minions red.
+        private Color? TeamColour(ArcadeVehicle car)
+        {
+            if (car.index >= Match.Cars.Length || car.team == 0 || !car.computer) return null;
+            if (car == Boss) return new Color32(120, 120, 136, 255);
+            return car.team == 1 ? new Color32(96, 224, 160, 255) : (Color)new Color32(232, 64, 40, 255);
+        }
+
+        // Cheat menu: only a match being played (not the demo, not after the round is decided).
+        private bool CheatMatchLive => Phase == ArcadePhase.Playing && !demo && Match != null && !Match.Finished;
+
+        protected override bool CheatScore(int points)
+        {
+            if (!CheatMatchLive) return false;
+            Match.GrantScore(Match.Cars[0], points);
+            return true;
+        }
+
+        protected override bool CheatKnockOutEnemies()
+        {
+            if (!CheatMatchLive) return false;
+            Match.KnockOutEnemies();
+            return true;
         }
 
         public void DamageVehicle(ArcadeVehicle car, float damage)
@@ -447,7 +510,8 @@ namespace TNDA.Prototype
                 else if (e is MatchEnded end)
                 {
                     AwardGold();
-                    if (ActiveChallenge != null) ShowChallengeResults();
+                    if (ActiveStage != null) ShowStageResults();
+                    else if (ActiveChallenge != null) ShowChallengeResults();
                     else if (!end.Winner.computer && victoryScreen != null && victorySeconds > 0) ShowVictory(end.Winner);
                     else ShowResults(end.Winner);
                 }
@@ -504,7 +568,8 @@ namespace TNDA.Prototype
                     break;
                 case VehicleEliminated eliminated:
                     PlayHit(1);
-                    Announce(string.Format(CabinetText.Eliminated, eliminated.Car.DriverName), Yellow, 4);
+                    Announce(string.Format(eliminated.Wrecked ? CabinetText.KnockedOut : CabinetText.Eliminated, eliminated.Car.DriverName),
+                        Yellow, eliminated.Wrecked ? 2 : 4);
                     Sound(3);
                     break;
             }
@@ -563,6 +628,14 @@ namespace TNDA.Prototype
                 + "\n" + GoldSummary, CabinetText.ChallengeResultsHint);
         }
 
+        // A campaign stage counts as cleared when the player won the round (took the crown, or wrecked the boss).
+        private void ShowStageResults()
+        {
+            var stage = ActiveStage;
+            FinishStage(Match.Survived, stage.Goal + "\n" + string.Format(CabinetText.ChallengeScoreLine,
+                Mathf.RoundToInt(cars[0].score).ToString("00000")) + "\n" + GoldSummary);
+        }
+
         private string GoldSummary => string.Format(CabinetText.GoldEarned, RoundGold)
             + "\n" + string.Format(CabinetText.GoldTotal, Gold);
 
@@ -587,10 +660,10 @@ namespace TNDA.Prototype
             if (resetSaveHeldSeconds < 3) return;
             Wallet.Clear();
             Records.Clear();
+            Progress.Clear();
             Upgrades.Clear();
             Decals.Clear();
             PlayerPrefs.DeleteKey("WreckBest");
-            PlayerPrefs.DeleteKey(ControlsSaveKey);
             PlayerPrefs.Save();
             resetSaveLatched = true;
         }
@@ -603,6 +676,8 @@ namespace TNDA.Prototype
             {
                 car.gameObject.SetActive(car.index < Match.Cars.Length && car.Visible);
                 car.Sync();
+                // The campaign boss is drawn bigger along with its footprint.
+                car.transform.localScale = Vector3.one * (car.index < Match.Cars.Length ? car.size : 1);
             }
             foreach (var prop in props)
             {
@@ -620,6 +695,7 @@ namespace TNDA.Prototype
             {
                 var view = spikeBallViews[i];
                 if (view == null) continue;
+                view.gameObject.SetActive(SpikeBallsInPlay);
                 view.transform.position = PixelPosition(spikeBalls[i].position);
                 if (spikeBallFrames.Length > 0)
                     view.sprite = spikeBallFrames[Mathf.FloorToInt(spikeBalls[i].rolled / Mathf.Max(.01f, spikeFrameDistance)) % spikeBallFrames.Length];
@@ -807,6 +883,8 @@ namespace TNDA.Prototype
             if (gameOverLeft < 0 && !Continues.AnyWaiting && cars.Where(c => !c.computer).All(c => c.eliminated))
             {
                 AwardGold();
+                // A campaign stage shows its failed result (START retries) instead of GAME OVER.
+                if (ActiveStage != null) { ShowStageResults(); return; }
                 gameOverLeft = gameOverSeconds;
             }
             if (gameOverLeft >= 0 && (gameOverLeft -= dt) <= 0) PreparePreview();
@@ -960,16 +1038,22 @@ namespace TNDA.Prototype
                 if (attract) overlay.SetActive(false);
                 foreach (var text in new[] { header, arenaBoard, leaderboard, hud, footer, notice })
                     if (text != null) text.gameObject.SetActive(!attract && !inGarage);
-                if (attractRule != null) attractRule.text = Mode == CabinetMode.Challenge ? CabinetText.ChallengeRule : CabinetText.NormalRule;
+                if (attractRule != null) attractRule.text = Mode == CabinetMode.Challenge ? CabinetText.ChallengeRule
+                    : Mode == CabinetMode.Campaign ? CabinetText.CampaignRule : CabinetText.NormalRule;
                 if (attractModes != null)
                     attractModes.text = string.Format(CabinetText.ModeTabs, ModeTab(CabinetMode.Normal, CabinetText.ModeNormal),
-                        ModeTab(CabinetMode.Challenge, CabinetText.ModeChallenge));
+                        ModeTab(CabinetMode.Challenge, CabinetText.ModeChallenge), ModeTab(CabinetMode.Campaign, CabinetText.ModeCampaign));
                 if (attractChallengePanel != null)
                 {
-                    attractChallengePanel.SetActive(Mode == CabinetMode.Challenge);
-                    if (attractChallenges != null) attractChallenges.text = ChallengeListText();
+                    attractChallengePanel.SetActive(Mode != CabinetMode.Normal);
+                    if (attractChallenges != null) attractChallenges.text = Mode == CabinetMode.Campaign ? StageListText() : ChallengeListText();
                 }
-                if (attractPrompt != null && Mode == CabinetMode.Challenge)
+                if (attractPrompt != null && Mode == CabinetMode.Campaign)
+                {
+                    attractPrompt.text = Progress.IsUnlocked(SelectedStage) ? CabinetText.CampaignPrompt : CabinetText.CampaignLocked;
+                    attractPrompt.enabled = Mathf.FloorToInt(Time.unscaledTime * 2) % 2 == 0;
+                }
+                else if (attractPrompt != null && Mode == CabinetMode.Challenge)
                 {
                     attractPrompt.text = !SelectedChallenge.Playable ? CabinetText.ChallengeComingSoon
                         : Records.IsUnlocked(SelectedChallenge) ? CabinetText.ChallengePrompt
@@ -1059,7 +1143,8 @@ namespace TNDA.Prototype
             }
             ShowCrown();
             header.text = CabinetText.Title;
-            arenaBoard.text = ActiveChallenge != null ? string.Format(CabinetText.ChallengeBoard, ActiveChallenge.Name)
+            arenaBoard.text = ActiveStage != null ? StageBoardText()
+                : ActiveChallenge != null ? string.Format(CabinetText.ChallengeBoard, ActiveChallenge.Name)
                 : Phase == ArcadePhase.Results ? string.Format(CabinetText.Champion, cars[Champion].DriverName)
                 : string.Format(CabinetText.NextElimination, Mathf.CeilToInt(Mathf.Max(0, NextElimination - Elapsed)), Contenders);
             var order = Phase == ArcadePhase.Results ? Match.Cars.OrderBy(c => c.FinalPlace)
@@ -1093,7 +1178,6 @@ namespace TNDA.Prototype
 
         private void RefreshControlsAndSpeedHud()
         {
-            if (attractControlsType != null) attractControlsType.text = string.Format(CabinetText.ControlsOption, Controls == ControlType.TypeA ? "A" : "B");
             if (attractControls != null)
                 for (int i = 0; i < attractControls.Length; i++)
                     if (attractControls[i] != null) attractControls[i].text = ControlsFor(i);
@@ -1114,12 +1198,45 @@ namespace TNDA.Prototype
         }
 
         private string ControlsFor(int player) => player == 0
-            ? Controls == ControlType.TypeA ? CabinetText.P1TypeAControls : CabinetText.P1Controls
+            ? CabinetText.P1Controls
             : CabinetText.P2Controls;
 
         private static string Tinted(Color color, string text) => "<color=#" + ColorUtility.ToHtmlStringRGB(color) + ">" + text + "</color>";
 
         private string ModeTab(CabinetMode mode, string name) => Tinted(Mode == mode ? Yellow : White, name);
+
+        // The board line while a campaign stage is told or played: the tutorial step (or the fight's cars left and
+        // clock), the boss's durability and time left, or the pyramid's next elimination.
+        private string StageBoardText()
+        {
+            float left = Mathf.Max(0, NextElimination - Match.Elapsed);
+            if (Phase != ArcadePhase.Playing && Phase != ArcadePhase.Countdown)
+                return string.Format(CabinetText.StageBoard, ActiveStage.Number, ActiveStage.Name);
+            if (Coach != null)
+                return Coach.Fighting ? string.Format(CabinetText.TutorialFightBoard, Contenders - 1, Mathf.CeilToInt(left))
+                    : string.Format(CabinetText.TutorialBoard, Coach.StepNumber, TutorialCoach.StepCount, CabinetText.TutorialSteps[(int)Coach.Step]);
+            var boss = Boss;
+            if (boss != null) return string.Format(CabinetText.BossBoard, Mathf.CeilToInt(Mathf.Clamp01(boss.health) * 100), Mathf.CeilToInt(left));
+            return string.Format(CabinetText.NextElimination, Mathf.CeilToInt(left), Contenders);
+        }
+
+        // Every campaign stage with its state (cleared, open or locked), each followed by its goal; the chosen one is yellow.
+        private string StageListText()
+        {
+            var lines = new List<string>();
+            for (int i = 0; i < Campaign.Stages.Count; i++)
+            {
+                var stage = Campaign.Stages[i];
+                bool selected = i == StageCursor;
+                string state = Progress.IsCleared(stage) ? CabinetText.CampaignCleared
+                    : Progress.IsUnlocked(stage) ? CabinetText.CampaignOpen : CabinetText.CampaignLockedShort;
+                var color = selected ? Yellow : White;
+                lines.Add(Tinted(color, string.Format(CabinetText.CampaignRow, selected ? ">" : " ", stage.Number, stage.Name, state)));
+                lines.Add(Tinted(color, stage.Goal));
+                if (i < Campaign.Stages.Count - 1) lines.Add("");
+            }
+            return string.Join("\n", lines);
+        }
 
         // Name, state and best score of every challenge, each followed by its condition; the chosen one is yellow.
         private string ChallengeListText()
@@ -1171,9 +1288,11 @@ namespace TNDA.Prototype
         private void ShowStartMessages()
         {
             if (countdownLabel == null || startMessages == null) return;
+            // 活下來！盡量取得最高分！ fit the elimination match, not the tutorial or the boss fight.
+            bool scoring = ActiveStage == null || ActiveStage == Campaign.Pyramid;
             if (countdownBaseSize <= 0) countdownBaseSize = countdownLabel.fontSize;
             float after = Elapsed - .7f;
-            int index = Phase == ArcadePhase.Playing && after >= 0 ? Mathf.FloorToInt(after / startMessageSeconds) : -1;
+            int index = scoring && Phase == ArcadePhase.Playing && after >= 0 ? Mathf.FloorToInt(after / startMessageSeconds) : -1;
             if (index >= 0 && index < startMessages.Length)
             {
                 countdownLabel.fontSize = countdownBaseSize / 2; // still a whole multiple of the 11px pixel font

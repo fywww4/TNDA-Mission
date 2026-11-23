@@ -7,7 +7,14 @@ namespace TNDA.Prototype
         public static bool CanHarm(ArcadeVehicle attacker, ArcadeVehicle victim, float elapsed, float graceSeconds)
         {
             return victim != null && victim != attacker && victim.alive && !victim.eliminated && !victim.Airborne
+                && !Teammates(attacker, victim)
                 && (!attacker.computer || victim.computer || elapsed >= graceSeconds);
+        }
+
+        // Campaign teams (ticket 15): team 0 is everyone for themselves.
+        public static bool Teammates(ArcadeVehicle a, ArcadeVehicle b)
+        {
+            return a != null && b != null && a.team > 0 && a.team == b.team;
         }
     }
 }

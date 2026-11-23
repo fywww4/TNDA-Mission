@@ -8,9 +8,10 @@ namespace TNDA.Prototype
     public sealed class Mode7Obstacles : MonoBehaviour
     {
         public Mode7Stage stage;
-        // ObstacleKind order: fence, pipe, wall, ramp. Scene references keep shaders/textures in builds.
+        // ObstacleKind order: fence, pipe, wall, ramp, then the night derby's loader and hulk (ticket 25; until those two
+        // are wired the wall's and pipe's stand in). Scene references keep shaders/textures in builds.
         public Material[] materials;
-        private GameObject root;
+        private GameObject root, standardTerrain, derbyTerrain;
         private readonly List<Mesh> meshes = new List<Mesh>();
         private readonly List<(ArenaObstacle obstacle, MeshRenderer view, MeshRenderer map)> views = new List<(ArenaObstacle, MeshRenderer, MeshRenderer)>();
         private readonly List<(ArcadeVehicle car, Transform shadow)> shadows = new List<(ArcadeVehicle, Transform)>();
@@ -28,23 +29,17 @@ namespace TNDA.Prototype
 
         private void OnEnable()
         {
-            if (stage == null || materials == null || materials.Length != 4) return;
+            if (stage == null || materials == null || materials.Length < 4) return;
             block = new MaterialPropertyBlock();
             root = new GameObject("Mode7 fixed terrain") { hideFlags = HideFlags.DontSave };
             root.transform.SetParent(transform, false);
             flatMaterial = new Material(materials[0]) { name = "Terrain solid colours", hideFlags = HideFlags.DontSave };
             flatMaterial.mainTexture = Texture2D.whiteTexture;
-            foreach (var obstacle in stage.game.obstacles)
-            {
-                MeshRenderer view = MakeObstacle(obstacle);
-                Color tint = obstacle.kind == ObstacleKind.Fence ? new Color32(138, 90, 43, 255)
-                    : obstacle.kind == ObstacleKind.Ramp ? new Color32(255, 212, 72, 255)
-                    : obstacle.kind == ObstacleKind.Pipe ? new Color32(184, 184, 184, 255) : new Color32(150, 158, 160, 255);
-                var map = MakeRenderer(obstacle.kind + " map footprint", Rectangle(obstacle.size, -.02f), flatMaterial, stage.minimapOnlyLayer);
-                Place(map.transform, obstacle);
-                Tint(map, tint);
-                views.Add((obstacle, view, map));
-            }
+            // The usual terrain, and the night derby's (ticket 25); LateUpdate shows the set the match is using.
+            standardTerrain = Group("Standard terrain");
+            derbyTerrain = Group("Derby terrain");
+            foreach (var obstacle in stage.game.obstacles) AddObstacle(obstacle, standardTerrain.transform);
+            foreach (var obstacle in stage.game.derbyObstacles) AddObstacle(obstacle, derbyTerrain.transform);
             foreach (var car in stage.game.cars)
             {
                 var shadow = MakeRenderer("Jump shadow " + car.index, Disc(), flatMaterial, stage.chaseOnlyLayer);
@@ -70,9 +65,42 @@ namespace TNDA.Prototype
             meshes.Clear(); views.Clear(); shadows.Clear(); fragments.Clear();
         }
 
+        private GameObject Group(string name)
+        {
+            var go = new GameObject(name) { hideFlags = HideFlags.DontSave };
+            go.transform.SetParent(root.transform, false);
+            return go;
+        }
+
+        private void AddObstacle(ArenaObstacle obstacle, Transform parent)
+        {
+            MeshRenderer view = MakeObstacle(obstacle, parent);
+            Color tint = obstacle.kind == ObstacleKind.Fence ? new Color32(138, 90, 43, 255)
+                : obstacle.kind == ObstacleKind.Ramp ? new Color32(255, 212, 72, 255)
+                : obstacle.kind == ObstacleKind.Loader ? new Color32(248, 192, 0, 255)
+                : obstacle.kind == ObstacleKind.Hulk ? new Color32(80, 80, 80, 255)
+                : obstacle.kind == ObstacleKind.Pipe ? new Color32(184, 184, 184, 255) : new Color32(150, 158, 160, 255);
+            var map = MakeRenderer(obstacle.kind + " map footprint", Rectangle(obstacle.size, -.02f), flatMaterial, stage.minimapOnlyLayer, parent);
+            Place(map.transform, obstacle);
+            Tint(map, tint);
+            views.Add((obstacle, view, map));
+        }
+
+        // The loader's and hulk's own material, or the wall's and pipe's until they are wired.
+        private Material MaterialFor(ObstacleKind kind)
+        {
+            int i = (int)kind;
+            if (i < materials.Length && materials[i] != null) return materials[i];
+            return materials[kind == ObstacleKind.Loader ? (int)ObstacleKind.Wall : kind == ObstacleKind.Hulk ? (int)ObstacleKind.Pipe : i];
+        }
+
         private void LateUpdate()
         {
             if (root == null) return;
+            // The campaign's training ground has no terrain (the match leaves it out too).
+            root.SetActive(!stage.game.TrainingGround);
+            standardTerrain.SetActive(stage.game.Arena == CampaignArena.Standard);
+            derbyTerrain.SetActive(stage.game.Arena == CampaignArena.Derby);
             bool reset = stage.game.Elapsed < lastElapsed;
             lastElapsed = stage.game.Elapsed;
             foreach (var entry in views)
@@ -120,7 +148,7 @@ namespace TNDA.Prototype
             }
         }
 
-        private MeshRenderer MakeObstacle(ArenaObstacle o)
+        private MeshRenderer MakeObstacle(ArenaObstacle o, Transform parent)
         {
             var vertices = new List<Vector3>(); var uv = new List<Vector2>(); var triangles = new List<int>();
             float w = o.size.x / 2, d = o.size.y / 2, h = o.height;
@@ -133,7 +161,27 @@ namespace TNDA.Prototype
                     new Vector2(right, top - .5f / 32), new Vector2(left, top - .5f / 32) });
                 triangles.AddRange(new[] { at, at + 1, at + 2, at, at + 2, at + 3 });
             }
-            if (o.kind == ObstacleKind.Ramp)
+            if (o.kind == ObstacleKind.Loader || o.kind == ObstacleKind.Hulk)
+            {
+                // Two cells: the side view (nose to the left, at local -x) on both long sides, the front view on both
+                // ends. Every face shows the same pixels per world unit: the quads are as tall as a cell is for the
+                // obstacle's length, and the ends show only the middle of the front cell. The art's clear part is cut out.
+                var texture = MaterialFor(o.kind).mainTexture;
+                float tall = texture != null ? o.size.x * texture.height / (texture.width * .5f) : h;
+                float crop = Mathf.Clamp01(o.size.y / o.size.x) * .25f;
+                void Quad(Vector3 a, Vector3 b, float u0, float u1)
+                {
+                    int at = vertices.Count;
+                    vertices.AddRange(new[] { a, b, new Vector3(b.x, b.y, -tall), new Vector3(a.x, a.y, -tall) });
+                    uv.AddRange(new[] { new Vector2(u0, 0), new Vector2(u1, 0), new Vector2(u1, 1), new Vector2(u0, 1) });
+                    triangles.AddRange(new[] { at, at + 1, at + 2, at, at + 2, at + 3 });
+                }
+                Quad(new Vector3(-w, -d, 0), new Vector3(w, -d, 0), 0, .5f);
+                Quad(new Vector3(-w, d, 0), new Vector3(w, d, 0), 0, .5f);
+                Quad(new Vector3(-w, d, 0), new Vector3(-w, -d, 0), .75f - crop, .75f + crop);
+                Quad(new Vector3(w, -d, 0), new Vector3(w, d, 0), .75f - crop, .75f + crop);
+            }
+            else if (o.kind == ObstacleKind.Ramp)
             {
                 Face(new Vector3(-w, -d, -.01f), new Vector3(w, -d, -.01f), new Vector3(w, d, -h), new Vector3(-w, d, -h));
                 // The supplied right-hand tile is a triangular truss, rising from left to right.
@@ -174,7 +222,7 @@ namespace TNDA.Prototype
             }
             var mesh = new Mesh { name = o.kind + " fixed mesh", hideFlags = HideFlags.DontSave };
             mesh.SetVertices(vertices); mesh.SetUVs(0, uv); mesh.SetTriangles(triangles, 0); mesh.RecalculateBounds();
-            var renderer = MakeRenderer(o.kind + " fixed surface", mesh, materials[(int)o.kind], stage.chaseOnlyLayer);
+            var renderer = MakeRenderer(o.kind + " fixed surface", mesh, MaterialFor(o.kind), stage.chaseOnlyLayer, parent);
             Place(renderer.transform, o);
             return renderer;
         }
@@ -187,11 +235,11 @@ namespace TNDA.Prototype
             block.Clear(); block.SetColor("_Color", tint); renderer.SetPropertyBlock(block);
         }
 
-        private MeshRenderer MakeRenderer(string name, Mesh mesh, Material material, int layer)
+        private MeshRenderer MakeRenderer(string name, Mesh mesh, Material material, int layer, Transform parent = null)
         {
             meshes.Add(mesh);
             var go = new GameObject(name) { layer = layer };
-            go.transform.SetParent(root.transform, false);
+            go.transform.SetParent(parent != null ? parent : root.transform, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;

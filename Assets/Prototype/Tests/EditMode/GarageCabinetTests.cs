@@ -17,7 +17,7 @@ namespace TNDA.Prototype.Tests
         [SetUp]
         public void OpenCabinetWithACleanIsolatedSave()
         {
-            var keys = new[] { "TNDA.Gold", ArcadeGame.ControlsSaveKey, "WreckBest" }
+            var keys = new[] { "TNDA.Gold", "WreckBest" }
                 .Concat(Enum.GetValues(typeof(VehicleAbility)).Cast<VehicleAbility>().Select(a => "TNDA.Upgrades." + a))
                 .Concat(Challenges.All.SelectMany(c => new[] { "TNDA.Challenge." + c.Id + ".Best", "TNDA.Challenge." + c.Id + ".Unlocked" }));
             foreach (string key in keys) { save[key] = (PlayerPrefs.HasKey(key), PlayerPrefs.GetInt(key)); PlayerPrefs.DeleteKey(key); }
@@ -82,21 +82,6 @@ namespace TNDA.Prototype.Tests
             Assert.That(new VehicleUpgrades().Level(VehicleAbility.TopSpeed), Is.Zero);
         }
 
-        [Test]
-        public void ControlTypePersistsAcrossReopeningAndLongDeleteRestoresTypeA()
-        {
-            Assert.That(game.Controls, Is.EqualTo(ControlType.TypeA));
-            game.SelectControls(ControlType.TypeB);
-            EditorSceneManager.ClosePreviewScene(scene);
-            Open();
-            Assert.That(game.Controls, Is.EqualTo(ControlType.TypeB));
-            game.Advance(3.01f, new ArcadeInput { resetSaveHeld = true }, default);
-            Assert.That(game.Controls, Is.EqualTo(ControlType.TypeA));
-            EditorSceneManager.ClosePreviewScene(scene);
-            Open();
-            Assert.That(game.Controls, Is.EqualTo(ControlType.TypeA));
-        }
-
         [TestCase(1, false)]
         [TestCase(2, false)]
         [TestCase(1, true)]
@@ -116,8 +101,8 @@ namespace TNDA.Prototype.Tests
                 foreach (var prop in game.props) { prop.broken = true; prop.respawn = 100; }
                 game.Advance(1f / 60, gas, gas);
             }
-            for (int i = 0; i < players; i++) Assert.That(game.cars[i].speed, Is.EqualTo(4.2f).Within(.001f), "seat " + i);
-            Assert.That(game.driveSpeed, Is.EqualTo(3.5f), "base speed stays unchanged");
+            for (int i = 0; i < players; i++) Assert.That(game.cars[i].speed, Is.EqualTo(5.25f).Within(.001f), "seat " + i);
+            Assert.That(game.driveSpeed, Is.EqualTo(4.375f), "base speed stays unchanged");
         }
     }
 }

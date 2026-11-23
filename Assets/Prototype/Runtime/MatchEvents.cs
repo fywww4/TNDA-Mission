@@ -145,12 +145,14 @@ namespace TNDA.Prototype
         public WreckBonus(ArcadeVehicle attacker, int points) { Attacker = attacker; Points = points; }
     }
 
-    // A timed (or demo) elimination: the car is out for good, finishing in Place.
+    // A timed (or demo) elimination: the car is out for good, finishing in Place. Wrecked: knocked out by a wreck
+    // instead of the clock (campaign stages where wrecked computer cars do not come back).
     public sealed class VehicleEliminated : MatchEvent
     {
         public readonly ArcadeVehicle Car;
         public readonly int Place;
-        public VehicleEliminated(ArcadeVehicle car, int place) { Car = car; Place = place; }
+        public readonly bool Wrecked;
+        public VehicleEliminated(ArcadeVehicle car, int place, bool wrecked = false) { Car = car; Place = place; Wrecked = wrecked; }
     }
 
     // Every score change (props, rams, rocket hits, wreck bonus and penalty), at the car's position when it happened.

@@ -2,7 +2,8 @@ using UnityEngine;
 
 namespace TNDA.Prototype
 {
-    public enum ObstacleKind { Fence, Pipe, Wall, Ramp }
+    // Loader and Hulk (ticket 25): the night derby's parked loader and wrecked cars, solid and unbreakable like a wall.
+    public enum ObstacleKind { Fence, Pipe, Wall, Ramp, Loader, Hulk }
 
     // A fixed footprint on the arena floor. Angle turns its width axis; a ramp rises along its local +Y.
     [System.Serializable]
