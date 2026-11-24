@@ -1067,7 +1067,7 @@ namespace TNDA.Prototype
                 if (attractRule != null) attractRule.text = Mode == CabinetMode.Challenge ? CabinetText.ChallengeRule
                     : Mode == CabinetMode.Campaign ? CabinetText.CampaignRule : CabinetText.NormalRule;
                 if (attractModes != null)
-                    attractModes.text = string.Format(CabinetText.ModeTabs, ModeTab(CabinetMode.Normal, CabinetText.ModeNormal),
+                    attractModes.text = string.Format(CabinetText.ModeTabs,
                         ModeTab(CabinetMode.Challenge, CabinetText.ModeChallenge), ModeTab(CabinetMode.Campaign, CabinetText.ModeCampaign));
                 if (attractChallengePanel != null)
                 {

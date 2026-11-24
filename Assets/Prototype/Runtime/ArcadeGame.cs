@@ -61,7 +61,8 @@ namespace TNDA.Prototype
         public int PlayerChoice { get; private set; } = 1;
         // Title screen selection. ActiveChallenge is the challenge being played or just finished (null in normal mode,
         // on the title and in the demo).
-        public CabinetMode Mode { get; private set; }
+        // The title opens on challenge mode; 一般模式 is hidden for now (its code stays, reachable only via SelectMode).
+        public CabinetMode Mode { get; private set; } = CabinetMode.Challenge;
         public int ChallengeCursor { get; private set; }
         public Challenge ActiveChallenge { get; private set; }
         public Challenge SelectedChallenge => Challenges.All[ChallengeCursor];
@@ -254,11 +255,10 @@ namespace TNDA.Prototype
 
         public void SelectMode(CabinetMode mode) => Mode = mode;
 
-        // Left/right on the title: 一般 -> 挑戰 -> 關卡 and round again.
+        // Left/right on the title switch between 挑戰 and 關卡 (一般模式 is hidden for now).
         public void MoveMode(int delta)
         {
-            const int count = 3;
-            Mode = (CabinetMode)((((int)Mode + delta) % count + count) % count);
+            Mode = Mode == CabinetMode.Challenge ? CabinetMode.Campaign : CabinetMode.Challenge;
         }
 
         public void MoveStageCursor(int delta)

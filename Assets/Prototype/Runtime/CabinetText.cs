@@ -70,7 +70,7 @@ namespace TNDA.Prototype
         public const string ModeNormal = "一般模式";
         public const string ModeChallenge = "挑戰模式";
         public const string ModeCampaign = "關卡模式";
-        public const string ModeTabs = "←　{0}　{1}　{2}　→";
+        public const string ModeTabs = "←　{0}　{1}　→";
 
         // Campaign mode (ticket 15): title list, story, play and result. Story pages are "speaker｜line" placeholders
         // until the user supplies the script.

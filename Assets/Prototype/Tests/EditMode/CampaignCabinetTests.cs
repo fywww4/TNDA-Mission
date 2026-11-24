@@ -52,15 +52,13 @@ namespace TNDA.Prototype.Tests
         }
 
         [Test]
-        public void LeftAndRightGoRoundTheThreeModes()
+        public void LeftAndRightSwitchBetweenChallengeAndCampaign()
         {
-            game.SelectMode(CabinetMode.Normal);
-            game.MoveMode(1);
             Assert.That(game.Mode, Is.EqualTo(CabinetMode.Challenge));
             game.MoveMode(1);
             Assert.That(game.Mode, Is.EqualTo(CabinetMode.Campaign));
             game.MoveMode(1);
-            Assert.That(game.Mode, Is.EqualTo(CabinetMode.Normal));
+            Assert.That(game.Mode, Is.EqualTo(CabinetMode.Challenge));
             game.MoveMode(-1);
             Assert.That(game.Mode, Is.EqualTo(CabinetMode.Campaign));
         }
